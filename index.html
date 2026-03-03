@@ -1,264 +1,550 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="scroll-smooth">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lambertlab</title>
-  <meta
-    name="description"
-    content="Lambert / lambertlab — 大数据工程师、软件开发者、AI 协作探索者。"
-  />
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            "background-dark": "#101922"
-          },
-          fontFamily: {
-            sans: ["IBM Plex Sans", "sans-serif"]
-          }
-        }
+  <meta name="description" content="Lambert / lambertlab — 大数据工程师、软件开发者、AI 协作探索者。" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <style>
+    :root {
+      --bg: #eef3ff;
+      --bg-2: #f9fbff;
+      --surface: #ffffff;
+      --text: #1d1d1f;
+      --muted: #4b5563;
+      --line: #dde4f3;
+      --accent: #2563eb;
+      --accent-2: #0ea5e9;
+      --radius: 24px;
+      --shadow: 0 18px 38px rgba(15, 23, 42, 0.09);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Noto Sans SC", sans-serif;
+      background:
+        radial-gradient(circle at 14% 0%, rgba(37, 99, 235, 0.22), transparent 34%),
+        radial-gradient(circle at 88% -10%, rgba(14, 165, 233, 0.18), transparent 30%),
+        linear-gradient(150deg, var(--bg), var(--bg-2));
+      min-height: 100vh;
+    }
+
+    .skip-link {
+      position: absolute;
+      left: -9999px;
+      top: 0.75rem;
+      z-index: 50;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #0f172a;
+      padding: 8px 10px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+    }
+
+    .skip-link:focus {
+      left: 1rem;
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 22px 18px 44px;
+    }
+
+    .topbar {
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 14px;
+      z-index: 40;
+    }
+
+    .logo {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 1.04rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      text-decoration: none;
+      color: #0f172a;
+    }
+
+    .topbar nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .topbar a.nav-link {
+      color: #334155;
+      text-decoration: none;
+      font-family: "IBM Plex Mono", monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-size: 0.72rem;
+      border-bottom: 1px solid transparent;
+      transition: color 180ms ease, border-color 180ms ease;
+    }
+
+    .topbar a.nav-link:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .hero {
+      margin-top: 18px;
+      border-radius: 30px;
+      border: 1px solid #dce7fb;
+      background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 100%);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+    }
+
+    .kicker {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: #64748b;
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: clamp(2rem, 4.6vw, 3.3rem);
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      margin: 12px 0 0;
+      color: var(--muted);
+      max-width: 680px;
+      line-height: 1.75;
+    }
+
+    .chips {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      border: 1px solid #dbe5f8;
+      background: #fff;
+      color: #334155;
+      font-family: "IBM Plex Mono", monospace;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .metric {
+      border-radius: 16px;
+      border: 1px solid #dce7fb;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .metric strong {
+      display: block;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      font-size: 1.2rem;
+      margin-bottom: 2px;
+    }
+
+    .metric span {
+      color: #64748b;
+      font-size: 0.83rem;
+    }
+
+    .grid {
+      margin-top: 18px;
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-auto-rows: minmax(130px, auto);
+    }
+
+    .card {
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.07);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 240ms ease, box-shadow 240ms ease;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg, rgba(37, 99, 235, 0.07), transparent 48%);
+      opacity: 0;
+      transition: opacity 240ms ease;
+      pointer-events: none;
+    }
+
+    .card:hover {
+      transform: translateY(-4px) scale(1.01);
+      box-shadow: 0 18px 34px rgba(15, 23, 42, 0.13);
+    }
+
+    .card:hover::after {
+      opacity: 1;
+    }
+
+    .span-2x2 {
+      grid-column: span 2;
+      grid-row: span 2;
+    }
+
+    .span-3x2 {
+      grid-column: span 3;
+      grid-row: span 2;
+    }
+
+    .span-2x1 {
+      grid-column: span 2;
+    }
+
+    .span-3x1 {
+      grid-column: span 3;
+    }
+
+    .card h2,
+    .card h3 {
+      margin: 4px 0;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      letter-spacing: -0.02em;
+    }
+
+    .card h2 {
+      font-size: 1.55rem;
+    }
+
+    .card h3 {
+      font-size: 1.1rem;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 0.93rem;
+      color: #475569;
+      line-height: 1.7;
+    }
+
+    .mini {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .project-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .project-list a {
+      text-decoration: none;
+      color: inherit;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      display: block;
+      transition: border-color 180ms ease;
+      background: #fff;
+    }
+
+    .project-list a:hover {
+      border-color: rgba(37, 99, 235, 0.6);
+    }
+
+    .project-list strong {
+      display: block;
+      font-size: 1rem;
+      margin: 0 0 2px;
+    }
+
+    .project-list span {
+      font-size: 0.83rem;
+      color: #64748b;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .btn {
+      text-decoration: none;
+      border-radius: 999px;
+      border: 1px solid #dce7fb;
+      padding: 8px 12px;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #334155;
+      background: #fff;
+      font-family: "IBM Plex Mono", monospace;
+      transition: border-color 180ms ease, color 180ms ease;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .btn.primary:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+      color: #fff;
+    }
+
+    @media (max-width: 1000px) {
+      .hero {
+        grid-template-columns: 1fr;
       }
-    };
-  </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap"
-  />
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@300,0&display=swap"
-  />
-  <script>
-    (function () {
-      try {
-        if (localStorage.getItem("theme") === "dark") {
-          document.documentElement.classList.add("dark");
-        }
-      } catch (error) {
-        /* ignore storage errors */
+
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
-    })();
-  </script>
+
+      .span-2x2,
+      .span-3x2,
+      .span-2x1,
+      .span-3x1 {
+        grid-column: span 1;
+        grid-row: span 1;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .wrap {
+        padding: 16px 12px 34px;
+      }
+
+      .topbar {
+        top: 10px;
+      }
+
+      .hero {
+        padding: 20px;
+      }
+
+      .topbar nav {
+        gap: 8px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+      }
+    }
+  </style>
 </head>
-<body class="bg-white text-black font-sans antialiased dark:bg-background-dark dark:text-slate-100">
-  <nav class="fixed inset-x-0 top-0 z-50 border-b border-[#e5e5e5] bg-white/85 backdrop-blur-md dark:border-slate-700 dark:bg-background-dark/85">
-    <div class="mx-auto flex h-20 max-w-[1200px] items-center justify-between px-8">
-      <a
-        href="#top"
-        class="text-xl font-semibold tracking-tight transition-colors hover:text-neutral-600 dark:hover:text-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white"
-      >
-        lambertlab
-      </a>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
 
-      <div class="hidden items-center gap-8 md:flex">
-        <a class="text-xs uppercase tracking-[0.18em] text-neutral-500 transition-colors hover:text-black dark:text-slate-400 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#focus">工作</a>
-        <a class="text-xs uppercase tracking-[0.18em] text-neutral-500 transition-colors hover:text-black dark:text-slate-400 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#about">关于</a>
-        <a class="text-xs uppercase tracking-[0.18em] text-neutral-500 transition-colors hover:text-black dark:text-slate-400 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#projects">项目</a>
-        <a class="text-xs uppercase tracking-[0.18em] text-neutral-500 transition-colors hover:text-black dark:text-slate-400 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#insights">洞察</a>
-        <a class="text-xs uppercase tracking-[0.18em] text-neutral-500 transition-colors hover:text-black dark:text-slate-400 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#contact">联系</a>
-      </div>
+  <div class="wrap">
+    <header class="topbar">
+      <a class="logo" href="#home">lambertlab</a>
+      <nav>
+        <a class="nav-link" href="#about">关于</a>
+        <a class="nav-link" href="#focus">方向</a>
+        <a class="nav-link" href="#projects">项目</a>
+        <a class="nav-link" href="#insights">洞察</a>
+        <a class="nav-link" href="#contact">联系</a>
+      </nav>
+    </header>
 
-      <div class="flex items-center gap-3">
-        <button
-          type="button"
-          data-theme-toggle
-          class="hidden items-center gap-2 border border-[#e5e5e5] px-3 py-2 text-xs uppercase tracking-[0.18em] text-neutral-600 transition-colors hover:border-black hover:text-black dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white"
-        >
-          <span class="material-symbols-outlined text-base" data-theme-icon aria-hidden="true">dark_mode</span>
-          <span data-theme-text>暗色</span>
-        </button>
-
-        <a
-          href="#contact"
-          class="hidden border border-black bg-black px-4 py-2 text-xs uppercase tracking-[0.18em] text-white transition-colors hover:bg-neutral-800 dark:border-slate-100 dark:bg-slate-100 dark:text-background-dark dark:hover:bg-slate-300 md:inline-flex focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white"
-        >
-          开始沟通
-        </a>
-
-        <button
-          id="mobile-menu-button"
-          type="button"
-          class="inline-flex items-center justify-center border border-[#e5e5e5] p-2 text-black transition-colors hover:border-black dark:border-slate-700 dark:text-slate-100 dark:hover:border-slate-200 md:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white"
-          aria-expanded="false"
-          aria-controls="mobile-menu"
-        >
-          <span class="sr-only">切换菜单</span>
-          <span class="material-symbols-outlined text-xl" aria-hidden="true">menu</span>
-        </button>
-      </div>
-    </div>
-
-    <div id="mobile-menu" class="hidden border-t border-[#e5e5e5] bg-white dark:border-slate-700 dark:bg-background-dark md:hidden">
-      <div class="mx-auto flex max-w-[1200px] flex-col gap-2 px-8 py-5">
-        <a class="border border-transparent px-3 py-2 text-xs uppercase tracking-[0.18em] text-neutral-600 transition-colors hover:border-black hover:text-black dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#focus">工作</a>
-        <a class="border border-transparent px-3 py-2 text-xs uppercase tracking-[0.18em] text-neutral-600 transition-colors hover:border-black hover:text-black dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#about">关于</a>
-        <a class="border border-transparent px-3 py-2 text-xs uppercase tracking-[0.18em] text-neutral-600 transition-colors hover:border-black hover:text-black dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#projects">项目</a>
-        <a class="border border-transparent px-3 py-2 text-xs uppercase tracking-[0.18em] text-neutral-600 transition-colors hover:border-black hover:text-black dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#insights">洞察</a>
-        <a class="border border-transparent px-3 py-2 text-xs uppercase tracking-[0.18em] text-neutral-600 transition-colors hover:border-black hover:text-black dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white" href="#contact">联系</a>
-        <a
-          href="#contact"
-          class="mt-2 inline-flex w-fit border border-black bg-black px-4 py-2 text-xs uppercase tracking-[0.18em] text-white transition-colors hover:bg-neutral-800 dark:border-slate-100 dark:bg-slate-100 dark:text-background-dark dark:hover:bg-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white"
-        >
-          开始沟通
-        </a>
-      </div>
-    </div>
-  </nav>
-
-  <main id="top" class="mx-auto max-w-[1200px] px-8 pb-24 pt-36">
-    <section id="home" class="mb-24 grid grid-cols-12 gap-8 scroll-mt-28">
-      <div class="col-span-12 lg:col-span-10">
-        <h1 class="mb-8 text-[clamp(2.9rem,8vw,4.5rem)] leading-[1.08] font-light tracking-tight text-black dark:text-slate-100">
-          Lambert 构建能在规模与变化下持续可用的系统。
-        </h1>
-        <p class="text-2xl font-light text-neutral-700 dark:text-slate-300">
-          大数据工程师 · 软件开发者 · AI 协作探索者
-        </p>
-        <p class="mt-5 max-w-3xl text-sm text-neutral-500 dark:text-slate-400">
-          专注于系统建模、AI协作与可持续的工程习惯。
-        </p>
-      </div>
-    </section>
-
-    <section id="about" class="grid grid-cols-12 gap-8 border-t border-[#e5e5e5] py-20 scroll-mt-28 dark:border-slate-700">
-      <div class="col-span-12 lg:col-span-4">
-        <h2 class="text-xs uppercase tracking-[0.2em] text-neutral-500 dark:text-slate-400">关于</h2>
-      </div>
-      <div class="col-span-12 lg:col-span-8">
-        <p class="text-xl leading-relaxed font-light text-neutral-700 dark:text-slate-300">
-          我设计数据密集型系统，强调吞吐与可运维性的平衡。当前工作聚焦在软件工程、
-          模型辅助流程与可复用的决策模式，让团队能够稳定维护。相比堆叠复杂方案，我更重视
-          简洁接口、明确取舍与可持续交付。
-        </p>
-      </div>
-    </section>
-
-    <section id="focus" class="grid grid-cols-12 gap-8 border-t border-[#e5e5e5] py-20 scroll-mt-28 dark:border-slate-700">
-      <div class="col-span-12 lg:col-span-4">
-        <h2 class="text-xs uppercase tracking-[0.2em] text-neutral-500 dark:text-slate-400">聚焦方向</h2>
-      </div>
-      <div class="col-span-12 lg:col-span-8">
-        <div class="grid grid-cols-1 border-l border-t border-[#e5e5e5] md:grid-cols-3 dark:border-slate-700">
-          <article class="group border-b border-r border-[#e5e5e5] p-7 transition-colors hover:border-black dark:border-slate-700 dark:hover:border-slate-200">
-            <span class="material-symbols-outlined mb-5 block text-[22px] text-neutral-400 transition-colors group-hover:text-black dark:text-slate-500 dark:group-hover:text-slate-100">database</span>
-            <h3 class="mb-3 text-lg font-normal text-black dark:text-slate-100">系统建模</h3>
-            <p class="text-sm leading-relaxed text-neutral-600 dark:text-slate-300">在开发前先建模数据流与故障路径，再用测试与指标固定系统行为。</p>
-          </article>
-          <article class="group border-b border-r border-[#e5e5e5] p-7 transition-colors hover:border-black dark:border-slate-700 dark:hover:border-slate-200">
-            <span class="material-symbols-outlined mb-5 block text-[22px] text-neutral-400 transition-colors group-hover:text-black dark:text-slate-500 dark:group-hover:text-slate-100">hub</span>
-            <h3 class="mb-3 text-lg font-normal text-black dark:text-slate-100">AI 协作</h3>
-            <p class="text-sm leading-relaxed text-neutral-600 dark:text-slate-300">将 AI 作为结构化协作伙伴，用于草拟、校验与加快交付反馈闭环。</p>
-          </article>
-          <article class="group border-b border-r border-[#e5e5e5] p-7 transition-colors hover:border-black dark:border-slate-700 dark:hover:border-slate-200">
-            <span class="material-symbols-outlined mb-5 block text-[22px] text-neutral-400 transition-colors group-hover:text-black dark:text-slate-500 dark:group-hover:text-slate-100">checklist</span>
-            <h3 class="mb-3 text-lg font-normal text-black dark:text-slate-100">工程习惯</h3>
-            <p class="text-sm leading-relaxed text-neutral-600 dark:text-slate-300">通过小而稳的实践减少回归风险，让多人协作项目保持可理解性。</p>
-          </article>
+    <main id="main-content">
+      <section class="hero" id="home">
+        <div>
+          <p class="kicker">LambertLab · Bento Modular</p>
+          <h1>模块化布局，把复杂信息变成一眼可扫读的卡片系统。</h1>
+          <p>大数据工程师 · 软件开发者 · AI 协作探索者。这个版本更偏产品化表达：视觉节奏更活跃，信息密度更高，适合展示项目与方法论资产。</p>
+          <div class="chips">
+            <span class="chip">Bento Grid</span>
+            <span class="chip">Product-minded</span>
+            <span class="chip">High Scanability</span>
+          </div>
         </div>
-      </div>
-    </section>
 
-    <section id="projects" class="grid grid-cols-12 gap-8 border-t border-[#e5e5e5] py-20 scroll-mt-28 dark:border-slate-700">
-      <div class="col-span-12 lg:col-span-4">
-        <h2 class="text-xs uppercase tracking-[0.2em] text-neutral-500 dark:text-slate-400">精选项目</h2>
-      </div>
-      <div class="col-span-12 lg:col-span-8">
-        <div class="flex flex-col">
-          <a href="./projects/personal-toolbox/" class="group flex items-center justify-between gap-4 border-b border-[#e5e5e5] px-0 py-8 transition-all duration-300 hover:px-4 dark:border-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">
-            <div class="min-w-0">
-              <p class="mb-1 text-xs uppercase tracking-[0.18em] text-neutral-500 dark:text-slate-400">2026 · 工具</p>
-              <h3 class="text-xl font-light text-black transition-colors group-hover:text-neutral-600 dark:text-slate-100 dark:group-hover:text-slate-300">个人工具箱</h3>
-            </div>
-            <span class="material-symbols-outlined text-xl opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true">arrow_outward</span>
-          </a>
-          <a href="./" class="group flex items-center justify-between gap-4 border-b border-[#e5e5e5] px-0 py-8 transition-all duration-300 hover:px-4 dark:border-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">
-            <div class="min-w-0">
-              <p class="mb-1 text-xs uppercase tracking-[0.18em] text-neutral-500 dark:text-slate-400">2026 · 网站</p>
-              <h3 class="text-xl font-light text-black transition-colors group-hover:text-neutral-600 dark:text-slate-100 dark:group-hover:text-slate-300">lambertlab.github.io</h3>
-            </div>
-            <span class="material-symbols-outlined text-xl opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true">arrow_outward</span>
-          </a>
-          <a href="./projects/ai-message-value-triage/" class="group flex items-center justify-between gap-4 border-b border-[#e5e5e5] px-0 py-8 transition-all duration-300 hover:px-4 dark:border-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">
-            <div class="min-w-0">
-              <p class="mb-1 text-xs uppercase tracking-[0.18em] text-neutral-500 dark:text-slate-400">2025 · 网页应用</p>
-              <h3 class="text-xl font-light text-black transition-colors group-hover:text-neutral-600 dark:text-slate-100 dark:group-hover:text-slate-300">AI 消息价值分拣</h3>
-            </div>
-            <span class="material-symbols-outlined text-xl opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true">arrow_outward</span>
-          </a>
-        </div>
-      </div>
-    </section>
+        <aside class="hero-side" aria-label="概览指标">
+          <div class="metric">
+            <strong>03</strong>
+            <span>核心聚焦方向</span>
+          </div>
+          <div class="metric">
+            <strong>06+</strong>
+            <span>持续产出中的主题</span>
+          </div>
+          <div class="metric">
+            <strong>∞</strong>
+            <span>可迭代的方法体系</span>
+          </div>
+        </aside>
+      </section>
 
-    <section id="insights" class="grid grid-cols-12 gap-8 border-t border-[#e5e5e5] py-20 scroll-mt-28 dark:border-slate-700">
-      <div class="col-span-12 lg:col-span-4">
-        <h2 class="text-xs uppercase tracking-[0.2em] text-neutral-500 dark:text-slate-400">写作与洞察</h2>
-      </div>
-      <div class="col-span-12 lg:col-span-8">
-        <div class="flex flex-col">
-          <a href="./insights/model-first-engineering.html" class="group flex items-center justify-between gap-4 border-b border-[#e5e5e5] px-0 py-8 transition-all duration-300 hover:px-4 dark:border-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">
-            <div class="min-w-0">
-              <p class="mb-1 text-xs uppercase tracking-[0.18em] text-neutral-500 dark:text-slate-400">2026年3月</p>
-              <h3 class="text-xl font-light text-black transition-colors group-hover:text-neutral-600 dark:text-slate-100 dark:group-hover:text-slate-300">面向数据工作流的模型先行工程方法</h3>
-            </div>
-            <span class="material-symbols-outlined text-xl opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true">arrow_outward</span>
-          </a>
-          <a href="./insights/ai-collaboration-checklist.html" class="group flex items-center justify-between gap-4 border-b border-[#e5e5e5] px-0 py-8 transition-all duration-300 hover:px-4 dark:border-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">
-            <div class="min-w-0">
-              <p class="mb-1 text-xs uppercase tracking-[0.18em] text-neutral-500 dark:text-slate-400">2026年2月</p>
-              <h3 class="text-xl font-light text-black transition-colors group-hover:text-neutral-600 dark:text-slate-100 dark:group-hover:text-slate-300">代码评审中的 AI协作 实用清单</h3>
-            </div>
-            <span class="material-symbols-outlined text-xl opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true">arrow_outward</span>
-          </a>
-          <a href="./insights/operational-habits-that-stick.html" class="group flex items-center justify-between gap-4 border-b border-[#e5e5e5] px-0 py-8 transition-all duration-300 hover:px-4 dark:border-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">
-            <div class="min-w-0">
-              <p class="mb-1 text-xs uppercase tracking-[0.18em] text-neutral-500 dark:text-slate-400">2026年1月</p>
-              <h3 class="text-xl font-light text-black transition-colors group-hover:text-neutral-600 dark:text-slate-100 dark:group-hover:text-slate-300">让团队持续交付的运营习惯</h3>
-            </div>
-            <span class="material-symbols-outlined text-xl opacity-0 transition-all duration-300 group-hover:translate-x-0 group-hover:opacity-100" aria-hidden="true">arrow_outward</span>
-          </a>
-        </div>
-        <div class="pt-10">
-          <a href="./insights/" class="inline-block border-b border-black pb-1 text-sm uppercase tracking-[0.18em] transition-colors hover:border-neutral-500 hover:text-neutral-500 dark:border-slate-100 dark:hover:border-slate-400 dark:hover:text-slate-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">
-            查看全部洞察
-          </a>
-        </div>
-      </div>
-    </section>
+      <section class="grid" aria-label="内容网格">
+        <article class="card span-3x2" id="about">
+          <div>
+            <p class="mini">关于我</p>
+            <h2>我构建在规模与变化下仍可持续演进的系统。</h2>
+            <p>偏好模型先行、边界清晰、反馈稳定的工程方法，不追求“复杂即先进”的叙事。</p>
+          </div>
+          <div class="actions">
+            <a class="btn" href="./projects/">浏览项目目录</a>
+            <a class="btn primary" href="#projects">看精选项目</a>
+          </div>
+        </article>
 
-    <section id="contact" class="grid grid-cols-12 gap-8 border-t border-[#e5e5e5] py-20 scroll-mt-28 dark:border-slate-700">
-      <div class="col-span-12 lg:col-span-4">
-        <h2 class="text-xs uppercase tracking-[0.2em] text-neutral-500 dark:text-slate-400">联系</h2>
-      </div>
-      <div class="col-span-12 lg:col-span-8">
-        <p class="max-w-2xl text-xl leading-relaxed font-light text-neutral-700 dark:text-slate-300">
-          如果你正在建设数据基础设施、产品化 AI 工具，或以协作为核心的工程流程，
-          欢迎附上背景信息发来简短消息。
-        </p>
-        <div class="mt-8 flex flex-wrap gap-3">
-          <a href="https://github.com/lambertlab" target="_blank" rel="noreferrer" class="border border-[#e5e5e5] px-4 py-2 text-sm uppercase tracking-[0.15em] text-neutral-700 transition-colors hover:border-black hover:text-black dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">GitHub</a>
-          <a href="mailto:you@example.com" class="border border-[#e5e5e5] px-4 py-2 text-sm uppercase tracking-[0.15em] text-neutral-700 transition-colors hover:border-black hover:text-black dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">邮箱</a>
-          <a href="./contact/" class="border border-[#e5e5e5] px-4 py-2 text-sm uppercase tracking-[0.15em] text-neutral-700 transition-colors hover:border-black hover:text-black dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-200 dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">联系页</a>
-        </div>
-      </div>
-    </section>
-  </main>
+        <article class="card span-2x1" id="focus">
+          <div>
+            <p class="mini">Focus</p>
+            <h3>系统建模</h3>
+            <p>先定义数据流、故障路径和行为约束，再进入实现。</p>
+          </div>
+        </article>
 
-  <footer class="border-t border-[#e5e5e5] dark:border-slate-700">
-    <div class="mx-auto flex max-w-[1200px] flex-col items-start justify-between gap-4 px-8 py-10 text-xs uppercase tracking-[0.18em] text-neutral-500 dark:text-slate-400 md:flex-row md:items-center">
-      <p>&copy; 2026 Lambert / lambertlab</p>
-      <div class="flex items-center gap-6">
-        <a href="https://github.com/lambertlab" target="_blank" rel="noreferrer" class="transition-colors hover:text-black dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">GitHub</a>
-        <a href="./insights/" class="transition-colors hover:text-black dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">洞察</a>
-        <a href="./projects/" class="transition-colors hover:text-black dark:hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white">项目</a>
-      </div>
-    </div>
-  </footer>
+        <article class="card">
+          <div>
+            <p class="mini">Focus</p>
+            <h3>AI 协作</h3>
+            <p>可验证、可追溯的 AI 工作流。</p>
+          </div>
+        </article>
 
-  <script src="./js/config.js"></script>
-  <script src="./js/main.js"></script>
+        <article class="card span-2x1">
+          <div>
+            <p class="mini">Focus</p>
+            <h3>工程习惯</h3>
+            <p>小步迭代降低回归，维护长期稳定交付。</p>
+          </div>
+        </article>
+
+        <article class="card span-3x2" id="projects">
+          <div>
+            <p class="mini">Projects</p>
+            <h3>精选项目</h3>
+          </div>
+          <ul class="project-list">
+            <li>
+              <a href="./projects/personal-toolbox/">
+                <strong>个人工具箱</strong>
+                <span>统一常用自动化与效率工具入口</span>
+              </a>
+            </li>
+            <li>
+              <a href="./projects/ai-message-value-triage/">
+                <strong>AI 消息价值分拣</strong>
+                <span>从高噪声消息流中识别关键输入</span>
+              </a>
+            </li>
+            <li>
+              <a href="./">
+                <strong>lambertlab.github.io</strong>
+                <span>个人长期写作与项目归档中枢</span>
+              </a>
+            </li>
+          </ul>
+        </article>
+
+        <article class="card span-3x1" id="insights">
+          <div>
+            <p class="mini">Insights</p>
+            <h3>最近洞察</h3>
+            <p>模型先行工程、AI 协作清单、团队持续交付习惯。</p>
+          </div>
+          <div class="actions">
+            <a class="btn" href="./insights/model-first-engineering.html">2026.03</a>
+            <a class="btn" href="./insights/ai-collaboration-checklist.html">2026.02</a>
+            <a class="btn" href="./insights/operational-habits-that-stick.html">2026.01</a>
+            <a class="btn" href="./insights/">全部洞察</a>
+          </div>
+        </article>
+
+        <article class="card span-3x1" id="contact">
+          <div>
+            <p class="mini">Contact</p>
+            <h3>欢迎交流</h3>
+            <p>如果你也在建设数据基础设施或 AI 工具链，欢迎附上背景信息联系。</p>
+          </div>
+          <div class="actions">
+            <a class="btn" href="https://github.com/lambertlab" target="_blank" rel="noreferrer">GitHub</a>
+            <a class="btn" href="mailto:you@example.com">邮箱</a>
+            <a class="btn" href="./contact/">联系页</a>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
 </body>
 </html>
