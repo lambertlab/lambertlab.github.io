@@ -125,6 +125,13 @@
       }
     });
 
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && !mobileMenu.classList.contains("hidden")) {
+        closeMenu();
+        menuButton.focus();
+      }
+    });
+
     window.addEventListener("resize", function () {
       if (window.innerWidth >= 768) {
         closeMenu();
