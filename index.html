@@ -1,50 +1,53 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>lambertlab</title>
-  <meta name="description" content="Lambert / lambertlab — 大数据工程师、软件开发者、AI 协作探索者。" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lambertlab | Building systems and tools</title>
+  <meta name="description" content="LambertLab - Technology 与 Life 并列的个人数字主站。" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="./css/shared-header.css" />
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ["Plus Jakarta Sans", "sans-serif"],
+            mono: ["IBM Plex Mono", "monospace"],
+          },
+          colors: {
+            brand: {
+              blue: "#2563eb",
+              border: "#dce7fb",
+              light: "#f9fbff",
+            },
+          },
+        },
+      },
+    };
+  </script>
+
   <style>
-    :root {
-      --bg: #eef3ff;
-      --bg-2: #f9fbff;
-      --surface: #ffffff;
-      --text: #1d1d1f;
-      --muted: #4b5563;
-      --line: #dde4f3;
-      --accent: #2563eb;
-      --accent-2: #0ea5e9;
-      --radius: 24px;
-      --shadow: 0 18px 38px rgba(15, 23, 42, 0.09);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
     body {
-      margin: 0;
-      color: var(--text);
-      font-family: "Noto Sans SC", sans-serif;
-      background:
-        radial-gradient(circle at 14% 0%, rgba(37, 99, 235, 0.22), transparent 34%),
-        radial-gradient(circle at 88% -10%, rgba(14, 165, 233, 0.18), transparent 30%),
-        linear-gradient(150deg, var(--bg), var(--bg-2));
+      background: radial-gradient(circle at 14% 0%, rgba(37, 99, 235, 0.22), transparent 34%),
+        linear-gradient(150deg, #eef3ff, #f9fbff);
+      background-attachment: fixed;
       min-height: 100vh;
+      color: #1e293b;
+      font-family: "Plus Jakarta Sans", sans-serif;
     }
 
     .skip-link {
       position: absolute;
       left: -9999px;
       top: 0.75rem;
-      z-index: 50;
-      border: 1px solid var(--line);
+      z-index: 60;
+      border: 1px solid #dce7fb;
       background: #fff;
       color: #0f172a;
       padding: 8px 10px;
@@ -59,564 +62,657 @@
       left: 1rem;
     }
 
-    .wrap {
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 22px 18px 44px;
-    }
-
-    .topbar {
-      border: 1px solid rgba(255, 255, 255, 0.65);
-      background: rgba(255, 255, 255, 0.7);
+    .glass-header {
       backdrop-filter: blur(10px);
-      border-radius: 16px;
-      padding: 12px 14px;
+      background: rgba(255, 255, 255, 0.7);
+      border-bottom: 1px solid rgba(220, 231, 251, 0.5);
+    }
+
+    .split-layout {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      position: sticky;
-      top: 14px;
-      z-index: 40;
+      gap: 18px;
+      width: 100%;
+      align-items: stretch;
     }
 
-    .logo {
-      font-family: "Plus Jakarta Sans", sans-serif;
-      font-size: 1.04rem;
-      font-weight: 800;
-      letter-spacing: -0.01em;
-      text-decoration: none;
-      color: #0f172a;
-    }
-
-    .topbar nav {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-
-    .topbar a.nav-link {
-      color: #334155;
-      text-decoration: none;
-      font-family: "IBM Plex Mono", monospace;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-size: 0.72rem;
-      border-bottom: 1px solid transparent;
-      transition: color 180ms ease, border-color 180ms ease;
-    }
-
-    .topbar a.nav-link:hover {
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-
-    .hero {
-      margin-top: 18px;
-      border-radius: 30px;
+    .panel {
+      position: relative;
+      flex: 1 1 0;
+      min-height: 720px;
+      border-radius: 32px;
       border: 1px solid #dce7fb;
-      background: linear-gradient(135deg, #ffffff 0%, #f5f9ff 100%);
-      padding: 28px;
-      box-shadow: var(--shadow);
-      display: grid;
-      grid-template-columns: 1.4fr 1fr;
-      gap: 16px;
-    }
-
-    .kicker {
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.11em;
-      color: #64748b;
-      margin: 0 0 10px;
-    }
-
-    h1 {
-      margin: 0;
-      font-family: "Plus Jakarta Sans", sans-serif;
-      font-size: clamp(2rem, 4.6vw, 3.3rem);
-      line-height: 1.08;
-      letter-spacing: -0.03em;
-    }
-
-    .hero p {
-      margin: 12px 0 0;
-      color: var(--muted);
-      max-width: 680px;
-      line-height: 1.75;
-    }
-
-    .chips {
-      margin-top: 16px;
+      box-shadow: 0 20px 40px -15px rgba(37, 99, 235, 0.1);
+      overflow: hidden;
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-direction: column;
+      padding: 2rem;
+      transition: flex 0.34s cubic-bezier(0.4, 0, 0.2, 1), transform 0.22s ease, box-shadow 0.22s ease;
     }
 
-    .chip {
-      border-radius: 999px;
-      padding: 5px 10px;
-      font-size: 0.72rem;
-      border: 1px solid #dbe5f8;
-      background: #fff;
-      color: #334155;
-      font-family: "IBM Plex Mono", monospace;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+    .panel:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 24px 44px -18px rgba(37, 99, 235, 0.16);
     }
 
-    .hero-side {
-      display: grid;
-      gap: 10px;
+    .split-layout[data-active="tech"] .panel[data-purpose="tech-panel"] {
+      flex: 1.45 1 0;
+    }
+
+    .split-layout[data-active="tech"] .panel[data-purpose="life-panel"] {
+      flex: 0.75 1 0;
+    }
+
+    .split-layout[data-active="life"] .panel[data-purpose="life-panel"] {
+      flex: 1.45 1 0;
+    }
+
+    .split-layout[data-active="life"] .panel[data-purpose="tech-panel"] {
+      flex: 0.75 1 0;
+    }
+
+    .panel[data-purpose="tech-panel"] {
+      background: rgba(255, 255, 255, 0.38);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+    }
+
+    .panel[data-purpose="life-panel"] {
+      background: rgba(255, 255, 255, 0.38);
+      backdrop-filter: blur(14px) saturate(140%);
+      -webkit-backdrop-filter: blur(14px) saturate(140%);
+    }
+
+    .bg-grid {
+      background-image: radial-gradient(#2563eb 0.5px, transparent 0.5px);
+      background-size: 24px 24px;
+      opacity: 0.05;
+    }
+
+    .bg-organic {
+      background-image: radial-gradient(#10b981 0.5px, transparent 0.5px);
+      background-size: 32px 32px;
+      opacity: 0.05;
+    }
+
+    .bento-card {
+      background: #f9fbff;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-radius 0.32s ease, padding 0.32s ease, height 0.32s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    .bento-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px -10px rgba(37, 99, 235, 0.12);
+    }
+
+    .panel-content-grid {
+      transition: gap 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .compact-title {
+      position: absolute;
+      left: 1rem;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0;
+      pointer-events: none;
+      font-size: 1.03rem;
+      font-weight: 700;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .split-layout[data-active="tech"] .panel[data-purpose="life-panel"] .panel-content-grid,
+    .split-layout[data-active="life"] .panel[data-purpose="tech-panel"] .panel-content-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
       align-content: start;
     }
 
-    .metric {
+    .split-layout[data-active="tech"] .panel[data-purpose="life-panel"] .panel-content-grid .bento-card,
+    .split-layout[data-active="life"] .panel[data-purpose="tech-panel"] .panel-content-grid .bento-card {
+      grid-column: span 1 / span 1 !important;
+      height: 100px;
+      padding: 0 1rem;
       border-radius: 16px;
-      border: 1px solid #dce7fb;
-      padding: 12px;
-      background: #fff;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
 
-    .metric strong {
-      display: block;
-      font-family: "Plus Jakarta Sans", sans-serif;
-      font-size: 1.2rem;
-      margin-bottom: 2px;
-    }
-
-    .metric span {
-      color: #64748b;
-      font-size: 0.83rem;
-    }
-
-    .metric.system-status {
-      border-color: #d7e4ff;
-      background: #fbfdff;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      width: fit-content;
-      border-radius: 999px;
-      padding: 3px 8px;
-      margin-bottom: 8px;
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 0.64rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      border: 1px solid #cbd5e1;
-      color: #475569;
-      background: #f8fafc;
-    }
-
-    .status-actions {
-      margin-top: 10px;
-      display: flex;
-      gap: 8px;
-    }
-
-    .status-btn {
-      border: 1px solid #cbd5e1;
-      background: #fff;
-      color: #334155;
-      border-radius: 999px;
-      padding: 5px 10px;
-      font-family: "IBM Plex Mono", monospace;
-      font-size: 0.66rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      cursor: pointer;
-    }
-
-    .status-btn:hover {
-      border-color: #2563eb;
-      color: #2563eb;
-    }
-
-    .metric.system-status[data-status-state="ok"] .status-badge {
-      border-color: #bbf7d0;
-      color: #166534;
-      background: #f0fdf4;
-    }
-
-    .metric.system-status[data-status-state="error"] .status-badge {
-      border-color: #fecaca;
-      color: #991b1b;
-      background: #fef2f2;
-    }
-
-    .metric.system-status[data-status-state="unconfigured"] .status-badge {
-      border-color: #fde68a;
-      color: #92400e;
-      background: #fffbeb;
-    }
-
-    .grid {
-      margin-top: 18px;
-      display: grid;
-      gap: 14px;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      grid-auto-rows: minmax(130px, auto);
-    }
-
-    .card {
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
-      background: var(--surface);
-      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.07);
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      transition: transform 240ms ease, box-shadow 240ms ease;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .card::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(160deg, rgba(37, 99, 235, 0.07), transparent 48%);
+    .split-layout[data-active="tech"] .panel[data-purpose="life-panel"] .panel-content-grid .bento-card > :not(.compact-title),
+    .split-layout[data-active="life"] .panel[data-purpose="tech-panel"] .panel-content-grid .bento-card > :not(.compact-title) {
       opacity: 0;
-      transition: opacity 240ms ease;
       pointer-events: none;
     }
 
-    .card:hover {
-      transform: translateY(-4px) scale(1.01);
-      box-shadow: 0 18px 34px rgba(15, 23, 42, 0.13);
-    }
-
-    .card:hover::after {
+    .split-layout[data-active="tech"] .panel[data-purpose="life-panel"] .panel-content-grid .compact-title,
+    .split-layout[data-active="life"] .panel[data-purpose="tech-panel"] .panel-content-grid .compact-title {
       opacity: 1;
+      color: #1f2937;
     }
 
-    .span-2x2 {
-      grid-column: span 2;
-      grid-row: span 2;
+    .split-layout[data-active="life"] .panel[data-purpose="tech-panel"] .panel-content-grid .bento-card {
+      background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+      border-color: #dbeafe;
+      box-shadow: inset 3px 0 0 #bfdbfe, 0 1px 2px rgba(37, 99, 235, 0.06);
     }
 
-    .span-3x2 {
-      grid-column: span 3;
-      grid-row: span 2;
+    .split-layout[data-active="tech"] .panel[data-purpose="life-panel"] .panel-content-grid .bento-card {
+      background: linear-gradient(180deg, #f8fcfa 0%, #f3faf6 100%);
+      border-color: #d1fae5;
+      box-shadow: inset 3px 0 0 #a7f3d0, 0 1px 2px rgba(16, 185, 129, 0.06);
     }
 
-    .span-2x1 {
-      grid-column: span 2;
-    }
-
-    .span-3x1 {
-      grid-column: span 3;
-    }
-
-    .card h2,
-    .card h3 {
-      margin: 4px 0;
-      font-family: "Plus Jakarta Sans", sans-serif;
-      letter-spacing: -0.02em;
-    }
-
-    .card h2 {
-      font-size: 1.55rem;
-    }
-
-    .card h3 {
-      font-size: 1.1rem;
-    }
-
-    .card p {
-      margin: 0;
-      font-size: 0.93rem;
-      color: #475569;
-      line-height: 1.7;
-    }
-
-    .mini {
+    .accent-label {
       font-family: "IBM Plex Mono", monospace;
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #64748b;
-      margin-bottom: 6px;
+      letter-spacing: 0.05em;
     }
 
-    .project-list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
+    .system-health-nav {
+      display: inline-flex;
+      align-items: center;
       gap: 8px;
-    }
-
-    .project-list a {
-      text-decoration: none;
-      color: inherit;
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 10px;
-      display: block;
-      transition: border-color 180ms ease;
-      background: #fff;
-    }
-
-    .project-list a:hover {
-      border-color: rgba(37, 99, 235, 0.6);
-    }
-
-    .project-list strong {
-      display: block;
-      font-size: 1rem;
-      margin: 0 0 2px;
-    }
-
-    .project-list span {
-      font-size: 0.83rem;
-      color: #64748b;
-    }
-
-    .actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .btn {
-      text-decoration: none;
-      border-radius: 999px;
       border: 1px solid #dce7fb;
-      padding: 8px 12px;
-      font-size: 0.76rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #334155;
-      background: #fff;
+      border-radius: 999px;
+      box-sizing: border-box;
+      height: 36px;
+      padding: 0 10px 0 8px;
+      background: rgba(255, 255, 255, 0.82);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .system-health-nav:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+    }
+
+    .system-health-label {
       font-family: "IBM Plex Mono", monospace;
-      transition: border-color 180ms ease, color 180ms ease;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;
     }
 
-    .btn:hover {
-      border-color: var(--accent);
-      color: var(--accent);
+    .traffic-signal {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
-    .btn.primary {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
+    .traffic-lamp {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      opacity: 0.35;
+      transition: opacity 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
     }
 
-    .btn.primary:hover {
-      background: #1d4ed8;
-      border-color: #1d4ed8;
-      color: #fff;
+    [data-system-status][data-status-state="ok"] [data-light="green"] {
+      background: #22c55e;
+      opacity: 1;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.16);
+      transform: scale(1.05);
     }
 
-    @media (max-width: 1000px) {
-      .hero {
-        grid-template-columns: 1fr;
+    [data-system-status][data-status-state="partial"] [data-light="yellow"] {
+      background: #f59e0b;
+      opacity: 1;
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.16);
+      transform: scale(1.05);
+    }
+
+    [data-system-status][data-status-state="loading"] [data-light="yellow"] {
+      background: #f59e0b;
+      opacity: 1;
+      animation: signal-pulse 1.2s ease-in-out infinite;
+    }
+
+    [data-system-status][data-status-state="error"] [data-light="red"],
+    [data-system-status][data-status-state="unconfigured"] [data-light="red"] {
+      background: #ef4444;
+      opacity: 1;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.16);
+      transform: scale(1.05);
+    }
+
+    @keyframes signal-pulse {
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.26);
+      }
+      50% {
+        box-shadow: 0 0 0 5px rgba(245, 158, 11, 0);
+      }
+    }
+
+    @media (max-width: 1024px) {
+      .split-layout {
+        flex-direction: column;
       }
 
-      .grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .span-2x2,
-      .span-3x2,
-      .span-2x1,
-      .span-3x1 {
-        grid-column: span 1;
-        grid-row: span 1;
+      .panel {
+        min-height: 560px;
       }
     }
 
     @media (max-width: 720px) {
-      .wrap {
-        padding: 16px 12px 34px;
+      .panel {
+        padding: 1rem;
+        min-height: auto;
       }
 
-      .topbar {
-        top: 10px;
-      }
-
-      .hero {
-        padding: 20px;
-      }
-
-      .topbar nav {
-        gap: 8px;
-      }
-    }
-
-    @media (max-width: 640px) {
       .grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      html {
-        scroll-behavior: auto;
+        grid-template-columns: 1fr !important;
       }
 
-      *,
-      *::before,
-      *::after {
-        transition-duration: 0.01ms !important;
-        animation-duration: 0.01ms !important;
+      .bento-card,
+      .bento-card.col-span-2 {
+        grid-column: span 1 / span 1 !important;
+      }
+
+      .hero-title {
+        font-size: 2.2rem !important;
+        line-height: 1.15 !important;
+      }
+
+      .system-health-label {
+        display: none;
       }
     }
   </style>
 </head>
-<body>
+<body class="antialiased">
   <a class="skip-link" href="#main-content">跳到主要内容</a>
 
-  <div class="wrap">
-    <header class="topbar">
-      <a class="logo" href="#home">lambertlab</a>
-      <nav>
-        <a class="nav-link" href="#about">关于</a>
-        <a class="nav-link" href="#focus">方向</a>
-        <a class="nav-link" href="#projects">项目</a>
-        <a class="nav-link" href="#insights">洞察</a>
-        <a class="nav-link" href="#contact">联系</a>
-      </nav>
-    </header>
-
-    <main id="main-content">
-      <section class="hero" id="home">
-        <div>
-          <p class="kicker">LambertLab · Bento Modular</p>
-          <h1>模块化布局，把复杂信息变成一眼可扫读的卡片系统。</h1>
-          <p>大数据工程师 · 软件开发者 · AI 协作探索者。这个版本更偏产品化表达：视觉节奏更活跃，信息密度更高，适合展示项目与方法论资产。</p>
-          <div class="chips">
-            <span class="chip">Bento Grid</span>
-            <span class="chip">Product-minded</span>
-            <span class="chip">High Scanability</span>
-          </div>
+  <header class="ll-header">
+    <nav class="ll-header-inner">
+      <a class="ll-brand" href="./index.html">
+        <span class="ll-brand-mark">L</span>
+        <span class="ll-brand-text">lambertlab</span>
+      </a>
+      <div class="ll-nav">
+        <a class="ll-nav-link" href="./projects/index.html">Projects</a>
+        <a class="ll-nav-link" href="./insights/index.html">Journal</a>
+        <a class="ll-nav-link" href="./about/index.html">About</a>
+        <a class="ll-cta" href="./contact/index.html">Get in touch</a>
+        <div
+          class="system-health-nav"
+          data-system-status
+          data-status-state="loading"
+          role="status"
+          tabindex="0"
+          aria-live="polite"
+          aria-label="系统状态检查中：正在连接后端服务，请稍候..."
+          title="系统状态检查中：正在连接后端服务，请稍候..."
+        >
+          <span class="traffic-signal" aria-hidden="true">
+            <span class="traffic-lamp" data-light="red"></span>
+            <span class="traffic-lamp" data-light="yellow"></span>
+            <span class="traffic-lamp" data-light="green"></span>
+          </span>
+          <span class="ll-sr-only" data-system-status-title>系统状态检查中</span>
+          <span class="ll-sr-only" data-system-status-description>正在连接后端服务，请稍候...</span>
         </div>
+      </div>
+    </nav>
+  </header>
 
-        <aside class="hero-side" aria-label="概览指标">
-          <div class="metric">
-            <strong>03</strong>
-            <span>核心聚焦方向</span>
-          </div>
-          <div class="metric">
-            <strong>06+</strong>
-            <span>持续产出中的主题</span>
-          </div>
-          <div class="metric">
-            <strong>∞</strong>
-            <span>可迭代的方法体系</span>
-          </div>
-          <div class="metric system-status" data-system-status data-status-state="loading" aria-live="polite">
-            <span class="status-badge" data-system-status-badge>检查中</span>
-            <strong data-system-status-title>系统状态检查中</strong>
-            <span data-system-status-description>正在连接后端服务，请稍候...</span>
-            <div class="status-actions">
-              <button class="status-btn" type="button" data-system-status-retry hidden>重试</button>
+  <main id="main-content" class="pt-32 pb-20 px-6">
+    <section class="max-w-7xl mx-auto mb-16" id="about">
+      <div class="max-w-2xl">
+        <span class="accent-label text-brand-blue mb-4 block">Technology x Life</span>
+        <h1 class="hero-title text-6xl font-extrabold tracking-tight mb-6 leading-tight">
+          Building systems <br />and <span class="text-brand-blue">tools.</span>
+        </h1>
+        <p class="text-xl text-slate-500 font-medium">
+          构建系统与工具。致力于通过工程与美学的平衡创造价值。
+        </p>
+      </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto">
+      <div class="split-layout" data-split-layout>
+        <section class="panel" data-purpose="tech-panel" aria-label="Technology world">
+          <div class="absolute inset-0 bg-grid pointer-events-none"></div>
+          <div class="relative z-10 mb-10 flex justify-between items-end">
+            <div>
+              <span class="accent-label text-brand-blue">Workstream</span>
+              <h2 class="text-3xl font-bold mt-1">Technology</h2>
+            </div>
+            <div class="text-brand-blue opacity-50">
+              <svg class="panel-header-icon" fill="currentColor" width="32" height="32" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"><path d="M216,40V216a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V40A16,16,0,0,1,56,24H200A16,16,0,0,1,216,40Z" opacity="0.2"></path><path d="M200,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V40A16,16,0,0,0,200,24Zm0,192H56V40H200V216Zm-32-88a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,128Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,160Zm0-64a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,96Z"></path></svg>
             </div>
           </div>
-        </aside>
-      </section>
 
-      <section class="grid" aria-label="内容网格">
-        <article class="card span-3x2" id="about">
-          <div>
-            <p class="mini">关于我</p>
-            <h2>我构建在规模与变化下仍可持续演进的系统。</h2>
-            <p>偏好模型先行、边界清晰、反馈稳定的工程方法，不追求“复杂即先进”的叙事。</p>
-          </div>
-          <div class="actions">
-            <a class="btn" href="./projects/">浏览项目目录</a>
-            <a class="btn primary" href="#projects">看精选项目</a>
-          </div>
-        </article>
+          <div class="panel-content-grid grid grid-cols-2 gap-4 flex-grow relative z-10">
+            <a class="bento-card col-span-2 flex justify-between items-center group" href="./projects/personal-toolbox/index.html">
+              <div>
+                <span class="accent-label text-blue-600">Latest Release</span>
+                <h3 class="font-bold text-lg">Project: Personal Toolbox</h3>
+              </div>
+              <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              </div>
+            </a>
 
-        <article class="card span-2x1" id="focus">
-          <div>
-            <p class="mini">Focus</p>
-            <h3>系统建模</h3>
-            <p>先定义数据流、故障路径和行为约束，再进入实现。</p>
-          </div>
-        </article>
+            <a class="bento-card" href="./projects/index.html">
+              <span class="accent-label text-slate-400">Toolkit</span>
+              <h3 class="font-bold mt-1">Project Directory</h3>
+              <p class="text-xs text-slate-500 mt-2">持续维护中的项目归档。</p>
+            </a>
 
-        <article class="card">
-          <div>
-            <p class="mini">Focus</p>
-            <h3>AI 协作</h3>
-            <p>可验证、可追溯的 AI 工作流。</p>
-          </div>
-        </article>
+            <a class="bento-card" href="./insights/index.html">
+              <span class="accent-label text-slate-400">R&D</span>
+              <h3 class="font-bold mt-1">Insight Notes</h3>
+              <div class="mt-3 flex gap-1">
+                <div class="h-1 flex-1 bg-blue-200 rounded-full"></div>
+                <div class="h-1 flex-1 bg-blue-200 rounded-full"></div>
+              </div>
+            </a>
 
-        <article class="card span-2x1">
-          <div>
-            <p class="mini">Focus</p>
-            <h3>工程习惯</h3>
-            <p>小步迭代降低回归，维护长期稳定交付。</p>
+            <a class="bento-card col-span-2 flex items-center gap-4" href="https://github.com/lambertlab" target="_blank" rel="noreferrer">
+              <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path></svg>
+              </div>
+              <h3 class="font-bold">GitHub Source</h3>
+            </a>
           </div>
-        </article>
 
-        <article class="card span-3x2" id="projects">
-          <div>
-            <p class="mini">Projects</p>
-            <h3>精选项目</h3>
-          </div>
-          <ul class="project-list">
-            <li>
-              <a href="./projects/personal-toolbox/">
-                <strong>个人工具箱</strong>
-                <span>统一常用自动化与效率工具入口</span>
-              </a>
-            </li>
-            <li>
-              <a href="./projects/ai-message-value-triage/">
-                <strong>AI 消息价值分拣</strong>
-                <span>从高噪声消息流中识别关键输入</span>
-              </a>
-            </li>
-            <li>
-              <a href="./">
-                <strong>lambertlab.github.io</strong>
-                <span>个人长期写作与项目归档中枢</span>
-              </a>
-            </li>
-          </ul>
-        </article>
+        </section>
 
-        <article class="card span-3x1" id="insights">
-          <div>
-            <p class="mini">Insights</p>
-            <h3>最近洞察</h3>
-            <p>模型先行工程、AI 协作清单、团队持续交付习惯。</p>
+        <section class="panel" data-purpose="life-panel" aria-label="Life world">
+          <div class="absolute inset-0 bg-organic pointer-events-none"></div>
+          <div class="relative z-10 mb-10 flex justify-between items-end">
+            <div>
+              <span class="accent-label text-emerald-600">Equilibrium</span>
+              <h2 class="text-3xl font-bold mt-1">Life</h2>
+            </div>
+            <div class="text-emerald-600 opacity-50">
+              <svg class="panel-header-icon" fill="currentColor" width="32" height="32" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Z" opacity="0.2"></path><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm40-88a40,40,0,1,1-40-40A40,40,0,0,1,168,128Z"></path></svg>
+            </div>
           </div>
-          <div class="actions">
-            <a class="btn" href="./insights/model-first-engineering.html">2026.03</a>
-            <a class="btn" href="./insights/ai-collaboration-checklist.html">2026.02</a>
-            <a class="btn" href="./insights/operational-habits-that-stick.html">2026.01</a>
-            <a class="btn" href="./insights/">全部洞察</a>
-          </div>
-        </article>
 
-        <article class="card span-3x1" id="contact">
-          <div>
-            <p class="mini">Contact</p>
-            <h3>欢迎交流</h3>
-            <p>如果你也在建设数据基础设施或 AI 工具链，欢迎附上背景信息联系。</p>
+          <div class="panel-content-grid grid grid-cols-2 gap-4 flex-grow relative z-10">
+            <article class="bento-card border-orange-100">
+              <span class="accent-label text-orange-600">Reading</span>
+              <h3 class="font-bold mt-1">Atomic Habits</h3>
+              <p class="text-xs text-slate-500 mt-2">Systems &gt; Goals.</p>
+            </article>
+
+            <article class="bento-card border-emerald-100">
+              <span class="accent-label text-emerald-600">Fitness</span>
+              <h3 class="font-bold mt-1">Weekly Training</h3>
+              <div class="flex gap-1 mt-3">
+                <div class="w-3 h-3 rounded-sm bg-emerald-500"></div>
+                <div class="w-3 h-3 rounded-sm bg-emerald-500"></div>
+              </div>
+            </article>
+
+            <article class="bento-card col-span-2 flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-[8px] text-slate-400">Poster</div>
+                <div>
+                  <span class="accent-label text-purple-600">Cinema</span>
+                  <h3 class="font-bold">Interstellar</h3>
+                </div>
+              </div>
+              <div class="text-yellow-400 flex gap-0.5 text-xs">★ ★ ★ ★ ★</div>
+            </article>
+
+            <a class="bento-card col-span-2 bg-sky-50/30 border-sky-100 flex items-center gap-3" href="./contact/index.html">
+              <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center">
+                <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              </div>
+              <h3 class="font-bold">Contact & Updates</h3>
+            </a>
           </div>
-          <div class="actions">
-            <a class="btn" href="https://github.com/lambertlab" target="_blank" rel="noreferrer">GitHub</a>
-            <a class="btn" href="mailto:you@example.com">邮箱</a>
-            <a class="btn" href="./contact/">联系页</a>
-          </div>
-        </article>
-      </section>
-    </main>
-  </div>
+
+        </section>
+      </div>
+    </section>
+
+    <footer class="max-w-7xl mx-auto mt-20 pt-10 border-t border-brand-border flex flex-col md:flex-row justify-between items-center gap-6">
+      <div class="flex items-center gap-6 text-sm text-slate-400 font-mono">
+        <span>© 2026 DESIGNED BY LAMBERTLAB</span>
+        <span>STAY CURIOUS</span>
+      </div>
+      <div class="flex gap-6">
+        <a class="text-slate-400 hover:text-brand-blue transition-colors" href="./contact/index.html">Contact</a>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      var splitLayout = document.querySelector("[data-split-layout]");
+      if (!splitLayout) {
+        return;
+      }
+
+      var techPanel = splitLayout.querySelector('[data-purpose="tech-panel"]');
+      var lifePanel = splitLayout.querySelector('[data-purpose="life-panel"]');
+      if (!techPanel || !lifePanel) {
+        return;
+      }
+
+      var lastActive = "tech";
+      var hysteresis = 1;
+      var transitionDurationMs = 320;
+      var transitionEasing = "cubic-bezier(0.22, 1, 0.36, 1)";
+      var hoverResumeDelayMs = 120;
+      var hoverSuppressedUntil = 0;
+
+      function forEachCard(callback) {
+        splitLayout.querySelectorAll(".panel-content-grid .bento-card").forEach(callback);
+      }
+
+      function syncCompactTitles(panel) {
+        panel.querySelectorAll(".panel-content-grid .bento-card").forEach(function (card) {
+          var titleElement = card.querySelector("h3");
+          if (!titleElement) {
+            return;
+          }
+
+          var titleText = titleElement.textContent ? titleElement.textContent.trim() : "";
+          if (!titleText) {
+            return;
+          }
+
+          var compactTitle = card.querySelector(".compact-title");
+          if (!compactTitle) {
+            compactTitle = document.createElement("span");
+            compactTitle.className = "compact-title";
+            compactTitle.setAttribute("aria-hidden", "true");
+            card.appendChild(compactTitle);
+          }
+
+          if (compactTitle.textContent !== titleText) {
+            compactTitle.textContent = titleText;
+          }
+        });
+      }
+
+      function observeTitleChanges(panel) {
+        if (typeof MutationObserver !== "function") {
+          return;
+        }
+
+        panel.querySelectorAll(".panel-content-grid h3").forEach(function (titleNode) {
+          new MutationObserver(function () {
+            syncCompactTitles(panel);
+          }).observe(titleNode, { childList: true, characterData: true, subtree: true });
+        });
+      }
+
+      function captureCardRects() {
+        var rects = new Map();
+        forEachCard(function (card) {
+          rects.set(card, card.getBoundingClientRect());
+        });
+        return rects;
+      }
+
+      function animateLayoutMutation(mutate) {
+        var prefersReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (prefersReducedMotion) {
+          mutate();
+          return;
+        }
+
+        var firstRects = captureCardRects();
+        mutate();
+        syncCompactTitles(techPanel);
+        syncCompactTitles(lifePanel);
+        splitLayout.getBoundingClientRect();
+
+        forEachCard(function (card) {
+          var first = firstRects.get(card);
+          if (!first) {
+            return;
+          }
+
+          var last = card.getBoundingClientRect();
+          var deltaX = first.left - last.left;
+          var deltaY = first.top - last.top;
+          var scaleX = last.width > 0 ? first.width / last.width : 1;
+          var scaleY = last.height > 0 ? first.height / last.height : 1;
+          var noMovement = Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5 && Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01;
+
+          if (noMovement) {
+            return;
+          }
+
+          card.animate(
+            [
+              {
+                transformOrigin: "top left",
+                transform: "translate(" + deltaX + "px, " + deltaY + "px) scale(" + scaleX + ", " + scaleY + ")"
+              },
+              {
+                transformOrigin: "top left",
+                transform: "translate(0, 0) scale(1, 1)"
+              }
+            ],
+            {
+              duration: transitionDurationMs,
+              easing: transitionEasing,
+              fill: "both"
+            }
+          );
+        });
+      }
+
+      syncCompactTitles(techPanel);
+      syncCompactTitles(lifePanel);
+      observeTitleChanges(techPanel);
+      observeTitleChanges(lifePanel);
+
+      function setActive(active) {
+        if (!active) {
+          return;
+        }
+        if (splitLayout.getAttribute("data-active") === active) {
+          lastActive = active;
+          return;
+        }
+
+        animateLayoutMutation(function () {
+          splitLayout.setAttribute("data-active", active);
+        });
+        lastActive = active;
+      }
+
+      function clearActive(animate) {
+        if (!splitLayout.hasAttribute("data-active")) {
+          return;
+        }
+
+        if (!animate) {
+          splitLayout.removeAttribute("data-active");
+          return;
+        }
+
+        animateLayoutMutation(function () {
+          splitLayout.removeAttribute("data-active");
+        });
+      }
+
+      function pickActive(clientX) {
+        var techRect = techPanel.getBoundingClientRect();
+        var lifeRect = lifePanel.getBoundingClientRect();
+        var boundaryX = (techRect.right + lifeRect.left) / 2;
+
+        if (lastActive === "tech" && clientX <= boundaryX + hysteresis) {
+          return "tech";
+        }
+        if (lastActive === "life" && clientX >= boundaryX - hysteresis) {
+          return "life";
+        }
+        return clientX <= boundaryX ? "tech" : "life";
+      }
+
+      function handlePointer(clientX) {
+        if (window.innerWidth <= 1024) {
+          clearActive(false);
+          return;
+        }
+        if (Date.now() < hoverSuppressedUntil) {
+          /* Ignore passive hover events right after wheel/scroll, but keep current active panel. */
+          return;
+        }
+        setActive(pickActive(clientX));
+      }
+
+      function suppressHoverAfterScroll() {
+        hoverSuppressedUntil = Date.now() + hoverResumeDelayMs;
+      }
+
+      splitLayout.addEventListener("mouseenter", function () {
+        /* Avoid passive hover activation caused by page scrolling under a static cursor. */
+      });
+
+      splitLayout.addEventListener("mousemove", function (event) {
+        handlePointer(event.clientX);
+      });
+
+      splitLayout.addEventListener("mouseleave", function () {
+        clearActive(true);
+      });
+
+      splitLayout.addEventListener("focusin", function (event) {
+        if (window.innerWidth <= 1024) {
+          return;
+        }
+        var inTech = techPanel.contains(event.target);
+        setActive(inTech ? "tech" : "life");
+      });
+
+      window.addEventListener("resize", function () {
+        if (window.innerWidth <= 1024) {
+          clearActive(false);
+        }
+      });
+
+      window.addEventListener("wheel", suppressHoverAfterScroll, { passive: true });
+      window.addEventListener("touchmove", suppressHoverAfterScroll, { passive: true });
+      window.addEventListener("scroll", suppressHoverAfterScroll, { passive: true });
+    })();
+  </script>
+
   <script src="./js/config.js"></script>
   <script src="./js/main.js"></script>
 </body>
