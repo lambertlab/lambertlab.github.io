@@ -6,21 +6,55 @@
   <title>联系 · lambertlab</title>
   <meta name="description" content="LambertLab 联系方式" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="../css/shared-header.css" />
   <link rel="stylesheet" href="../css/bento-pages.css" />
+  <style>
+    .wrap {
+      padding-top: 128px;
+    }
+
+    @media (max-width: 720px) {
+      .wrap {
+        padding-top: 128px;
+      }
+    }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <header class="ll-header">
+    <nav class="ll-header-inner">
+      <a class="ll-brand" href="../index.html">
+        <span class="ll-brand-mark">L</span>
+        <span class="ll-brand-text">lambertlab</span>
+      </a>
+      <div class="ll-nav">
+        <a class="ll-nav-link" href="../projects/index.html">Projects</a>
+        <a class="ll-nav-link" href="../insights/index.html">Journal</a>
+        <a class="ll-nav-link" href="../about/index.html">About</a>
+        <a class="ll-cta" href="../contact/index.html">Get in touch</a>
+        <div
+          class="system-health-nav"
+          data-system-status
+          data-status-state="loading"
+          role="status"
+          tabindex="0"
+          aria-live="polite"
+          aria-label="系统状态检查中：正在连接后端服务，请稍候..."
+          title="系统状态检查中：正在连接后端服务，请稍候..."
+        >
+          <span class="traffic-signal" aria-hidden="true">
+            <span class="traffic-lamp" data-light="red"></span>
+            <span class="traffic-lamp" data-light="yellow"></span>
+            <span class="traffic-lamp" data-light="green"></span>
+          </span>
+          <span class="ll-sr-only" data-system-status-title>系统状态检查中</span>
+          <span class="ll-sr-only" data-system-status-description>正在连接后端服务，请稍候...</span>
+        </div>
+      </div>
+    </nav>
+  </header>
   <div class="wrap">
-    <header class="topbar">
-      <a class="logo" href="../">lambertlab</a>
-      <nav>
-        <a class="nav-link" href="../#about">关于</a>
-        <a class="nav-link" href="../projects/">项目</a>
-        <a class="nav-link" href="../insights/">洞察</a>
-        <a class="nav-link" href="../#contact">首页联系</a>
-      </nav>
-    </header>
-
     <main id="main-content">
       <section class="hero">
         <p class="kicker">Contact</p>
@@ -52,11 +86,13 @@
           <h3>返回首页</h3>
           <p>继续浏览首页中的项目与洞察。</p>
           <div class="actions">
-            <a class="btn" href="../">回到首页</a>
+            <a class="btn" href="../index.html">回到首页</a>
           </div>
         </article>
       </section>
     </main>
   </div>
+  <script src="../js/config.js"></script>
+  <script src="../js/main.js"></script>
 </body>
 </html>
