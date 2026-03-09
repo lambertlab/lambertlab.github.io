@@ -139,6 +139,199 @@
     });
   }
 
+  function getPositiveInteger(value, fallback) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return fallback;
+    }
+
+    if (value < 0) {
+      return fallback;
+    }
+
+    return Math.floor(value);
+  }
+
+  function normalizeApiBase(value) {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    var trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    try {
+      var parsed = new URL(trimmed);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return null;
+      }
+    } catch (error) {
+      return null;
+    }
+
+    if (trimmed.endsWith("/")) {
+      return trimmed.slice(0, -1);
+    }
+
+    return trimmed;
+  }
+
+  function normalizeHealthPath(value) {
+    if (typeof value !== "string" || !value.trim()) {
+      return "/healthz";
+    }
+
+    var path = value.trim();
+    if (path.charAt(0) !== "/") {
+      return "/" + path;
+    }
+
+    return path;
+  }
+
+  function getStatusElements(rootElement) {
+    return {
+      badge: rootElement.querySelector("[data-system-status-badge]"),
+      title: rootElement.querySelector("[data-system-status-title]"),
+      description: rootElement.querySelector("[data-system-status-description]"),
+      retry: rootElement.querySelector("[data-system-status-retry]")
+    };
+  }
+
+  function setSystemStatus(rootElement, state, badgeText, titleText, descriptionText, showRetryButton) {
+    var elements = getStatusElements(rootElement);
+    rootElement.setAttribute("data-status-state", state);
+
+    if (elements.badge) {
+      elements.badge.textContent = badgeText;
+    }
+    if (elements.title) {
+      elements.title.textContent = titleText;
+    }
+    if (elements.description) {
+      elements.description.textContent = descriptionText;
+    }
+    if (elements.retry) {
+      elements.retry.hidden = !showRetryButton;
+    }
+  }
+
+  function fetchWithTimeout(url, timeoutMs) {
+    if (typeof AbortController !== "function") {
+      return fetch(url, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json" }
+      });
+    }
+
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () {
+      controller.abort();
+    }, timeoutMs);
+
+    return fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: controller.signal
+    }).finally(function () {
+      clearTimeout(timeoutId);
+    });
+  }
+
+  function buildHealthMessage(payload) {
+    var service = typeof payload.service === "string" && payload.service ? payload.service : "backend";
+    var version = typeof payload.version === "string" && payload.version ? payload.version : "unknown";
+    return "后端服务可用（" + service + " v" + version + "）";
+  }
+
+  function initSystemHealthProbe() {
+    var statusRoot = document.querySelector("[data-system-status]");
+    if (!statusRoot) {
+      return;
+    }
+
+    var runtimeConfig = window.__APP_CONFIG__ || {};
+    var apiBase = normalizeApiBase(runtimeConfig.API_BASE);
+    var healthPath = normalizeHealthPath(runtimeConfig.HEALTH_PATH);
+    var timeoutMs = getPositiveInteger(runtimeConfig.REQUEST_TIMEOUT_MS, 3000);
+    var retryTimes = getPositiveInteger(runtimeConfig.RETRY_TIMES, 1);
+    var endpoint = apiBase ? apiBase + healthPath : "";
+    var retryButton = statusRoot.querySelector("[data-system-status-retry]");
+
+    if (!apiBase) {
+      setSystemStatus(
+        statusRoot,
+        "unconfigured",
+        "未配置",
+        "系统状态未配置",
+        "未检测到 API_BASE，请先完成前端运行时配置。",
+        false
+      );
+      return;
+    }
+
+    function requestProbe(attempt) {
+      setSystemStatus(
+        statusRoot,
+        "loading",
+        "检查中",
+        "系统状态检查中",
+        "正在连接后端服务，请稍候...",
+        false
+      );
+
+      fetchWithTimeout(endpoint, timeoutMs)
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("HTTP_" + response.status);
+          }
+          return response.json();
+        })
+        .then(function (payload) {
+          if (!payload || payload.ok !== true) {
+            throw new Error("INVALID_PAYLOAD");
+          }
+
+          setSystemStatus(
+            statusRoot,
+            "ok",
+            "正常",
+            "系统状态正常",
+            buildHealthMessage(payload),
+            false
+          );
+        })
+        .catch(function (error) {
+          if (attempt < retryTimes) {
+            requestProbe(attempt + 1);
+            return;
+          }
+
+          var message = "暂时无法连接后端服务，请稍后重试。";
+          if (error && error.message && error.message.indexOf("HTTP_4") === 0) {
+            message = "请求配置异常，请检查 API_BASE 与 HEALTH_PATH。";
+          }
+          if (error && error.name === "AbortError") {
+            message = "连接后端超时，请检查网络或稍后重试。";
+          }
+
+          setSystemStatus(statusRoot, "error", "异常", "系统状态异常", message, true);
+        });
+    }
+
+    if (retryButton) {
+      retryButton.addEventListener("click", function () {
+        requestProbe(0);
+      });
+    }
+
+    requestProbe(0);
+  }
+
   initTheme();
   initMobileMenu();
+  initSystemHealthProbe();
 })();
