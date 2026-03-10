@@ -34,7 +34,7 @@ body {
   position: absolute;
   left: -9999px;
   top: 0.75rem;
-  z-index: 50;
+  z-index: 60;
   border: 1px solid var(--line);
   background: #fff;
   color: #0f172a;
@@ -53,54 +53,7 @@ body {
 .wrap {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 22px 18px 44px;
-}
-
-.topbar {
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 12px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  position: sticky;
-  top: 14px;
-  z-index: 40;
-}
-
-.logo {
-  font-family: var(--ll-font-sans);
-  font-size: 1.04rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  text-decoration: none;
-  color: #0f172a;
-}
-
-.topbar nav {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.nav-link {
-  color: #334155;
-  text-decoration: none;
-  font-family: var(--ll-font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 0.72rem;
-  border-bottom: 1px solid transparent;
-  transition: color 180ms ease, border-color 180ms ease;
-}
-
-.nav-link:hover {
-  color: var(--accent);
-  border-color: var(--accent);
+  padding: 118px 18px 44px;
 }
 
 .hero {
@@ -311,13 +264,15 @@ body {
   }
 }
 
+@media (max-width: 960px) {
+  .wrap {
+    padding: 146px 14px 40px;
+  }
+}
+
 @media (max-width: 720px) {
   .wrap {
-    padding: 16px 12px 34px;
-  }
-
-  .topbar {
-    top: 10px;
+    padding: 138px 12px 34px;
   }
 }
 

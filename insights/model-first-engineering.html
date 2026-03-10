@@ -7,21 +7,46 @@
   <meta name="description" content="洞察：面向数据工作流的模型先行工程方法" />
   <link rel="stylesheet" href="/css/font-themes.css" />
   <script src="/js/font-theme.js"></script>
+  <link rel="stylesheet" href="../css/shared-header.css" />
   <link rel="stylesheet" href="../css/bento-pages.css" />
   <link rel="stylesheet" href="/css/theme-system.css" />
 </head>
 <body>
   <a class="skip-link" href="#main-content">跳到主要内容</a>
-  <div class="wrap">
-    <header class="topbar">
-      <a class="logo" href="../">lambertlab</a>
-      <nav>
-        <a class="nav-link" href="./">洞察目录</a>
-        <a class="nav-link" href="../projects/">项目</a>
-        <a class="nav-link" href="../contact/">联系</a>
-      </nav>
-    </header>
+  <header class="ll-header">
+    <nav class="ll-header-inner">
+      <a class="ll-brand" href="../index.html">
+        <span class="ll-brand-mark">L</span>
+        <span class="ll-brand-text">lambertlab</span>
+      </a>
+      <div class="ll-nav">
+        <a class="ll-nav-link" href="../projects/index.html">Projects</a>
+        <a class="ll-nav-link" href="../insights/index.html">Journal</a>
+        <a class="ll-nav-link" href="../about/index.html">About</a>
+        <a class="ll-cta" href="../contact/index.html">Get in touch</a>
+        <div
+          class="system-health-nav"
+          data-system-status
+          data-status-state="loading"
+          role="status"
+          tabindex="0"
+          aria-live="polite"
+          aria-label="系统状态检查中：正在连接后端服务，请稍候..."
+          title="系统状态检查中：正在连接后端服务，请稍候..."
+        >
+          <span class="traffic-signal" aria-hidden="true">
+            <span class="traffic-lamp" data-light="red"></span>
+            <span class="traffic-lamp" data-light="yellow"></span>
+            <span class="traffic-lamp" data-light="green"></span>
+          </span>
+          <span class="ll-sr-only" data-system-status-title>系统状态检查中</span>
+          <span class="ll-sr-only" data-system-status-description>正在连接后端服务，请稍候...</span>
+        </div>
+      </div>
+    </nav>
+  </header>
 
+  <div class="wrap">
     <main id="main-content">
       <section class="hero">
         <p class="kicker">Insight · 2026.03</p>
@@ -35,12 +60,13 @@
         <p>在数据工作流场景，这种方法尤其有效。因为问题通常不在单个函数，而在多个环节叠加产生的延迟、丢失和不可追踪性。</p>
         <p>建议将模型与测试策略一起设计，并在迭代中持续修订，让模型成为长期维护资产，而不是一次性文档。</p>
         <div class="actions">
-          <a class="btn" href="./">返回洞察目录</a>
-          <a class="btn primary" href="../">返回首页</a>
+          <a class="btn" href="./index.html">返回洞察目录</a>
+          <a class="btn primary" href="../index.html">返回首页</a>
         </div>
       </article>
     </main>
   </div>
+  <script src="../js/config.js"></script>
   <script src="../js/main.js"></script>
 </body>
 </html>
