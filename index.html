@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -8,7 +8,8 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/css/font-themes.css" />
+  <script src="/js/font-theme.js"></script>
   <link rel="stylesheet" href="./css/shared-header.css" />
 
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -17,8 +18,8 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ["Plus Jakarta Sans", "sans-serif"],
-            mono: ["IBM Plex Mono", "monospace"],
+            sans: ["var(--ll-font-sans)"],
+            mono: ["var(--ll-font-mono)"],
           },
           colors: {
             brand: {
@@ -39,7 +40,7 @@
       background-attachment: fixed;
       min-height: 100vh;
       color: #1e293b;
-      font-family: "Plus Jakarta Sans", sans-serif;
+      font-family: var(--ll-font-sans);
     }
 
     .skip-link {
@@ -51,7 +52,7 @@
       background: #fff;
       color: #0f172a;
       padding: 8px 10px;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.72rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -170,14 +171,24 @@
     }
 
     .bento-card {
-      background: #f9fbff;
-      border: 1px solid #e2e8f0;
+      background: #fcfdff;
+      border: 1px solid #d9e3f0;
       border-radius: 20px;
       padding: 1.25rem;
       position: relative;
       overflow: hidden;
       transition: transform 0.24s ease, box-shadow 0.24s ease, border-radius 0.32s ease, padding 0.32s ease, height 0.32s ease;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+      box-shadow: 0 8px 20px -16px rgba(15, 23, 42, 0.22);
+    }
+
+    .panel[data-purpose="tech-panel"] .panel-content-grid > .bento-card {
+      background: #fbfdff;
+      border-color: #d7e3f4;
+    }
+
+    .panel[data-purpose="life-panel"] .panel-content-grid > .bento-card {
+      background: #fcfffd;
+      border-color: #d6e7dd;
     }
 
     .bento-card:hover {
@@ -246,10 +257,50 @@
     }
 
     .accent-label {
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+    }
+
+    .card-meta {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 0.7rem;
+      padding: 0.18rem 0.58rem;
+      border-radius: 999px;
+      border: 1px solid #dbeafe;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-family: var(--ll-font-mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .card-meta[data-meta-tone="neutral"] {
+      border-color: #e2e8f0;
+      background: #f8fafc;
+      color: #475569;
+    }
+
+    .card-meta[data-meta-tone="positive"] {
+      border-color: #a7f3d0;
+      background: #ecfdf5;
+      color: #047857;
+    }
+
+    .card-meta[data-meta-tone="media"] {
+      border-color: #ddd6fe;
+      background: #f5f3ff;
+      color: #6d28d9;
+    }
+
+    .card-meta[data-meta-tone="external"] {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+      color: #334155;
     }
 
     .system-health-nav {
@@ -272,7 +323,7 @@
     }
 
     .system-health-label {
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.62rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -408,10 +459,10 @@
 
   <main id="main-content" class="pt-32 pb-20 px-6">
     <section class="max-w-7xl mx-auto mb-16" id="about">
-      <div class="max-w-2xl">
+      <div class="max-w-4xl">
         <span class="accent-label text-brand-blue mb-4 block">Technology x Life</span>
         <h1 class="hero-title text-6xl font-extrabold tracking-tight mb-6 leading-tight">
-          Building systems <br />and <span class="text-brand-blue">tools.</span>
+          Building systems and <span class="text-brand-blue">tools.</span>
         </h1>
         <p class="text-xl text-slate-500 font-medium">
           构建系统与工具。致力于通过工程与美学的平衡创造价值。
@@ -438,6 +489,8 @@
               <div>
                 <span class="accent-label text-blue-600">Latest Release</span>
                 <h3 class="font-bold text-lg">Project: Personal Toolbox</h3>
+                <p class="text-xs text-slate-500 mt-2">本周优先入口，查看项目详情与更新。</p>
+                <span class="card-meta">entry · primary</span>
               </div>
               <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                 <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
@@ -448,22 +501,25 @@
               <span class="accent-label text-slate-400">Toolkit</span>
               <h3 class="font-bold mt-1">Project Directory</h3>
               <p class="text-xs text-slate-500 mt-2">持续维护中的项目归档。</p>
+              <span class="card-meta" data-meta-tone="neutral">entry · directory</span>
             </a>
 
             <a class="bento-card" href="./insights/index.html">
               <span class="accent-label text-slate-400">R&D</span>
               <h3 class="font-bold mt-1">Insight Notes</h3>
-              <div class="mt-3 flex gap-1">
-                <div class="h-1 flex-1 bg-blue-200 rounded-full"></div>
-                <div class="h-1 flex-1 bg-blue-200 rounded-full"></div>
-              </div>
+              <p class="text-xs text-slate-500 mt-2">工程方法与 AI 协作相关洞察。</p>
+              <span class="card-meta" data-meta-tone="neutral">content · notes</span>
             </a>
 
             <a class="bento-card col-span-2 flex items-center gap-4" href="https://github.com/lambertlab" target="_blank" rel="noreferrer">
               <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path></svg>
               </div>
-              <h3 class="font-bold">GitHub Source</h3>
+              <div>
+                <h3 class="font-bold">GitHub Source</h3>
+                <p class="text-xs text-slate-500 mt-2">查看公开仓库与代码实践。</p>
+                <span class="card-meta" data-meta-tone="external">external · github</span>
+              </div>
             </a>
           </div>
 
@@ -482,37 +538,32 @@
           </div>
 
           <div class="panel-content-grid grid grid-cols-2 gap-4 flex-grow relative z-10">
-            <article class="bento-card border-orange-100">
+            <article class="bento-card col-span-2 border-orange-100">
               <span class="accent-label text-orange-600">Reading</span>
               <h3 class="font-bold mt-1">Atomic Habits</h3>
               <p class="text-xs text-slate-500 mt-2">Systems &gt; Goals.</p>
+              <span class="card-meta">content · reading</span>
             </article>
 
             <article class="bento-card border-emerald-100">
               <span class="accent-label text-emerald-600">Fitness</span>
               <h3 class="font-bold mt-1">Weekly Training</h3>
-              <div class="flex gap-1 mt-3">
-                <div class="w-3 h-3 rounded-sm bg-emerald-500"></div>
-                <div class="w-3 h-3 rounded-sm bg-emerald-500"></div>
-              </div>
+              <p class="text-xs text-slate-500 mt-2">保持每周训练节奏与恢复记录。</p>
+              <span class="card-meta" data-meta-tone="positive">status · active</span>
             </article>
 
-            <article class="bento-card col-span-2 flex items-center justify-between">
-              <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-[8px] text-slate-400">Poster</div>
-                <div>
-                  <span class="accent-label text-purple-600">Cinema</span>
-                  <h3 class="font-bold">Interstellar</h3>
-                </div>
-              </div>
-              <div class="text-yellow-400 flex gap-0.5 text-xs">★ ★ ★ ★ ★</div>
+            <article class="bento-card border-purple-100">
+              <span class="accent-label text-purple-600">Cinema</span>
+              <h3 class="font-bold mt-1">Interstellar</h3>
+              <p class="text-xs text-slate-500 mt-2">电影观看与个人笔记归档。</p>
+              <span class="card-meta" data-meta-tone="media">content · media log</span>
             </article>
 
-            <a class="bento-card col-span-2 bg-sky-50/30 border-sky-100 flex items-center gap-3" href="./contact/index.html">
-              <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center">
-                <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-              </div>
-              <h3 class="font-bold">Contact & Updates</h3>
+            <a class="bento-card col-span-2 bg-sky-50/30 border-sky-100" href="./contact/index.html">
+              <span class="accent-label text-sky-700">Connect</span>
+              <h3 class="font-bold mt-1">Contact & Updates</h3>
+              <p class="text-xs text-slate-500 mt-2">获取最新动态与联系入口。</p>
+              <span class="card-meta" data-meta-tone="neutral">entry · contact</span>
             </a>
           </div>
 
