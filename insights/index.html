@@ -7,7 +7,8 @@
   <meta name="description" content="LambertLab Journal - 工程写作与洞察目录" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/css/font-themes.css" />
+  <script src="/js/font-theme.js"></script>
   <link rel="stylesheet" href="../css/shared-header.css" />
   <style>
     :root {
@@ -25,7 +26,7 @@
       margin: 0;
       min-height: 100vh;
       color: var(--ink);
-      font-family: "Plus Jakarta Sans", sans-serif;
+      font-family: var(--ll-font-sans);
       background: radial-gradient(circle at 10% -6%, rgba(37, 99, 235, 0.2), transparent 34%),
         radial-gradient(circle at 90% -8%, rgba(16, 185, 129, 0.16), transparent 30%),
         linear-gradient(150deg, #eef3ff, #f9fbff);
@@ -41,7 +42,7 @@
       background: #fff;
       color: #0f172a;
       padding: 8px 10px;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.72rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -153,7 +154,7 @@
     .kicker {
       margin: 0 0 10px;
       color: #64748b;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.72rem;
       letter-spacing: 0.09em;
       text-transform: uppercase;
@@ -313,7 +314,7 @@
 
     .note-list span {
       color: #64748b;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.68rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -335,7 +336,7 @@
       color: #047857;
       border-radius: 999px;
       padding: 5px 10px;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.68rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;

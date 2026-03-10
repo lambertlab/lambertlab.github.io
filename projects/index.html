@@ -7,7 +7,8 @@
   <meta name="description" content="LambertLab 项目总览：工具、AI 协作应用与个人站点工程实践。" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/css/font-themes.css" />
+  <script src="/js/font-theme.js"></script>
   <link rel="stylesheet" href="../css/shared-header.css" />
   <style>
     :root {
@@ -34,7 +35,7 @@
       margin: 0;
       min-height: 100vh;
       color: var(--text-main);
-      font-family: "Plus Jakarta Sans", sans-serif;
+      font-family: var(--ll-font-sans);
       background:
         radial-gradient(circle at 12% -4%, rgba(37, 99, 235, 0.24), transparent 35%),
         linear-gradient(150deg, var(--bg-start), var(--bg-end));
@@ -51,7 +52,7 @@
       border: 1px solid var(--line);
       background: var(--surface-strong);
       color: #0f172a;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.7rem;
       letter-spacing: 0.1em;
       text-transform: uppercase;
@@ -174,7 +175,7 @@
 
     .hero-kicker {
       margin: 0 0 12px;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.72rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -215,7 +216,7 @@
 
     .meta-box .label {
       margin: 0;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.68rem;
       text-transform: uppercase;
       letter-spacing: 0.12em;
@@ -276,7 +277,7 @@
 
     .kicker {
       margin: 0 0 10px;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.7rem;
       letter-spacing: 0.12em;
       text-transform: uppercase;
@@ -320,7 +321,7 @@
       background: var(--chip);
       color: #1e40af;
       padding: 5px 10px;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.67rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -343,7 +344,7 @@
       color: #334155;
       text-decoration: none;
       padding: 8px 12px;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
       font-size: 0.69rem;
       letter-spacing: 0.09em;
       text-transform: uppercase;
@@ -406,7 +407,7 @@
       flex-wrap: wrap;
       color: #64748b;
       font-size: 0.8rem;
-      font-family: "IBM Plex Mono", monospace;
+      font-family: var(--ll-font-mono);
     }
 
     .footer a {

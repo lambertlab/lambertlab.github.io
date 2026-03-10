@@ -36,7 +36,7 @@ html.show-scrollbar::-webkit-scrollbar-thumb {
 }
 
 .ll-header {
-  --ll-header-font: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --ll-header-font: var(--ll-font-sans);
 }
 
 body {
