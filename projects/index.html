@@ -238,7 +238,14 @@
       letter-spacing: 0.09em;
       text-transform: uppercase;
       padding: 0 12px;
-      cursor: default;
+      cursor: pointer;
+      transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease;
+    }
+
+    .ghost-btn:hover {
+      border-color: var(--brand);
+      color: var(--brand);
+      background: #f9fcff;
     }
 
     .catalog-layout {
@@ -365,6 +372,7 @@
       font-size: 0.64rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
+      cursor: pointer;
     }
 
     .view-btn.active {
@@ -378,6 +386,10 @@
       gap: 12px;
     }
 
+    .projects-grid[data-view="list"] {
+      grid-template-columns: 1fr;
+    }
+
     .project-card {
       border-radius: 16px;
       border: 1px solid var(--line);
@@ -388,6 +400,10 @@
       flex-direction: column;
       gap: 10px;
       min-height: 212px;
+    }
+
+    .project-card[hidden] {
+      display: none !important;
     }
 
     .project-top {
@@ -556,6 +572,17 @@
       font-size: 0.82rem;
     }
 
+    .empty-state {
+      margin: 10px 0 0;
+      border: 1px dashed var(--line-strong);
+      border-radius: 14px;
+      background: #fff;
+      color: #64748b;
+      padding: 14px;
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+
     .footer {
       margin-top: 18px;
       border-top: 1px solid var(--line);
@@ -684,15 +711,15 @@
     </nav>
   </header>
 
-  <main id="main-content">
+  <main id="main-content" data-project-catalog>
     <section class="page-hero" aria-label="Projects intro">
       <div class="hero-grid">
         <div>
-          <p class="hero-kicker">Project Catalog · Stage 1</p>
+          <p class="hero-kicker">Project Catalog · Stage 2</p>
           <h1 class="hero-title">Browse projects as a structured catalog.</h1>
           <p class="hero-desc">
-            这一版先完成目录结构与视觉层：把项目页升级为可检索、可筛选、可排序的浏览界面。
-            交互逻辑将在下一阶段接入，但组件结构已经按后续扩展预留。
+            目录页已进入可交互阶段：支持关键词检索、状态筛选、类型与年份过滤、排序和视图切换。
+            当前筛选状态会写入地址栏，刷新或分享链接都可以还原当前视图。
           </p>
           <div class="hero-chip-row">
             <span class="chip">Model-first</span>
@@ -704,12 +731,12 @@
         <div class="hero-metrics" aria-label="catalog metrics">
           <article class="metric">
             <p class="label">Total Items</p>
-            <p class="value">6 Projects</p>
+            <p class="value" data-total-items>6 Projects</p>
             <p class="desc">当前目录中可浏览条目</p>
           </article>
           <article class="metric">
             <p class="label">Active Track</p>
-            <p class="value">3 Live</p>
+            <p class="value" data-live-items>3 Live</p>
             <p class="desc">持续推进中的重点方向</p>
           </article>
           <article class="metric">
@@ -734,21 +761,21 @@
       <div class="field">
         <label class="field-label" for="sort-by">Sort</label>
         <select class="field-select" id="sort-by">
-          <option>Most Recent</option>
-          <option>Most Downloaded</option>
-          <option>Name (A-Z)</option>
+          <option value="recent">Most Recent</option>
+          <option value="downloads">Most Downloaded</option>
+          <option value="name">Name (A-Z)</option>
         </select>
       </div>
       <div class="field">
         <label class="field-label" for="status-filter">Status</label>
         <select class="field-select" id="status-filter">
-          <option>All Status</option>
-          <option>Live</option>
-          <option>Beta</option>
-          <option>Lab</option>
+          <option value="all">All Status</option>
+          <option value="live">Live</option>
+          <option value="beta">Beta</option>
+          <option value="lab">Lab</option>
         </select>
       </div>
-      <button class="ghost-btn" type="button" aria-disabled="true">Clear Filters</button>
+      <button class="ghost-btn" type="button" id="clear-filters">Clear Filters</button>
     </section>
 
     <section class="catalog-layout" aria-label="Project catalog">
@@ -756,10 +783,12 @@
         <section class="filter-group">
           <h2 class="filter-title">Type</h2>
           <div class="check-list">
-            <label class="check-item"><input type="checkbox" checked /> Tooling</label>
-            <label class="check-item"><input type="checkbox" checked /> AI Product</label>
-            <label class="check-item"><input type="checkbox" /> Infrastructure</label>
-            <label class="check-item"><input type="checkbox" /> Content System</label>
+            <label class="check-item"><input type="checkbox" value="tooling" data-filter-type checked /> Tooling</label>
+            <label class="check-item"><input type="checkbox" value="ai-product" data-filter-type checked /> AI Product</label>
+            <label class="check-item"><input type="checkbox" value="infrastructure" data-filter-type checked /> Infrastructure</label>
+            <label class="check-item"><input type="checkbox" value="content-system" data-filter-type checked /> Content System</label>
+            <label class="check-item"><input type="checkbox" value="operations" data-filter-type checked /> Operations</label>
+            <label class="check-item"><input type="checkbox" value="ai-lab" data-filter-type checked /> AI Lab</label>
           </div>
         </section>
 
@@ -778,9 +807,9 @@
         <section class="filter-group">
           <h2 class="filter-title">Release Year</h2>
           <div class="check-list">
-            <label class="check-item"><input type="checkbox" checked /> 2026</label>
-            <label class="check-item"><input type="checkbox" /> 2025</label>
-            <label class="check-item"><input type="checkbox" /> 2024</label>
+            <label class="check-item"><input type="checkbox" value="2026" data-filter-year checked /> 2026</label>
+            <label class="check-item"><input type="checkbox" value="2025" data-filter-year checked /> 2025</label>
+            <label class="check-item"><input type="checkbox" value="2024" data-filter-year checked /> 2024</label>
           </div>
         </section>
       </aside>
@@ -789,16 +818,16 @@
         <div class="results-head">
           <div>
             <h2 class="results-title">Project Directory</h2>
-            <p class="results-meta">Showing 6 entries · Layout preview only (interaction coming in Stage 2)</p>
+            <p class="results-meta" data-results-meta>Showing 6 of 6 entries</p>
           </div>
           <div class="view-toggle" role="group" aria-label="View mode">
-            <button class="view-btn active" type="button">Grid</button>
-            <button class="view-btn" type="button">List</button>
+            <button class="view-btn active" data-view-mode="grid" type="button">Grid</button>
+            <button class="view-btn" data-view-mode="list" type="button">List</button>
           </div>
         </div>
 
-        <div class="projects-grid">
-          <article class="project-card">
+        <div class="projects-grid" data-project-grid data-view="grid">
+          <article class="project-card" data-status="live" data-type="tooling" data-year="2026" data-updated="2026-03" data-downloads="4800" data-keywords="automation workflow dx personal toolbox">
             <div class="project-top">
               <h3 class="project-name"><a href="./personal-toolbox/index.html">Personal Toolbox</a></h3>
               <span class="status-pill status-live">Live</span>
@@ -820,7 +849,7 @@
             </div>
           </article>
 
-          <article class="project-card">
+          <article class="project-card" data-status="live" data-type="ai-product" data-year="2026" data-updated="2026-02" data-downloads="3100" data-keywords="ai collaboration decision-flow message triage">
             <div class="project-top">
               <h3 class="project-name"><a href="./ai-message-value-triage/index.html">AI Message Value Triage</a></h3>
               <span class="status-pill status-live">Live</span>
@@ -842,7 +871,7 @@
             </div>
           </article>
 
-          <article class="project-card">
+          <article class="project-card" data-status="beta" data-type="infrastructure" data-year="2026" data-updated="2026-03" data-downloads="2200" data-keywords="web system-design ops platform site core">
             <div class="project-top">
               <h3 class="project-name"><a href="../index.html">LambertLab Site Core</a></h3>
               <span class="status-pill status-beta">Beta</span>
@@ -864,7 +893,7 @@
             </div>
           </article>
 
-          <article class="project-card">
+          <article class="project-card" data-status="beta" data-type="content-system" data-year="2026" data-updated="2026-01" data-downloads="1300" data-keywords="content schema pipeline data">
             <div class="project-top">
               <h3 class="project-name"><a href="#" aria-disabled="true">Content Data Pipeline</a></h3>
               <span class="status-pill status-beta">Beta</span>
@@ -886,7 +915,7 @@
             </div>
           </article>
 
-          <article class="project-card">
+          <article class="project-card" data-status="lab" data-type="operations" data-year="2025" data-updated="2025-12" data-downloads="840" data-keywords="delivery operations teamwork toolkit">
             <div class="project-top">
               <h3 class="project-name"><a href="#" aria-disabled="true">Delivery Rhythm Toolkit</a></h3>
               <span class="status-pill status-lab">Lab</span>
@@ -908,7 +937,7 @@
             </div>
           </article>
 
-          <article class="project-card">
+          <article class="project-card" data-status="lab" data-type="ai-lab" data-year="2025" data-updated="2025-11" data-downloads="620" data-keywords="prompting qa eval harness">
             <div class="project-top">
               <h3 class="project-name"><a href="#" aria-disabled="true">Prompt QA Harness</a></h3>
               <span class="status-pill status-lab">Lab</span>
@@ -931,9 +960,11 @@
           </article>
         </div>
 
+        <p class="empty-state" data-empty-state hidden>未找到匹配项。可以放宽关键词，或重置筛选条件后再试。</p>
+
         <div class="list-footer">
-          <span>Stage 1 includes structure + visual language only. Filtering/search interactions will be wired in Stage 2.</span>
-          <a class="btn" href="#" aria-disabled="true">Load More</a>
+          <span>Stage 2 已启用：搜索、筛选、排序与视图切换。</span>
+          <span>当前筛选会自动同步到 URL，便于刷新和分享。</span>
         </div>
       </div>
     </section>
@@ -947,6 +978,7 @@
   </main>
   <script src="../js/config.js"></script>
   <script src="../js/main.js"></script>
+  <script src="../js/projects-catalog.js"></script>
 </body>
 </html>
 
