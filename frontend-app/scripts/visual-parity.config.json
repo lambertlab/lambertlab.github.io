@@ -4,7 +4,7 @@
     "smoke": {
       "viewports": ["desktop"],
       "themes": ["light", "dark"],
-      "pages": ["home", "projects", "journal", "insights", "about", "contact"]
+      "pages": ["home", "projects", "journal", "about", "contact"]
     },
     "full": {
       "viewports": "all",
@@ -43,14 +43,6 @@
     {
       "name": "journal",
       "path": "/journal/index.html",
-      "oldPath": "/insights/index.html",
-      "newPath": "/journal/index.html",
-      "heroSelector": ".hero",
-      "contentSelector": ".journal-grid"
-    },
-    {
-      "name": "insights",
-      "path": "/insights/index.html",
       "heroSelector": ".hero",
       "contentSelector": ".journal-grid"
     },
@@ -75,24 +67,6 @@
     {
       "name": "project-ai-message-value-triage",
       "path": "/projects/ai-message-value-triage/index.html",
-      "heroSelector": ".hero",
-      "contentSelector": ".article"
-    },
-    {
-      "name": "insight-model-first-engineering",
-      "path": "/insights/model-first-engineering.html",
-      "heroSelector": ".hero",
-      "contentSelector": ".article"
-    },
-    {
-      "name": "insight-ai-collaboration-checklist",
-      "path": "/insights/ai-collaboration-checklist.html",
-      "heroSelector": ".hero",
-      "contentSelector": ".article"
-    },
-    {
-      "name": "insight-operational-habits-that-stick",
-      "path": "/insights/operational-habits-that-stick.html",
       "heroSelector": ".hero",
       "contentSelector": ".article"
     }
