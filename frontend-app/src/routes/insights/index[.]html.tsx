@@ -1,13 +1,34 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
-import { buildLegacyHead, legacyPages } from '~/legacy/pages'
+import * as React from 'react'
+
+const TARGET_PATH = '/journal/index.html'
 
 export const Route = createFileRoute('/insights/index.html')({
-  head: () => buildLegacyHead(legacyPages.insights),
-  component: InsightsHtmlPage,
+  head: () => ({
+    meta: [
+      {
+        name: 'robots',
+        content: 'noindex',
+      },
+    ],
+  }),
+  component: InsightsHtmlRedirectPage,
 })
 
-function InsightsHtmlPage() {
-  return <LegacyPageView page={legacyPages.insights} />
-}
+function InsightsHtmlRedirectPage() {
+  React.useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    window.location.replace(`${TARGET_PATH}${window.location.search}${window.location.hash}`)
+  }, [])
 
+  return (
+    <main id="main-content">
+      <p>页面已迁移到 Journal，正在跳转...</p>
+      <p>
+        <a href={TARGET_PATH}>如果没有自动跳转，请点击此链接。</a>
+      </p>
+    </main>
+  )
+}
