@@ -1,0 +1,92 @@
+{
+  "defaultMode": "smoke",
+  "modes": {
+    "smoke": {
+      "viewports": ["desktop"],
+      "themes": ["light", "dark"],
+      "pages": ["home", "projects", "insights", "about", "contact"]
+    },
+    "full": {
+      "viewports": "all",
+      "themes": "all",
+      "pages": "all"
+    }
+  },
+  "ports": {
+    "oldSite": 4101,
+    "newSite": 4102
+  },
+  "thresholds": {
+    "fullPageMismatchRatio": 0.015,
+    "keyAreaMismatchRatio": 0.02,
+    "headerShiftPx": 1.5
+  },
+  "viewports": [
+    { "name": "desktop", "width": 1440, "height": 900 },
+    { "name": "tablet", "width": 1024, "height": 1366 },
+    { "name": "mobile", "width": 390, "height": 844 }
+  ],
+  "themes": ["light", "dark"],
+  "pages": [
+    {
+      "name": "home",
+      "path": "/index.html",
+      "heroSelector": "main section.max-w-7xl",
+      "contentSelector": "[data-split-layout]"
+    },
+    {
+      "name": "projects",
+      "path": "/projects/index.html",
+      "heroSelector": ".page-hero",
+      "contentSelector": "[data-project-grid]"
+    },
+    {
+      "name": "insights",
+      "path": "/insights/index.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".journal-grid"
+    },
+    {
+      "name": "about",
+      "path": "/about/index.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".about-grid"
+    },
+    {
+      "name": "contact",
+      "path": "/contact/index.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".grid"
+    },
+    {
+      "name": "project-personal-toolbox",
+      "path": "/projects/personal-toolbox/index.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".article"
+    },
+    {
+      "name": "project-ai-message-value-triage",
+      "path": "/projects/ai-message-value-triage/index.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".article"
+    },
+    {
+      "name": "insight-model-first-engineering",
+      "path": "/insights/model-first-engineering.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".article"
+    },
+    {
+      "name": "insight-ai-collaboration-checklist",
+      "path": "/insights/ai-collaboration-checklist.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".article"
+    },
+    {
+      "name": "insight-operational-habits-that-stick",
+      "path": "/insights/operational-habits-that-stick.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".article"
+    }
+  ]
+}

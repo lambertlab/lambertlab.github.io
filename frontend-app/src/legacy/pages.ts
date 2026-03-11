@@ -1,0 +1,108 @@
+import type { JSX } from 'react'
+import aboutHtmlRaw from '~/legacy-html/about/index.html?raw'
+import contactHtmlRaw from '~/legacy-html/contact/index.html?raw'
+import indexHtmlRaw from '~/legacy-html/index.html?raw'
+import insightAICollabRaw from '~/legacy-html/insights/ai-collaboration-checklist.html?raw'
+import insightsIndexHtmlRaw from '~/legacy-html/insights/index.html?raw'
+import insightModelFirstRaw from '~/legacy-html/insights/model-first-engineering.html?raw'
+import insightHabitsRaw from '~/legacy-html/insights/operational-habits-that-stick.html?raw'
+import projectsIndexHtmlRaw from '~/legacy-html/projects/index.html?raw'
+import projectAIMsgRaw from '~/legacy-html/projects/ai-message-value-triage/index.html?raw'
+import projectToolboxRaw from '~/legacy-html/projects/personal-toolbox/index.html?raw'
+import { parseLegacyHtml } from './parseLegacyHtml'
+
+export interface LegacyPage {
+  id: string
+  title: string
+  description: string
+  bodyContentHtml: string
+  stylesheets: string[]
+  enableHomeSplit?: boolean
+  runtimeScripts?: string[]
+}
+
+function buildLegacyPage(
+  id: string,
+  source: string,
+  stylesheets: string[],
+  options?: {
+    enableHomeSplit?: boolean
+    runtimeScripts?: string[]
+  },
+): LegacyPage {
+  const parsed = parseLegacyHtml(source)
+
+  return {
+    id,
+    title: parsed.title,
+    description: parsed.description,
+    bodyContentHtml: parsed.bodyContentHtml,
+    stylesheets,
+    enableHomeSplit: options?.enableHomeSplit === true,
+    runtimeScripts: options?.runtimeScripts ?? [],
+  }
+}
+
+export const legacyPages = {
+  home: buildLegacyPage('home', indexHtmlRaw, ['/css/page-home.css'], { enableHomeSplit: true }),
+  about: buildLegacyPage('about', aboutHtmlRaw, ['/css/page-about.css']),
+  contact: buildLegacyPage('contact', contactHtmlRaw, ['/css/bento-pages.css', '/css/page-contact.css']),
+  projects: buildLegacyPage('projects', projectsIndexHtmlRaw, ['/css/page-projects.css'], {
+    runtimeScripts: ['/js/projects-catalog.js'],
+  }),
+  insights: buildLegacyPage('insights', insightsIndexHtmlRaw, ['/css/page-insights.css']),
+  projectPersonalToolbox: buildLegacyPage('project-personal-toolbox', projectToolboxRaw, ['/css/bento-pages.css']),
+  projectAiMessageValueTriage: buildLegacyPage('project-ai-message-value-triage', projectAIMsgRaw, ['/css/bento-pages.css']),
+  insightModelFirstEngineering: buildLegacyPage('insight-model-first-engineering', insightModelFirstRaw, ['/css/bento-pages.css']),
+  insightAiCollaborationChecklist: buildLegacyPage('insight-ai-collaboration-checklist', insightAICollabRaw, ['/css/bento-pages.css']),
+  insightOperationalHabitsThatStick: buildLegacyPage('insight-operational-habits-that-stick', insightHabitsRaw, ['/css/bento-pages.css']),
+}
+
+export const homeTailwindHeadScripts: Array<JSX.IntrinsicElements['script']> = [
+  {
+    src: 'https://cdn.tailwindcss.com?plugins=forms,container-queries',
+  },
+  {
+    children: `tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ["var(--ll-font-sans)"],
+        mono: ["var(--ll-font-mono)"]
+      },
+      colors: {
+        brand: {
+          blue: "#2563eb",
+          border: "#dce7fb",
+          light: "#f9fbff"
+        }
+      }
+    }
+  }
+};`,
+  },
+]
+
+export function buildLegacyHead(page: LegacyPage) {
+  const meta: Array<Record<string, string>> = [{ title: page.title }]
+  if (page.description) {
+    meta.push({
+      name: 'description',
+      content: page.description,
+    })
+  }
+
+  return {
+    meta,
+    links: [
+      ...page.stylesheets.map((href) => ({
+        rel: 'stylesheet' as const,
+        href,
+      })),
+      {
+        rel: 'stylesheet' as const,
+        href: '/css/theme-system.css',
+      },
+    ],
+  }
+}

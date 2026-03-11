@@ -1,0 +1,10 @@
+﻿.wrap {
+      padding-top: 128px;
+    }
+
+    @media (max-width: 720px) {
+      .wrap {
+        padding-top: 128px;
+      }
+    }
+
