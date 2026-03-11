@@ -13,10 +13,15 @@ import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as JournalIndexRouteImport } from './routes/journal/index'
+import { Route as InsightsIndexRouteImport } from './routes/insights/index'
 import { Route as ContactIndexRouteImport } from './routes/contact/index'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
 import { Route as ProjectsIndexDothtmlRouteImport } from './routes/projects/index[.]html'
 import { Route as JournalIndexDothtmlRouteImport } from './routes/journal/index[.]html'
+import { Route as InsightsOperationalHabitsThatStickDothtmlRouteImport } from './routes/insights/operational-habits-that-stick[.]html'
+import { Route as InsightsModelFirstEngineeringDothtmlRouteImport } from './routes/insights/model-first-engineering[.]html'
+import { Route as InsightsIndexDothtmlRouteImport } from './routes/insights/index[.]html'
+import { Route as InsightsAiCollaborationChecklistDothtmlRouteImport } from './routes/insights/ai-collaboration-checklist[.]html'
 import { Route as ContactIndexDothtmlRouteImport } from './routes/contact/index[.]html'
 import { Route as AboutIndexDothtmlRouteImport } from './routes/about/index[.]html'
 import { Route as ProjectsPersonalToolboxIndexRouteImport } from './routes/projects/personal-toolbox/index'
@@ -50,6 +55,11 @@ const JournalIndexRoute = JournalIndexRouteImport.update({
   path: '/journal/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InsightsIndexRoute = InsightsIndexRouteImport.update({
+  id: '/insights/',
+  path: '/insights/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactIndexRoute = ContactIndexRouteImport.update({
   id: '/contact/',
   path: '/contact/',
@@ -70,6 +80,29 @@ const JournalIndexDothtmlRoute = JournalIndexDothtmlRouteImport.update({
   path: '/journal/index.html',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InsightsOperationalHabitsThatStickDothtmlRoute =
+  InsightsOperationalHabitsThatStickDothtmlRouteImport.update({
+    id: '/insights/operational-habits-that-stick.html',
+    path: '/insights/operational-habits-that-stick.html',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const InsightsModelFirstEngineeringDothtmlRoute =
+  InsightsModelFirstEngineeringDothtmlRouteImport.update({
+    id: '/insights/model-first-engineering.html',
+    path: '/insights/model-first-engineering.html',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const InsightsIndexDothtmlRoute = InsightsIndexDothtmlRouteImport.update({
+  id: '/insights/index.html',
+  path: '/insights/index.html',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsightsAiCollaborationChecklistDothtmlRoute =
+  InsightsAiCollaborationChecklistDothtmlRouteImport.update({
+    id: '/insights/ai-collaboration-checklist.html',
+    path: '/insights/ai-collaboration-checklist.html',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ContactIndexDothtmlRoute = ContactIndexDothtmlRouteImport.update({
   id: '/contact/index.html',
   path: '/contact/index.html',
@@ -146,10 +179,15 @@ export interface FileRoutesByFullPath {
   '/index.html': typeof IndexDothtmlRoute
   '/about/index.html': typeof AboutIndexDothtmlRoute
   '/contact/index.html': typeof ContactIndexDothtmlRoute
+  '/insights/ai-collaboration-checklist.html': typeof InsightsAiCollaborationChecklistDothtmlRoute
+  '/insights/index.html': typeof InsightsIndexDothtmlRoute
+  '/insights/model-first-engineering.html': typeof InsightsModelFirstEngineeringDothtmlRoute
+  '/insights/operational-habits-that-stick.html': typeof InsightsOperationalHabitsThatStickDothtmlRoute
   '/journal/index.html': typeof JournalIndexDothtmlRoute
   '/projects/index.html': typeof ProjectsIndexDothtmlRoute
   '/about/': typeof AboutIndexRoute
   '/contact/': typeof ContactIndexRoute
+  '/insights/': typeof InsightsIndexRoute
   '/journal/': typeof JournalIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
@@ -168,10 +206,15 @@ export interface FileRoutesByTo {
   '/index.html': typeof IndexDothtmlRoute
   '/about/index.html': typeof AboutIndexDothtmlRoute
   '/contact/index.html': typeof ContactIndexDothtmlRoute
+  '/insights/ai-collaboration-checklist.html': typeof InsightsAiCollaborationChecklistDothtmlRoute
+  '/insights/index.html': typeof InsightsIndexDothtmlRoute
+  '/insights/model-first-engineering.html': typeof InsightsModelFirstEngineeringDothtmlRoute
+  '/insights/operational-habits-that-stick.html': typeof InsightsOperationalHabitsThatStickDothtmlRoute
   '/journal/index.html': typeof JournalIndexDothtmlRoute
   '/projects/index.html': typeof ProjectsIndexDothtmlRoute
   '/about': typeof AboutIndexRoute
   '/contact': typeof ContactIndexRoute
+  '/insights': typeof InsightsIndexRoute
   '/journal': typeof JournalIndexRoute
   '/projects': typeof ProjectsIndexRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
@@ -191,10 +234,15 @@ export interface FileRoutesById {
   '/index.html': typeof IndexDothtmlRoute
   '/about/index.html': typeof AboutIndexDothtmlRoute
   '/contact/index.html': typeof ContactIndexDothtmlRoute
+  '/insights/ai-collaboration-checklist.html': typeof InsightsAiCollaborationChecklistDothtmlRoute
+  '/insights/index.html': typeof InsightsIndexDothtmlRoute
+  '/insights/model-first-engineering.html': typeof InsightsModelFirstEngineeringDothtmlRoute
+  '/insights/operational-habits-that-stick.html': typeof InsightsOperationalHabitsThatStickDothtmlRoute
   '/journal/index.html': typeof JournalIndexDothtmlRoute
   '/projects/index.html': typeof ProjectsIndexDothtmlRoute
   '/about/': typeof AboutIndexRoute
   '/contact/': typeof ContactIndexRoute
+  '/insights/': typeof InsightsIndexRoute
   '/journal/': typeof JournalIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
@@ -215,10 +263,15 @@ export interface FileRouteTypes {
     | '/index.html'
     | '/about/index.html'
     | '/contact/index.html'
+    | '/insights/ai-collaboration-checklist.html'
+    | '/insights/index.html'
+    | '/insights/model-first-engineering.html'
+    | '/insights/operational-habits-that-stick.html'
     | '/journal/index.html'
     | '/projects/index.html'
     | '/about/'
     | '/contact/'
+    | '/insights/'
     | '/journal/'
     | '/projects/'
     | '/journal/ai-collaboration-checklist/index.html'
@@ -237,10 +290,15 @@ export interface FileRouteTypes {
     | '/index.html'
     | '/about/index.html'
     | '/contact/index.html'
+    | '/insights/ai-collaboration-checklist.html'
+    | '/insights/index.html'
+    | '/insights/model-first-engineering.html'
+    | '/insights/operational-habits-that-stick.html'
     | '/journal/index.html'
     | '/projects/index.html'
     | '/about'
     | '/contact'
+    | '/insights'
     | '/journal'
     | '/projects'
     | '/journal/ai-collaboration-checklist/index.html'
@@ -259,10 +317,15 @@ export interface FileRouteTypes {
     | '/index.html'
     | '/about/index.html'
     | '/contact/index.html'
+    | '/insights/ai-collaboration-checklist.html'
+    | '/insights/index.html'
+    | '/insights/model-first-engineering.html'
+    | '/insights/operational-habits-that-stick.html'
     | '/journal/index.html'
     | '/projects/index.html'
     | '/about/'
     | '/contact/'
+    | '/insights/'
     | '/journal/'
     | '/projects/'
     | '/journal/ai-collaboration-checklist/index.html'
@@ -282,10 +345,15 @@ export interface RootRouteChildren {
   IndexDothtmlRoute: typeof IndexDothtmlRoute
   AboutIndexDothtmlRoute: typeof AboutIndexDothtmlRoute
   ContactIndexDothtmlRoute: typeof ContactIndexDothtmlRoute
+  InsightsAiCollaborationChecklistDothtmlRoute: typeof InsightsAiCollaborationChecklistDothtmlRoute
+  InsightsIndexDothtmlRoute: typeof InsightsIndexDothtmlRoute
+  InsightsModelFirstEngineeringDothtmlRoute: typeof InsightsModelFirstEngineeringDothtmlRoute
+  InsightsOperationalHabitsThatStickDothtmlRoute: typeof InsightsOperationalHabitsThatStickDothtmlRoute
   JournalIndexDothtmlRoute: typeof JournalIndexDothtmlRoute
   ProjectsIndexDothtmlRoute: typeof ProjectsIndexDothtmlRoute
   AboutIndexRoute: typeof AboutIndexRoute
   ContactIndexRoute: typeof ContactIndexRoute
+  InsightsIndexRoute: typeof InsightsIndexRoute
   JournalIndexRoute: typeof JournalIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
   JournalAiCollaborationChecklistIndexDothtmlRoute: typeof JournalAiCollaborationChecklistIndexDothtmlRoute
@@ -330,6 +398,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JournalIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/insights/': {
+      id: '/insights/'
+      path: '/insights'
+      fullPath: '/insights/'
+      preLoaderRoute: typeof InsightsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact/': {
       id: '/contact/'
       path: '/contact'
@@ -356,6 +431,34 @@ declare module '@tanstack/react-router' {
       path: '/journal/index.html'
       fullPath: '/journal/index.html'
       preLoaderRoute: typeof JournalIndexDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights/operational-habits-that-stick.html': {
+      id: '/insights/operational-habits-that-stick.html'
+      path: '/insights/operational-habits-that-stick.html'
+      fullPath: '/insights/operational-habits-that-stick.html'
+      preLoaderRoute: typeof InsightsOperationalHabitsThatStickDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights/model-first-engineering.html': {
+      id: '/insights/model-first-engineering.html'
+      path: '/insights/model-first-engineering.html'
+      fullPath: '/insights/model-first-engineering.html'
+      preLoaderRoute: typeof InsightsModelFirstEngineeringDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights/index.html': {
+      id: '/insights/index.html'
+      path: '/insights/index.html'
+      fullPath: '/insights/index.html'
+      preLoaderRoute: typeof InsightsIndexDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insights/ai-collaboration-checklist.html': {
+      id: '/insights/ai-collaboration-checklist.html'
+      path: '/insights/ai-collaboration-checklist.html'
+      fullPath: '/insights/ai-collaboration-checklist.html'
+      preLoaderRoute: typeof InsightsAiCollaborationChecklistDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact/index.html': {
@@ -450,10 +553,18 @@ const rootRouteChildren: RootRouteChildren = {
   IndexDothtmlRoute: IndexDothtmlRoute,
   AboutIndexDothtmlRoute: AboutIndexDothtmlRoute,
   ContactIndexDothtmlRoute: ContactIndexDothtmlRoute,
+  InsightsAiCollaborationChecklistDothtmlRoute:
+    InsightsAiCollaborationChecklistDothtmlRoute,
+  InsightsIndexDothtmlRoute: InsightsIndexDothtmlRoute,
+  InsightsModelFirstEngineeringDothtmlRoute:
+    InsightsModelFirstEngineeringDothtmlRoute,
+  InsightsOperationalHabitsThatStickDothtmlRoute:
+    InsightsOperationalHabitsThatStickDothtmlRoute,
   JournalIndexDothtmlRoute: JournalIndexDothtmlRoute,
   ProjectsIndexDothtmlRoute: ProjectsIndexDothtmlRoute,
   AboutIndexRoute: AboutIndexRoute,
   ContactIndexRoute: ContactIndexRoute,
+  InsightsIndexRoute: InsightsIndexRoute,
   JournalIndexRoute: JournalIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
   JournalAiCollaborationChecklistIndexDothtmlRoute:

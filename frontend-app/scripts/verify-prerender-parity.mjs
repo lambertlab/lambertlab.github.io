@@ -13,6 +13,10 @@ const pagesToCheck = [
   'journal/model-first-engineering/index.html',
   'journal/ai-collaboration-checklist/index.html',
   'journal/operational-habits-that-stick/index.html',
+  'insights/index.html',
+  'insights/model-first-engineering.html',
+  'insights/ai-collaboration-checklist.html',
+  'insights/operational-habits-that-stick.html',
 ]
 
 const requiredFragments = [

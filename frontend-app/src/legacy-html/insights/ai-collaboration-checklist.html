@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>模型先行工程方法 · lambertlab</title>
-  <meta name="description" content="洞察：面向数据工作流的模型先行工程方法" />
+  <title>AI 协作实用清单 · lambertlab</title>
+  <meta name="description" content="洞察：代码评审中的 AI 协作实用清单" />
   <link rel="stylesheet" href="/css/font-themes.css" />
   <script src="/js/font-theme.js"></script>
   <link rel="stylesheet" href="../css/shared-header.css" />
@@ -21,7 +21,7 @@
       </a>
       <div class="ll-nav">
         <a class="ll-nav-link" href="../projects/index.html">Projects</a>
-        <a class="ll-nav-link" href="../journal/index.html">Journal</a>
+        <a class="ll-nav-link" href="../insights/index.html">Journal</a>
         <a class="ll-nav-link" href="../about/index.html">About</a>
         <a class="ll-cta" href="../contact/index.html">Get in touch</a>
         <div
@@ -49,16 +49,16 @@
   <div class="wrap">
     <main id="main-content">
       <section class="hero">
-        <p class="kicker">Insight · 2026.03</p>
-        <h1>面向数据工作流的模型先行工程方法</h1>
-        <p>先用模型抽象系统边界与核心流，再进入实现阶段，可显著降低复杂系统中的隐性耦合和回归风险。</p>
+        <p class="kicker">Insight · 2026.02</p>
+        <h1>代码评审中的 AI 协作实用清单</h1>
+        <p>在评审中引入 AI 时，关键不在“它能写多少代码”，而在“它输出能否被验证、解释和维护”。</p>
       </section>
 
       <article class="article">
-        <h2>核心观点</h2>
-        <p>模型先行不是“先画图再编码”的形式主义，而是把系统行为提前结构化。通过提前定义实体关系、状态转移和失败路径，团队能在进入实现前对关键风险达成一致。</p>
-        <p>在数据工作流场景，这种方法尤其有效。因为问题通常不在单个函数，而在多个环节叠加产生的延迟、丢失和不可追踪性。</p>
-        <p>建议将模型与测试策略一起设计，并在迭代中持续修订，让模型成为长期维护资产，而不是一次性文档。</p>
+        <h2>实用清单</h2>
+        <p>第一，明确 AI 在评审中的角色：是补全上下文、辅助发现风险，还是给出替代实现建议。不同角色应有不同验收标准。</p>
+        <p>第二，所有关键结论都应能被人工复现实证。对性能、并发、边界条件等高风险点，必须通过测试和运行数据验证，而不是依赖文本判断。</p>
+        <p>第三，把“AI 参与痕迹”沉淀进评审记录，便于后续追踪和经验复用。长期看，这比单次效率提升更有价值。</p>
         <div class="actions">
           <a class="btn" href="./index.html">返回洞察目录</a>
           <a class="btn primary" href="../index.html">返回首页</a>
