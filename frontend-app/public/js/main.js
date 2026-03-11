@@ -804,19 +804,146 @@
     });
   }
 
-  function buildHealthMessage(payload) {
-    var service = typeof payload.service === "string" && payload.service ? payload.service : "backend";
-    var version = typeof payload.version === "string" && payload.version ? payload.version : "unknown";
-    return "后端服务可用（" + service + " v" + version + "）";
+  function buildFunctionalAvailabilityMessage(payload) {
+    return "核心与扩展功能可用。";
   }
 
-  function getStatusReason(payload, fallback) {
+  function containsChineseCharacter(value) {
+    return typeof value === "string" && /[\u3400-\u9fff]/.test(value);
+  }
+
+  function containsLatinLetter(value) {
+    return typeof value === "string" && /[A-Za-z]/.test(value);
+  }
+
+  function localizeReasonText(reasonText, healthState) {
+    if (typeof reasonText !== "string") {
+      return "";
+    }
+
+    var normalizedReason = reasonText.trim();
+    if (!normalizedReason) {
+      return "";
+    }
+
+    if (!containsLatinLetter(normalizedReason)) {
+      return normalizedReason;
+    }
+
+    var loweredReason = normalizedReason.toLowerCase();
+    if (loweredReason.indexOf("all core and non-core services are healthy") !== -1) {
+      return "核心与扩展功能可用。";
+    }
+
+    if (healthState === "green") {
+      return "核心与扩展功能可用。";
+    }
+    if (healthState === "yellow") {
+      return "部分能力受限，核心功能仍可用。";
+    }
+    if (healthState === "red") {
+      return "检测到核心组件异常，关键功能暂不可用。";
+    }
+
+    return "";
+  }
+
+  function getComponentDisplayName(component, fallbackIndex) {
+    if (component && typeof component.name === "string" && component.name.trim()) {
+      var componentName = component.name.trim();
+      if (containsChineseCharacter(componentName)) {
+        return componentName;
+      }
+    }
+    if (component && typeof component.key === "string" && component.key.trim()) {
+      var componentKey = component.key.trim();
+      if (containsChineseCharacter(componentKey)) {
+        return componentKey;
+      }
+    }
+    return "组件#" + fallbackIndex;
+  }
+
+  function formatImpactedComponentNames(names) {
+    if (!Array.isArray(names) || names.length === 0) {
+      return "";
+    }
+    if (names.length <= 2) {
+      return names.join("、");
+    }
+    return names.slice(0, 2).join("、") + " 等" + names.length + "项";
+  }
+
+  function buildComponentsReason(payload, healthState) {
+    if (!payload || !Array.isArray(payload.components) || payload.components.length === 0) {
+      return "";
+    }
+
+    var impactedCore = [];
+    var impactedNonCore = [];
+
+    payload.components.forEach(function (component, index) {
+      if (!component || typeof component !== "object") {
+        return;
+      }
+
+      var health = "";
+      if (typeof component.health === "string") {
+        health = component.health.trim().toLowerCase();
+      }
+      if (health === "up") {
+        return;
+      }
+
+      var role = "";
+      if (typeof component.role === "string") {
+        role = component.role.trim().toLowerCase();
+      }
+
+      var displayName = getComponentDisplayName(component, index + 1);
+      if (role === "core") {
+        impactedCore.push(displayName);
+        return;
+      }
+      impactedNonCore.push(displayName);
+    });
+
+    if (healthState === "red") {
+      if (impactedCore.length > 0) {
+        return "核心组件异常（" + formatImpactedComponentNames(impactedCore) + "），关键功能暂不可用。";
+      }
+      return "检测到系统异常，关键功能暂不可用。";
+    }
+
+    if (healthState === "yellow") {
+      if (impactedNonCore.length > 0) {
+        return "部分能力受限（" + formatImpactedComponentNames(impactedNonCore) + "），核心功能仍可用。";
+      }
+      return "部分能力受限，核心功能仍可用。";
+    }
+
+    if (healthState === "green") {
+      return "核心与扩展功能可用。";
+    }
+
+    return "";
+  }
+
+  function getStatusReason(payload, fallback, healthState) {
     if (
       payload &&
       typeof payload.reason === "string" &&
       payload.reason.trim()
     ) {
-      return payload.reason.trim();
+      var localizedReason = localizeReasonText(payload.reason, healthState);
+      if (localizedReason) {
+        return localizedReason;
+      }
+    }
+
+    var componentsReason = buildComponentsReason(payload, healthState);
+    if (componentsReason) {
+      return componentsReason;
     }
 
     return fallback;
@@ -831,29 +958,31 @@
     if (typeof payload.status === "string") {
       summaryStatus = payload.status.trim().toLowerCase();
     }
-    if (summaryStatus === "green") {
-      return "ok";
+    if (summaryStatus === "green" || summaryStatus === "yellow" || summaryStatus === "red") {
+      return summaryStatus;
     }
-    if (summaryStatus === "yellow") {
-      return "partial";
+    if (summaryStatus === "ok") {
+      return "green";
     }
-    if (summaryStatus === "red") {
-      return "error";
+    if (summaryStatus === "partial") {
+      return "yellow";
+    }
+    if (summaryStatus === "error") {
+      return "red";
     }
 
     if (
       payload.partial === true ||
-      payload.status === "partial" ||
       payload.ok === "partial"
     ) {
-      return "partial";
+      return "yellow";
     }
 
     if (payload.ok === true) {
-      return "ok";
+      return "green";
     }
     if (payload.ok === false) {
-      return "error";
+      return "red";
     }
 
     return "invalid";
@@ -936,37 +1065,37 @@
 
   function applyResolvedStatus(statusRoot, payload) {
     var healthState = resolveHealthState(payload);
-    if (healthState === "partial") {
+    if (healthState === "yellow") {
       setSystemStatus(
         statusRoot,
-        "partial",
-        "部分异常",
-        "系统部分状态异常",
-        getStatusReason(payload, "检测到部分子系统异常，详细判定规则后续补充。"),
+        "yellow",
+        "受限",
+        "部分功能受限",
+        getStatusReason(payload, "检测到非核心组件异常，部分能力受限。", "yellow"),
         false
       );
       return true;
     }
 
-    if (healthState === "error") {
+    if (healthState === "red") {
       setSystemStatus(
         statusRoot,
-        "error",
+        "red",
         "异常",
-        "系统状态异常",
-        getStatusReason(payload, "核心系统不可用或健康检查失败。"),
+        "关键功能不可用",
+        getStatusReason(payload, "检测到核心组件异常，关键功能暂不可用。", "red"),
         false
       );
       return true;
     }
 
-    if (healthState === "ok") {
+    if (healthState === "green") {
       setSystemStatus(
         statusRoot,
-        "ok",
-        "正常",
-        "系统状态正常",
-        getStatusReason(payload, buildHealthMessage(payload)),
+        "green",
+        "可用",
+        "功能可用",
+        getStatusReason(payload, buildFunctionalAvailabilityMessage(payload), "green"),
         false
       );
       return true;
@@ -998,8 +1127,8 @@
         statusRoot,
         "unconfigured",
         "未配置",
-        "系统状态未配置",
-        "未检测到 API_BASE，请先完成前端运行时配置。",
+        "功能可用性未配置",
+        "未检测到后端地址配置，请先完成前端运行时配置。",
         false
       );
       return;
@@ -1011,8 +1140,8 @@
           statusRoot,
           "loading",
           "检查中",
-          "系统状态检查中",
-          "正在连接后端服务，请稍候...",
+          "功能可用性检查中",
+          "正在获取系统健康摘要，请稍候...",
           false
         );
       }
@@ -1031,16 +1160,18 @@
             return;
           }
 
-          var message = "暂时无法连接后端服务，请稍后重试。";
+          var message = "当前无法获取系统健康摘要，暂时无法确认功能可用性。";
           if (error && (error.message === "HTTP_404" || error.message === "HTTP_405")) {
-            message = "后端未提供状态摘要接口，请检查 STATUS_SUMMARY_PATH 或后端版本。";
+            message = "后端未提供状态摘要接口，暂时无法确认功能可用性。";
           } else if (error && error.message && error.message.indexOf("HTTP_4") === 0) {
-            message = "请求配置异常，请检查 API_BASE 与 HEALTH_PATH。";
+            message = "状态摘要请求配置异常，暂时无法确认功能可用性。";
           } else if (error && error.name === "AbortError") {
-            message = "连接后端超时，请检查网络或稍后重试。";
+            message = "状态摘要请求超时，暂时无法确认功能可用性。";
+          } else {
+            message = "当前无法获取系统健康摘要，暂时无法确认功能可用性。";
           }
 
-          setSystemStatus(statusRoot, "error", "异常", "系统状态异常", message, true);
+          setSystemStatus(statusRoot, "red", "异常", "功能可用性未知", message, true);
         })
         .finally(function () {
           isProbing = false;
@@ -1049,7 +1180,7 @@
 
     if (retryButton) {
       retryButton.addEventListener("click", function () {
-        requestProbe(0, false);
+        requestProbe(0, true);
       });
     }
 
@@ -1057,7 +1188,7 @@
       if (isProbing) {
         return;
       }
-      requestProbe(0, false);
+      requestProbe(0, true);
     }
 
     statusRoot.addEventListener("click", onManualRefresh);

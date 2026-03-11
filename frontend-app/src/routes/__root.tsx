@@ -175,8 +175,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 role="status"
                 tabIndex={0}
                 aria-live="polite"
-                aria-label="系统状态检查中：正在连接后端服务，请稍候..."
-                title="系统状态检查中：正在连接后端服务，请稍候..."
+                aria-label="功能可用性检查中：正在获取系统健康摘要，请稍候..."
+                title="功能可用性检查中：正在获取系统健康摘要，请稍候..."
               >
                 <span className="traffic-signal" aria-hidden="true">
                   <span className="traffic-lamp" data-light="red"></span>
@@ -184,10 +184,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                   <span className="traffic-lamp" data-light="green"></span>
                 </span>
                 <span className="ll-sr-only" data-system-status-title>
-                  系统状态检查中
+                  功能可用性检查中
                 </span>
                 <span className="ll-sr-only" data-system-status-description>
-                  正在连接后端服务，请稍候...
+                  正在获取系统健康摘要，请稍候...
                 </span>
               </div>
               <ThemeSwitchSkeleton />
