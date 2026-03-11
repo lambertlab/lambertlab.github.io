@@ -2,10 +2,10 @@ import type { JSX } from 'react'
 import aboutHtmlRaw from '~/legacy-html/about/index.html?raw'
 import contactHtmlRaw from '~/legacy-html/contact/index.html?raw'
 import indexHtmlRaw from '~/legacy-html/index.html?raw'
-import insightAICollabRaw from '~/legacy-html/insights/ai-collaboration-checklist.html?raw'
-import insightsIndexHtmlRaw from '~/legacy-html/insights/index.html?raw'
-import insightModelFirstRaw from '~/legacy-html/insights/model-first-engineering.html?raw'
-import insightHabitsRaw from '~/legacy-html/insights/operational-habits-that-stick.html?raw'
+import journalAiCollabRaw from '~/legacy-html/journal/ai-collaboration-checklist.html?raw'
+import journalIndexHtmlRaw from '~/legacy-html/journal/index.html?raw'
+import journalModelFirstRaw from '~/legacy-html/journal/model-first-engineering.html?raw'
+import journalHabitsRaw from '~/legacy-html/journal/operational-habits-that-stick.html?raw'
 import projectsIndexHtmlRaw from '~/legacy-html/projects/index.html?raw'
 import projectAIMsgRaw from '~/legacy-html/projects/ai-message-value-triage/index.html?raw'
 import projectToolboxRaw from '~/legacy-html/projects/personal-toolbox/index.html?raw'
@@ -64,26 +64,22 @@ export const legacyPages = {
   projects: buildLegacyPage('projects', projectsIndexHtmlRaw, ['/css/page-projects.css'], {
     runtimeScripts: ['/js/projects-catalog.js'],
   }),
-  insights: buildLegacyPage('insights', insightsIndexHtmlRaw, ['/css/page-insights.css']),
-  journal: buildLegacyPage('journal', toJournalIndexSource(insightsIndexHtmlRaw), ['/css/page-insights.css']),
+  journal: buildLegacyPage('journal', toJournalIndexSource(journalIndexHtmlRaw), ['/css/page-journal.css']),
   projectPersonalToolbox: buildLegacyPage('project-personal-toolbox', projectToolboxRaw, ['/css/bento-pages.css']),
   projectAiMessageValueTriage: buildLegacyPage('project-ai-message-value-triage', projectAIMsgRaw, ['/css/bento-pages.css']),
-  insightModelFirstEngineering: buildLegacyPage('insight-model-first-engineering', insightModelFirstRaw, ['/css/bento-pages.css']),
-  insightAiCollaborationChecklist: buildLegacyPage('insight-ai-collaboration-checklist', insightAICollabRaw, ['/css/bento-pages.css']),
-  insightOperationalHabitsThatStick: buildLegacyPage('insight-operational-habits-that-stick', insightHabitsRaw, ['/css/bento-pages.css']),
   journalModelFirstEngineering: buildLegacyPage(
     'journal-model-first-engineering',
-    toJournalDetailSource(insightModelFirstRaw),
+    toJournalDetailSource(journalModelFirstRaw),
     ['/css/bento-pages.css'],
   ),
   journalAiCollaborationChecklist: buildLegacyPage(
     'journal-ai-collaboration-checklist',
-    toJournalDetailSource(insightAICollabRaw),
+    toJournalDetailSource(journalAiCollabRaw),
     ['/css/bento-pages.css'],
   ),
   journalOperationalHabitsThatStick: buildLegacyPage(
     'journal-operational-habits-that-stick',
-    toJournalDetailSource(insightHabitsRaw),
+    toJournalDetailSource(journalHabitsRaw),
     ['/css/bento-pages.css'],
   ),
 }
