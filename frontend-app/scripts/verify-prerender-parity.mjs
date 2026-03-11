@@ -9,6 +9,10 @@ const pagesToCheck = [
   'projects/index.html',
   'projects/personal-toolbox/index.html',
   'projects/ai-message-value-triage/index.html',
+  'journal/index.html',
+  'journal/model-first-engineering/index.html',
+  'journal/ai-collaboration-checklist/index.html',
+  'journal/operational-habits-that-stick/index.html',
   'insights/index.html',
   'insights/model-first-engineering.html',
   'insights/ai-collaboration-checklist.html',
@@ -19,7 +23,7 @@ const requiredFragments = [
   'class="ll-header"',
   'data-system-status',
   'href="/projects/index.html"',
-  'href="/insights/index.html"',
+  'href="/journal/index.html"',
   'href="/about/index.html"',
   'href="/contact/index.html"',
 ]
@@ -48,4 +52,3 @@ if (failed) {
 }
 
 console.log('[verify-prerender-parity] passed')
-

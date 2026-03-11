@@ -159,7 +159,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               <a className="ll-nav-link" href="/projects/index.html">
                 Projects
               </a>
-              <a className="ll-nav-link" href="/insights/index.html">
+              <a className="ll-nav-link" href="/journal/index.html">
                 Journal
               </a>
               <a className="ll-nav-link" href="/about/index.html">

@@ -19,7 +19,7 @@ if (!modeConfig) {
   throw new Error(`Unknown visual parity mode "${requestedMode}". Available modes: ${availableModes.join(', ')}`)
 }
 
-const oldSiteRoot = path.resolve(__dirname, '..', '..', '..', 'lambertlab.github.io')
+const oldSiteRoot = path.resolve(__dirname, '..', '..', 'baseline-site')
 const newSiteRoot = path.resolve(__dirname, '..', '.output', 'public')
 const reportRoot = path.resolve(__dirname, '..', 'qa', 'visual-parity')
 const runId = new Date().toISOString().replace(/[:.]/g, '-')
@@ -348,7 +348,7 @@ async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
   ]
   const navigationSequence = [
     { label: 'Projects', to: '/projects/index.html' },
-    { label: 'Journal', to: '/insights/index.html' },
+    { label: 'Journal', to: '/journal/index.html' },
     { label: 'About', to: '/about/index.html' },
     { label: 'Get in touch', to: '/contact/index.html' },
   ]
@@ -500,16 +500,18 @@ async function main() {
         for (const pageConfig of selectedPages) {
           const caseId = `${pageConfig.name}__${viewport.name}__${theme}`
           const relativeDir = sanitize(`${viewport.name}/${theme}/${pageConfig.name}`)
+          const oldPath = pageConfig.oldPath || pageConfig.path
+          const newPath = pageConfig.newPath || pageConfig.path
 
           console.log(`[visual] start ${caseId}`)
 
           try {
             await Promise.all([
-              oldPage.goto(joinUrl(oldBaseUrl, pageConfig.path), {
+              oldPage.goto(joinUrl(oldBaseUrl, oldPath), {
                 waitUntil: 'domcontentloaded',
                 timeout: 10000,
               }),
-              newPage.goto(joinUrl(newBaseUrl, pageConfig.path), {
+              newPage.goto(joinUrl(newBaseUrl, newPath), {
                 waitUntil: 'domcontentloaded',
                 timeout: 10000,
               }),
@@ -519,7 +521,8 @@ async function main() {
             results.push({
               caseId,
               page: pageConfig.name,
-              path: pageConfig.path,
+              oldPath,
+              newPath,
               viewport: viewport.name,
               theme,
               pass: false,
@@ -604,7 +607,8 @@ async function main() {
           results.push({
             caseId,
             page: pageConfig.name,
-            path: pageConfig.path,
+            oldPath,
+            newPath,
             viewport: viewport.name,
             theme,
             pass: casePass,

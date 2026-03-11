@@ -43,6 +43,20 @@ function buildLegacyPage(
   }
 }
 
+function toJournalIndexSource(source: string): string {
+  return source
+    .replace(/href="\.\/*model-first-engineering\.html"/g, 'href="./model-first-engineering/index.html"')
+    .replace(/href="\.\/*ai-collaboration-checklist\.html"/g, 'href="./ai-collaboration-checklist/index.html"')
+    .replace(/href="\.\/*operational-habits-that-stick\.html"/g, 'href="./operational-habits-that-stick/index.html"')
+}
+
+function toJournalDetailSource(source: string): string {
+  return source
+    .replace(/href="\.\.\/index\.html"/g, 'href="__LL_HOME_INDEX__"')
+    .replace(/href="\.\/*index\.html"/g, 'href="../index.html"')
+    .replace(/href="__LL_HOME_INDEX__"/g, 'href="../../index.html"')
+}
+
 export const legacyPages = {
   home: buildLegacyPage('home', indexHtmlRaw, ['/css/page-home.css'], { enableHomeSplit: true }),
   about: buildLegacyPage('about', aboutHtmlRaw, ['/css/page-about.css']),
@@ -51,11 +65,27 @@ export const legacyPages = {
     runtimeScripts: ['/js/projects-catalog.js'],
   }),
   insights: buildLegacyPage('insights', insightsIndexHtmlRaw, ['/css/page-insights.css']),
+  journal: buildLegacyPage('journal', toJournalIndexSource(insightsIndexHtmlRaw), ['/css/page-insights.css']),
   projectPersonalToolbox: buildLegacyPage('project-personal-toolbox', projectToolboxRaw, ['/css/bento-pages.css']),
   projectAiMessageValueTriage: buildLegacyPage('project-ai-message-value-triage', projectAIMsgRaw, ['/css/bento-pages.css']),
   insightModelFirstEngineering: buildLegacyPage('insight-model-first-engineering', insightModelFirstRaw, ['/css/bento-pages.css']),
   insightAiCollaborationChecklist: buildLegacyPage('insight-ai-collaboration-checklist', insightAICollabRaw, ['/css/bento-pages.css']),
   insightOperationalHabitsThatStick: buildLegacyPage('insight-operational-habits-that-stick', insightHabitsRaw, ['/css/bento-pages.css']),
+  journalModelFirstEngineering: buildLegacyPage(
+    'journal-model-first-engineering',
+    toJournalDetailSource(insightModelFirstRaw),
+    ['/css/bento-pages.css'],
+  ),
+  journalAiCollaborationChecklist: buildLegacyPage(
+    'journal-ai-collaboration-checklist',
+    toJournalDetailSource(insightAICollabRaw),
+    ['/css/bento-pages.css'],
+  ),
+  journalOperationalHabitsThatStick: buildLegacyPage(
+    'journal-operational-habits-that-stick',
+    toJournalDetailSource(insightHabitsRaw),
+    ['/css/bento-pages.css'],
+  ),
 }
 
 export const homeTailwindHeadScripts: Array<JSX.IntrinsicElements['script']> = [

@@ -4,7 +4,7 @@
     "smoke": {
       "viewports": ["desktop"],
       "themes": ["light", "dark"],
-      "pages": ["home", "projects", "insights", "about", "contact"]
+      "pages": ["home", "projects", "journal", "insights", "about", "contact"]
     },
     "full": {
       "viewports": "all",
@@ -39,6 +39,14 @@
       "path": "/projects/index.html",
       "heroSelector": ".page-hero",
       "contentSelector": "[data-project-grid]"
+    },
+    {
+      "name": "journal",
+      "path": "/journal/index.html",
+      "oldPath": "/insights/index.html",
+      "newPath": "/journal/index.html",
+      "heroSelector": ".hero",
+      "contentSelector": ".journal-grid"
     },
     {
       "name": "insights",
