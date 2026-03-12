@@ -11,10 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexDothtmlRouteImport } from './routes/index[.]html'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StatusIndexRouteImport } from './routes/status/index'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as JournalIndexRouteImport } from './routes/journal/index'
 import { Route as ContactIndexRouteImport } from './routes/contact/index'
 import { Route as AboutIndexRouteImport } from './routes/about/index'
+import { Route as StatusIndexDothtmlRouteImport } from './routes/status/index[.]html'
 import { Route as ProjectsIndexDothtmlRouteImport } from './routes/projects/index[.]html'
 import { Route as JournalIndexDothtmlRouteImport } from './routes/journal/index[.]html'
 import { Route as ContactIndexDothtmlRouteImport } from './routes/contact/index[.]html'
@@ -42,6 +44,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StatusIndexRoute = StatusIndexRouteImport.update({
+  id: '/status/',
+  path: '/status/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -60,6 +67,11 @@ const ContactIndexRoute = ContactIndexRouteImport.update({
 const AboutIndexRoute = AboutIndexRouteImport.update({
   id: '/about/',
   path: '/about/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusIndexDothtmlRoute = StatusIndexDothtmlRouteImport.update({
+  id: '/status/index.html',
+  path: '/status/index.html',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsIndexDothtmlRoute = ProjectsIndexDothtmlRouteImport.update({
@@ -162,10 +174,12 @@ export interface FileRoutesByFullPath {
   '/contact/index.html': typeof ContactIndexDothtmlRoute
   '/journal/index.html': typeof JournalIndexDothtmlRoute
   '/projects/index.html': typeof ProjectsIndexDothtmlRoute
+  '/status/index.html': typeof StatusIndexDothtmlRoute
   '/about/': typeof AboutIndexRoute
   '/contact/': typeof ContactIndexRoute
   '/journal/': typeof JournalIndexRoute
   '/projects/': typeof ProjectsIndexRoute
+  '/status/': typeof StatusIndexRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
   '/journal/operational-habits-that-stick/index.html': typeof JournalOperationalHabitsThatStickIndexDothtmlRoute
@@ -186,10 +200,12 @@ export interface FileRoutesByTo {
   '/contact/index.html': typeof ContactIndexDothtmlRoute
   '/journal/index.html': typeof JournalIndexDothtmlRoute
   '/projects/index.html': typeof ProjectsIndexDothtmlRoute
+  '/status/index.html': typeof StatusIndexDothtmlRoute
   '/about': typeof AboutIndexRoute
   '/contact': typeof ContactIndexRoute
   '/journal': typeof JournalIndexRoute
   '/projects': typeof ProjectsIndexRoute
+  '/status': typeof StatusIndexRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
   '/journal/operational-habits-that-stick/index.html': typeof JournalOperationalHabitsThatStickIndexDothtmlRoute
@@ -211,10 +227,12 @@ export interface FileRoutesById {
   '/contact/index.html': typeof ContactIndexDothtmlRoute
   '/journal/index.html': typeof JournalIndexDothtmlRoute
   '/projects/index.html': typeof ProjectsIndexDothtmlRoute
+  '/status/index.html': typeof StatusIndexDothtmlRoute
   '/about/': typeof AboutIndexRoute
   '/contact/': typeof ContactIndexRoute
   '/journal/': typeof JournalIndexRoute
   '/projects/': typeof ProjectsIndexRoute
+  '/status/': typeof StatusIndexRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
   '/journal/operational-habits-that-stick/index.html': typeof JournalOperationalHabitsThatStickIndexDothtmlRoute
@@ -237,10 +255,12 @@ export interface FileRouteTypes {
     | '/contact/index.html'
     | '/journal/index.html'
     | '/projects/index.html'
+    | '/status/index.html'
     | '/about/'
     | '/contact/'
     | '/journal/'
     | '/projects/'
+    | '/status/'
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
     | '/journal/operational-habits-that-stick/index.html'
@@ -261,10 +281,12 @@ export interface FileRouteTypes {
     | '/contact/index.html'
     | '/journal/index.html'
     | '/projects/index.html'
+    | '/status/index.html'
     | '/about'
     | '/contact'
     | '/journal'
     | '/projects'
+    | '/status'
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
     | '/journal/operational-habits-that-stick/index.html'
@@ -285,10 +307,12 @@ export interface FileRouteTypes {
     | '/contact/index.html'
     | '/journal/index.html'
     | '/projects/index.html'
+    | '/status/index.html'
     | '/about/'
     | '/contact/'
     | '/journal/'
     | '/projects/'
+    | '/status/'
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
     | '/journal/operational-habits-that-stick/index.html'
@@ -310,10 +334,12 @@ export interface RootRouteChildren {
   ContactIndexDothtmlRoute: typeof ContactIndexDothtmlRoute
   JournalIndexDothtmlRoute: typeof JournalIndexDothtmlRoute
   ProjectsIndexDothtmlRoute: typeof ProjectsIndexDothtmlRoute
+  StatusIndexDothtmlRoute: typeof StatusIndexDothtmlRoute
   AboutIndexRoute: typeof AboutIndexRoute
   ContactIndexRoute: typeof ContactIndexRoute
   JournalIndexRoute: typeof JournalIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
+  StatusIndexRoute: typeof StatusIndexRoute
   JournalAiCollaborationChecklistIndexDothtmlRoute: typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   JournalModelFirstEngineeringIndexDothtmlRoute: typeof JournalModelFirstEngineeringIndexDothtmlRoute
   JournalOperationalHabitsThatStickIndexDothtmlRoute: typeof JournalOperationalHabitsThatStickIndexDothtmlRoute
@@ -344,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/status/': {
+      id: '/status/'
+      path: '/status'
+      fullPath: '/status/'
+      preLoaderRoute: typeof StatusIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/': {
       id: '/projects/'
       path: '/projects'
@@ -370,6 +403,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about/'
       preLoaderRoute: typeof AboutIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status/index.html': {
+      id: '/status/index.html'
+      path: '/status/index.html'
+      fullPath: '/status/index.html'
+      preLoaderRoute: typeof StatusIndexDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/index.html': {
@@ -494,10 +534,12 @@ const rootRouteChildren: RootRouteChildren = {
   ContactIndexDothtmlRoute: ContactIndexDothtmlRoute,
   JournalIndexDothtmlRoute: JournalIndexDothtmlRoute,
   ProjectsIndexDothtmlRoute: ProjectsIndexDothtmlRoute,
+  StatusIndexDothtmlRoute: StatusIndexDothtmlRoute,
   AboutIndexRoute: AboutIndexRoute,
   ContactIndexRoute: ContactIndexRoute,
   JournalIndexRoute: JournalIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
+  StatusIndexRoute: StatusIndexRoute,
   JournalAiCollaborationChecklistIndexDothtmlRoute:
     JournalAiCollaborationChecklistIndexDothtmlRoute,
   JournalModelFirstEngineeringIndexDothtmlRoute:

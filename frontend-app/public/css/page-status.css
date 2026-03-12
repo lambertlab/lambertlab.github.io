@@ -1,0 +1,364 @@
+.status-page-shell {
+  min-height: 100vh;
+  padding: 112px 20px 72px;
+  background:
+    radial-gradient(circle at top left, rgba(244, 203, 98, 0.18), transparent 30%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 28%),
+    linear-gradient(180deg, #f8fafc 0%, #f5efe4 42%, #ffffff 100%);
+  color: #0f172a;
+}
+
+.status-page-hero,
+.status-sections {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.status-page-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.85fr);
+  gap: 24px;
+  align-items: stretch;
+  margin-bottom: 28px;
+}
+
+.status-page-copy,
+.status-hero-card,
+.status-section,
+.status-state-panel,
+.status-detail-card {
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 22px 50px -36px rgba(15, 23, 42, 0.38);
+}
+
+.status-page-copy,
+.status-hero-card,
+.status-section,
+.status-state-panel {
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(10px);
+}
+
+.status-page-copy {
+  padding: 32px;
+}
+
+.status-page-eyebrow,
+.status-detail-kicker {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #92400e;
+}
+
+.status-page-copy h1,
+.status-section-head h2,
+.status-hero-card h2,
+.status-state-panel h2,
+.status-detail-card h3 {
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+.status-page-copy h1 {
+  font-size: clamp(2.75rem, 6vw, 4.9rem);
+  line-height: 0.96;
+}
+
+.status-page-intro {
+  max-width: 62ch;
+  margin: 18px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: #334155;
+}
+
+.status-hero-card {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.status-hero-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -40px -56px auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.38);
+  filter: blur(4px);
+}
+
+.status-hero-card[data-tone="green"] {
+  background: linear-gradient(180deg, rgba(18, 148, 95, 0.92), rgba(14, 116, 144, 0.9));
+  color: #f8fafc;
+}
+
+.status-hero-card[data-tone="yellow"] {
+  background: linear-gradient(180deg, rgba(217, 119, 6, 0.92), rgba(194, 65, 12, 0.92));
+  color: #fff7ed;
+}
+
+.status-hero-card[data-tone="red"] {
+  background: linear-gradient(180deg, rgba(190, 24, 93, 0.92), rgba(153, 27, 27, 0.92));
+  color: #fff7f7;
+}
+
+.status-hero-card h2 {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(1.6rem, 2.5vw, 2.3rem);
+  line-height: 1.14;
+}
+
+.status-hero-card p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  line-height: 1.7;
+  color: inherit;
+}
+
+.status-sections {
+  display: grid;
+  gap: 20px;
+}
+
+.status-section,
+.status-state-panel {
+  padding: 28px;
+}
+
+.status-section-head,
+.status-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.status-section-head {
+  margin-bottom: 18px;
+}
+
+.status-summary-panel {
+  margin-bottom: 18px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 250, 240, 0.96), rgba(255, 255, 255, 0.84));
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.status-summary-text,
+.status-detail-note,
+.status-state-panel p,
+.status-detail-meta,
+.status-detail-path {
+  margin: 0;
+  line-height: 1.75;
+  color: #334155;
+}
+
+.status-summary-text {
+  font-size: 1.02rem;
+}
+
+.status-summary-meta {
+  margin: 8px 0 0;
+  line-height: 1.7;
+  color: #475569;
+}
+
+.status-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.status-detail-card {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.status-detail-card-empty {
+  grid-column: 1 / -1;
+}
+
+.status-detail-card h3 {
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.status-detail-card h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.status-detail-card h3 a:hover {
+  color: #1d4ed8;
+}
+
+.status-detail-note {
+  margin-top: 14px;
+}
+
+.status-detail-meta,
+.status-detail-path {
+  margin-top: 12px;
+  font-size: 0.92rem;
+  color: #64748b;
+}
+
+.status-token {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-token[data-tone="green"],
+.status-token[data-tone="up"],
+.status-token[data-tone="fresh"],
+.status-token[data-tone="info"] {
+  background: rgba(22, 163, 74, 0.12);
+  color: #166534;
+}
+
+.status-token[data-tone="yellow"],
+.status-token[data-tone="degraded"],
+.status-token[data-tone="aging"],
+.status-token[data-tone="warn"] {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+}
+
+.status-token[data-tone="red"],
+.status-token[data-tone="down"],
+.status-token[data-tone="stale"] {
+  background: rgba(225, 29, 72, 0.12);
+  color: #be123c;
+}
+
+.status-token[data-tone="unknown"] {
+  background: rgba(100, 116, 139, 0.14);
+  color: #475569;
+}
+
+@media (max-width: 960px) {
+  .status-page-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .status-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .status-page-shell {
+    padding: 96px 16px 56px;
+  }
+
+  .status-page-copy,
+  .status-hero-card,
+  .status-section,
+  .status-state-panel {
+    padding: 22px;
+    border-radius: 24px;
+  }
+
+  .status-section-head,
+  .status-detail-head {
+    flex-direction: column;
+  }
+
+  .status-token {
+    white-space: normal;
+  }
+}
+
+:root[data-resolved-theme="dark"] .status-page-shell {
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.13), transparent 28%),
+    linear-gradient(180deg, #07111f 0%, #101a29 44%, #08101a 100%);
+  color: #e2e8f0;
+}
+
+:root[data-resolved-theme="dark"] .status-page-copy,
+:root[data-resolved-theme="dark"] .status-section,
+:root[data-resolved-theme="dark"] .status-state-panel,
+:root[data-resolved-theme="dark"] .status-detail-card {
+  background: rgba(9, 16, 28, 0.86);
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 24px 56px -38px rgba(2, 6, 23, 0.9);
+}
+
+:root[data-resolved-theme="dark"] .status-page-eyebrow,
+:root[data-resolved-theme="dark"] .status-detail-kicker {
+  color: #fbbf24;
+}
+
+:root[data-resolved-theme="dark"] .status-page-intro,
+:root[data-resolved-theme="dark"] .status-summary-text,
+:root[data-resolved-theme="dark"] .status-detail-note,
+:root[data-resolved-theme="dark"] .status-state-panel p,
+:root[data-resolved-theme="dark"] .status-summary-meta {
+  color: #cbd5e1;
+}
+
+:root[data-resolved-theme="dark"] .status-summary-panel {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.72), rgba(15, 23, 42, 0.62));
+  border-color: rgba(251, 191, 36, 0.18);
+}
+
+:root[data-resolved-theme="dark"] .status-detail-meta,
+:root[data-resolved-theme="dark"] .status-detail-path {
+  color: #94a3b8;
+}
+
+:root[data-resolved-theme="dark"] .status-detail-card h3 a:hover {
+  color: #93c5fd;
+}
+
+:root[data-resolved-theme="dark"] .status-token[data-tone="green"],
+:root[data-resolved-theme="dark"] .status-token[data-tone="up"],
+:root[data-resolved-theme="dark"] .status-token[data-tone="fresh"],
+:root[data-resolved-theme="dark"] .status-token[data-tone="info"] {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+:root[data-resolved-theme="dark"] .status-token[data-tone="yellow"],
+:root[data-resolved-theme="dark"] .status-token[data-tone="degraded"],
+:root[data-resolved-theme="dark"] .status-token[data-tone="aging"],
+:root[data-resolved-theme="dark"] .status-token[data-tone="warn"] {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+}
+
+:root[data-resolved-theme="dark"] .status-token[data-tone="red"],
+:root[data-resolved-theme="dark"] .status-token[data-tone="down"],
+:root[data-resolved-theme="dark"] .status-token[data-tone="stale"] {
+  background: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+}
+
+:root[data-resolved-theme="dark"] .status-token[data-tone="unknown"] {
+  background: rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
+}

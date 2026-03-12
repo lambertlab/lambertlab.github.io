@@ -29,6 +29,7 @@
   window.__APP_CONFIG__ = {
     API_BASE: resolvedApiBase,
     STATUS_SUMMARY_PATH: currentConfig.STATUS_SUMMARY_PATH || "/status/summary",
+    STATUS_PUBLIC_PATH: currentConfig.STATUS_PUBLIC_PATH || "/status/public",
     HEALTH_PATH: currentConfig.HEALTH_PATH || "/healthz",
     HOME_CONTENT_PATH: currentConfig.HOME_CONTENT_PATH || "/home-content",
     STATUS_CACHE_TTL_MS: currentConfig.STATUS_CACHE_TTL_MS || 300000,

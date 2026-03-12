@@ -21,6 +21,8 @@ const prerenderPages = [
   '/projects/personal-website/index.html',
   '/journal/',
   '/journal/index.html',
+  '/status/',
+  '/status/index.html',
   '/journal/model-first-engineering/',
   '/journal/model-first-engineering/index.html',
   '/journal/ai-collaboration-checklist/',

@@ -11,6 +11,7 @@ const pagesToCheck = [
   'projects/ai-message-value-triage/index.html',
   'projects/personal-website/index.html',
   'journal/index.html',
+  'status/index.html',
   'journal/model-first-engineering/index.html',
   'journal/ai-collaboration-checklist/index.html',
   'journal/operational-habits-that-stick/index.html',

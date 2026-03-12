@@ -228,6 +228,7 @@ declare global {
     __APP_CONFIG__?: {
       API_BASE?: string
       REQUEST_TIMEOUT_MS?: number
+      STATUS_PUBLIC_PATH?: string
     }
   }
 }

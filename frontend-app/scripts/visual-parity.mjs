@@ -238,6 +238,89 @@ async function applyMockRoutes(context) {
     })
   })
 
+  await context.route('**/status/public', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        page: {
+          overall_status: {
+            status: 'green',
+            summary: 'Core public surfaces are available and content signals look healthy.',
+            updated_at: '2026-03-12T00:00:00Z',
+          },
+          public_surface: {
+            summary: {
+              status: 'green',
+              label: 'Core public surfaces are available.',
+            },
+            key_surfaces: [
+              {
+                key: 'home',
+                label: 'Home',
+                path: '/',
+                health: 'up',
+                note: 'Entry surface is serving normally.',
+              },
+              {
+                key: 'projects',
+                label: 'Projects',
+                path: '/projects/',
+                health: 'up',
+                note: 'Project catalog is available.',
+              },
+              {
+                key: 'journal',
+                label: 'Journal',
+                path: '/journal/',
+                health: 'up',
+                note: 'Writing surface is available.',
+              },
+            ],
+          },
+          content_freshness: {
+            summary: {
+              status: 'green',
+              label: 'Projects and journal content are up to date.',
+            },
+            areas: [
+              {
+                key: 'projects-catalog',
+                label: 'Projects Catalog',
+                freshness: 'fresh',
+                updated_at: '2026-03-12T00:00:00Z',
+                note: 'Project directory data is current.',
+              },
+              {
+                key: 'featured-projects',
+                label: 'Featured Projects',
+                freshness: 'fresh',
+                updated_at: '2026-03-12T00:00:00Z',
+                note: 'Homepage featured project projection is current.',
+              },
+              {
+                key: 'journal',
+                label: 'Journal',
+                freshness: 'fresh',
+                updated_at: '2026-03-12T00:00:00Z',
+                note: 'Journal content is current.',
+              },
+            ],
+            active_focus: 'Improving public information architecture and trust surfaces.',
+          },
+          known_issues: [
+            {
+              level: 'info',
+              title: 'Status is a public summary',
+              detail: 'Operational diagnostics and maintenance controls are intentionally excluded.',
+            },
+          ],
+        },
+      }),
+    })
+  })
+
   await context.route('**/healthz', async (route) => {
     await route.fulfill({
       status: 200,
