@@ -168,12 +168,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               <a className="ll-cta" href="/contact/index.html">
                 Get in touch
               </a>
-              <div
+              <a
                 className="system-health-nav"
                 data-system-status
                 data-status-state="loading"
-                role="status"
-                tabIndex={0}
+                href="/status/"
                 aria-live="polite"
                 aria-label="功能可用性检查中：正在获取系统健康摘要，请稍候..."
                 title="功能可用性检查中：正在获取系统健康摘要，请稍候..."
@@ -189,13 +188,29 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 <span className="ll-sr-only" data-system-status-description>
                   正在获取系统健康摘要，请稍候...
                 </span>
-              </div>
+              </a>
               <ThemeSwitchSkeleton />
             </div>
           </nav>
         </header>
 
         {children}
+        <footer className="ll-site-footer">
+          <div className="ll-site-footer-inner">
+            <div className="ll-site-footer-copy">
+              <span>© 2026 lambertlab</span>
+              <span>Public entry points</span>
+            </div>
+            <div className="ll-site-footer-links">
+              <a className="ll-site-footer-link" href="/contact/index.html">
+                Contact
+              </a>
+              <a className="ll-site-footer-link" href="/status/">
+                Status
+              </a>
+            </div>
+          </div>
+        </footer>
         <script src="/js/config.js"></script>
         <Scripts />
       </body>

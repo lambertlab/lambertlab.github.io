@@ -200,6 +200,19 @@
   color: var(--ll-text-strong) !important;
 }
 
+:root[data-resolved-theme="dark"] .ll-site-footer-inner {
+  border-top-color: rgba(130, 74, 55, 0.45) !important;
+}
+
+:root[data-resolved-theme="dark"] .ll-site-footer-copy,
+:root[data-resolved-theme="dark"] .ll-site-footer-link {
+  color: var(--ll-text-secondary) !important;
+}
+
+:root[data-resolved-theme="dark"] .ll-site-footer-link:hover {
+  color: var(--ll-accent-hover) !important;
+}
+
 :root[data-resolved-theme="dark"] .ll-nav-link,
 :root[data-resolved-theme="dark"] .nav-link,
 :root[data-resolved-theme="dark"] .top-links a {

@@ -19,14 +19,16 @@ const pagesToCheck = [
 
 const requiredFragments = [
   'class="ll-header"',
+  'class="ll-site-footer"',
   'data-system-status',
   'href="/projects/"',
   'href="/journal/index.html"',
   'href="/about/index.html"',
   'href="/contact/index.html"',
+  'href="/status/"',
 ]
 
-const forbiddenFragments = ['href="/projects/index.html"']
+const forbiddenFragments = ['href="/projects/index.html"', 'Control Center']
 
 const pageSpecificForbiddenFragments = {
   'projects/personal-toolbox/index.html': ['href="../index.html"', 'href="/projects/personal-toolbox/index.html"'],

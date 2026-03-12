@@ -30,7 +30,8 @@ export function parseLegacyHtml(source: string): ParsedLegacyHtml {
   const bodyInner = bodyMatch && bodyMatch[1] ? bodyMatch[1] : ''
 
   const afterHeader = bodyInner.replace(/^[\s\S]*?<\/header>/i, '')
-  const withoutScripts = afterHeader.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+  const withoutFooter = afterHeader.replace(/<footer\b[\s\S]*?<\/footer>/gi, '')
+  const withoutScripts = withoutFooter.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
   const bodyContentHtml = withoutScripts.trim()
 
   return {
@@ -39,4 +40,3 @@ export function parseLegacyHtml(source: string): ParsedLegacyHtml {
     bodyContentHtml,
   }
 }
-
