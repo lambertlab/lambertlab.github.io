@@ -685,7 +685,7 @@
         <span class="ll-brand-text">lambertlab</span>
       </a>
       <div class="ll-nav">
-        <a class="ll-nav-link" href="../projects/index.html">Projects</a>
+        <a class="ll-nav-link" href="../projects/">Projects</a>
         <a class="ll-nav-link" href="../journal/index.html">Journal</a>
         <a class="ll-nav-link" href="../about/index.html">About</a>
         <a class="ll-cta" href="../contact/index.html">Get in touch</a>
@@ -715,39 +715,39 @@
     <section class="page-hero" aria-label="Projects intro">
       <div class="hero-grid">
         <div>
-          <p class="hero-kicker">Project Catalog · Stage 2</p>
-          <h1 class="hero-title">Browse projects as a structured catalog.</h1>
+          <p class="hero-kicker">Project Catalog · API First</p>
+          <h1 class="hero-title">Browse projects with a single backend source.</h1>
           <p class="hero-desc">
-            目录页已进入可交互阶段：支持关键词检索、状态筛选、类型与年份过滤、排序和视图切换。
-            当前筛选状态会写入地址栏，刷新或分享链接都可以还原当前视图。
+            目录主数据源已切换到后端 <code>/projects</code>。
+            页面支持 loading / empty / error / retry 四态，并保持 URL 参数刷新与分享回放一致。
           </p>
           <div class="hero-chip-row">
-            <span class="chip">Model-first</span>
-            <span class="chip">AI Collaboration</span>
-            <span class="chip">Workflow Tools</span>
-            <span class="chip">Operational Design</span>
+            <span class="chip">GET /projects</span>
+            <span class="chip">Contract v1</span>
+            <span class="chip">URL Replay</span>
+            <span class="chip">State Governance</span>
           </div>
         </div>
         <div class="hero-metrics" aria-label="catalog metrics">
           <article class="metric">
             <p class="label">Total Items</p>
-            <p class="value" data-total-items>6 Projects</p>
-            <p class="desc">当前目录中可浏览条目</p>
+            <p class="value" data-total-items>--</p>
+            <p class="desc">后端返回的目录条目总数</p>
           </article>
           <article class="metric">
             <p class="label">Active Track</p>
-            <p class="value" data-live-items>3 Live</p>
-            <p class="desc">持续推进中的重点方向</p>
+            <p class="value" data-live-items>--</p>
+            <p class="desc">当前数据中 active 条目数量</p>
           </article>
           <article class="metric">
-            <p class="label">Updated</p>
-            <p class="value">Weekly</p>
-            <p class="desc">按周维护项目状态与文档</p>
+            <p class="label">Last Fetch</p>
+            <p class="value" data-last-sync>Pending</p>
+            <p class="desc">本次目录读取时间</p>
           </article>
           <article class="metric">
-            <p class="label">Layout</p>
-            <p class="value">Catalog</p>
-            <p class="desc">面向检索与筛选的结构化浏览</p>
+            <p class="label">Main Source</p>
+            <p class="value">/projects</p>
+            <p class="desc">静态卡片不再作为业务真值</p>
           </article>
         </div>
       </div>
@@ -756,23 +756,23 @@
     <section class="control-strip" aria-label="Project controls">
       <div class="field">
         <label class="field-label" for="project-search">Search</label>
-        <input class="field-input" id="project-search" type="search" placeholder="Search by title, tags, or keywords" />
+        <input class="field-input" id="project-search" type="search" placeholder="Search by name, description, tags, language" />
       </div>
       <div class="field">
         <label class="field-label" for="sort-by">Sort</label>
         <select class="field-select" id="sort-by">
-          <option value="recent">Most Recent</option>
-          <option value="downloads">Most Downloaded</option>
+          <option value="recent">Most Recent Push</option>
+          <option value="stars">Most Stars</option>
           <option value="name">Name (A-Z)</option>
         </select>
       </div>
       <div class="field">
         <label class="field-label" for="status-filter">Status</label>
         <select class="field-select" id="status-filter">
-          <option value="all">All Status</option>
-          <option value="live">Live</option>
-          <option value="beta">Beta</option>
-          <option value="lab">Lab</option>
+          <option value="all">All</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="archived">Archived</option>
         </select>
       </div>
       <button class="ghost-btn" type="button" id="clear-filters">Clear Filters</button>
@@ -781,36 +781,23 @@
     <section class="catalog-layout" aria-label="Project catalog">
       <aside class="filter-panel" aria-label="Catalog filters">
         <section class="filter-group">
-          <h2 class="filter-title">Type</h2>
+          <h2 class="filter-title">Contract Scope</h2>
           <div class="check-list">
-            <label class="check-item"><input type="checkbox" value="tooling" data-filter-type checked /> Tooling</label>
-            <label class="check-item"><input type="checkbox" value="ai-product" data-filter-type checked /> AI Product</label>
-            <label class="check-item"><input type="checkbox" value="infrastructure" data-filter-type checked /> Infrastructure</label>
-            <label class="check-item"><input type="checkbox" value="content-system" data-filter-type checked /> Content System</label>
-            <label class="check-item"><input type="checkbox" value="operations" data-filter-type checked /> Operations</label>
-            <label class="check-item"><input type="checkbox" value="ai-lab" data-filter-type checked /> AI Lab</label>
+            <label class="check-item"><input type="checkbox" id="featured-only" /> Featured only (API)</label>
+          </div>
+          <p class="catalog-note">目录主数据固定来自 <code>GET /projects</code>，静态卡片链路已退场。</p>
+        </section>
+
+        <section class="filter-group">
+          <h2 class="filter-title">Tag Snapshot</h2>
+          <div class="tag-cloud" data-tag-cloud>
+            <span class="tag">Waiting</span>
           </div>
         </section>
 
         <section class="filter-group">
-          <h2 class="filter-title">Tech Stack</h2>
-          <div class="tag-cloud">
-            <span class="tag">Python</span>
-            <span class="tag">FastAPI</span>
-            <span class="tag">TypeScript</span>
-            <span class="tag">Automation</span>
-            <span class="tag">RAG</span>
-            <span class="tag">CLI</span>
-          </div>
-        </section>
-
-        <section class="filter-group">
-          <h2 class="filter-title">Release Year</h2>
-          <div class="check-list">
-            <label class="check-item"><input type="checkbox" value="2026" data-filter-year checked /> 2026</label>
-            <label class="check-item"><input type="checkbox" value="2025" data-filter-year checked /> 2025</label>
-            <label class="check-item"><input type="checkbox" value="2024" data-filter-year checked /> 2024</label>
-          </div>
+          <h2 class="filter-title">Fetch Status</h2>
+          <p class="catalog-note" data-fetch-status>准备加载目录数据。</p>
         </section>
       </aside>
 
@@ -818,7 +805,7 @@
         <div class="results-head">
           <div>
             <h2 class="results-title">Project Directory</h2>
-            <p class="results-meta" data-results-meta>Showing 6 of 6 entries</p>
+            <p class="results-meta" data-results-meta>Loading projects...</p>
           </div>
           <div class="view-toggle" role="group" aria-label="View mode">
             <button class="view-btn active" data-view-mode="grid" type="button">Grid</button>
@@ -826,145 +813,19 @@
           </div>
         </div>
 
-        <div class="projects-grid" data-project-grid data-view="grid">
-          <article class="project-card" data-status="live" data-type="tooling" data-year="2026" data-updated="2026-03" data-downloads="4800" data-keywords="automation workflow dx personal toolbox">
-            <div class="project-top">
-              <h3 class="project-name"><a href="./personal-toolbox/index.html">Personal Toolbox</a></h3>
-              <span class="status-pill status-live">Live</span>
-            </div>
-            <p class="project-desc">统一高频开发操作、脚本与检查流程，把个人工程动作沉淀成可复用系统。</p>
-            <div class="project-tags">
-              <span class="project-tag">automation</span>
-              <span class="project-tag">workflow</span>
-              <span class="project-tag">dx</span>
-            </div>
-            <div class="project-stats">
-              <div class="stat-box"><p class="stat-label">Updated</p><p class="stat-value">2026-03</p></div>
-              <div class="stat-box"><p class="stat-label">Category</p><p class="stat-value">Tooling</p></div>
-              <div class="stat-box"><p class="stat-label">Downloads</p><p class="stat-value">4.8k</p></div>
-            </div>
-            <div class="project-actions">
-              <a class="btn primary" href="./personal-toolbox/index.html">View Detail</a>
-              <a class="btn" href="../journal/index.html">Related Notes</a>
-            </div>
-          </article>
-
-          <article class="project-card" data-status="live" data-type="ai-product" data-year="2026" data-updated="2026-02" data-downloads="3100" data-keywords="ai collaboration decision-flow message triage">
-            <div class="project-top">
-              <h3 class="project-name"><a href="./ai-message-value-triage/index.html">AI Message Value Triage</a></h3>
-              <span class="status-pill status-live">Live</span>
-            </div>
-            <p class="project-desc">在高噪声协作输入中进行价值分拣，帮助团队快速定位高影响信息并推进决策。</p>
-            <div class="project-tags">
-              <span class="project-tag">ai</span>
-              <span class="project-tag">collaboration</span>
-              <span class="project-tag">decision-flow</span>
-            </div>
-            <div class="project-stats">
-              <div class="stat-box"><p class="stat-label">Updated</p><p class="stat-value">2026-02</p></div>
-              <div class="stat-box"><p class="stat-label">Category</p><p class="stat-value">AI Product</p></div>
-              <div class="stat-box"><p class="stat-label">Downloads</p><p class="stat-value">3.1k</p></div>
-            </div>
-            <div class="project-actions">
-              <a class="btn primary" href="./ai-message-value-triage/index.html">View Detail</a>
-              <a class="btn" href="../journal/index.html">Related Notes</a>
-            </div>
-          </article>
-
-          <article class="project-card" data-status="beta" data-type="infrastructure" data-year="2026" data-updated="2026-03" data-downloads="2200" data-keywords="web system-design ops platform site core">
-            <div class="project-top">
-              <h3 class="project-name"><a href="../index.html">LambertLab Site Core</a></h3>
-              <span class="status-pill status-beta">Beta</span>
-            </div>
-            <p class="project-desc">个人站点前后端闭环工程：导航体系、可观测状态、内容组织和部署标准逐步产品化。</p>
-            <div class="project-tags">
-              <span class="project-tag">web</span>
-              <span class="project-tag">system-design</span>
-              <span class="project-tag">ops</span>
-            </div>
-            <div class="project-stats">
-              <div class="stat-box"><p class="stat-label">Updated</p><p class="stat-value">2026-03</p></div>
-              <div class="stat-box"><p class="stat-label">Category</p><p class="stat-value">Platform</p></div>
-              <div class="stat-box"><p class="stat-label">Downloads</p><p class="stat-value">2.2k</p></div>
-            </div>
-            <div class="project-actions">
-              <a class="btn" href="../index.html">Open Site</a>
-              <a class="btn" href="https://github.com/lambertlab" target="_blank" rel="noreferrer">Source</a>
-            </div>
-          </article>
-
-          <article class="project-card" data-status="beta" data-type="content-system" data-year="2026" data-updated="2026-01" data-downloads="1300" data-keywords="content schema pipeline data">
-            <div class="project-top">
-              <h3 class="project-name"><a href="#" aria-disabled="true">Content Data Pipeline</a></h3>
-              <span class="status-pill status-beta">Beta</span>
-            </div>
-            <p class="project-desc">将首页与栏目内容从静态文本迁移到结构化数据源，为后续配置化发布与多端复用做准备。</p>
-            <div class="project-tags">
-              <span class="project-tag">content</span>
-              <span class="project-tag">schema</span>
-              <span class="project-tag">pipeline</span>
-            </div>
-            <div class="project-stats">
-              <div class="stat-box"><p class="stat-label">Updated</p><p class="stat-value">2026-01</p></div>
-              <div class="stat-box"><p class="stat-label">Category</p><p class="stat-value">Data</p></div>
-              <div class="stat-box"><p class="stat-label">Downloads</p><p class="stat-value">1.3k</p></div>
-            </div>
-            <div class="project-actions">
-              <a class="btn" href="#" aria-disabled="true">Preview</a>
-              <a class="btn" href="../contact/index.html">Discuss</a>
-            </div>
-          </article>
-
-          <article class="project-card" data-status="lab" data-type="operations" data-year="2025" data-updated="2025-12" data-downloads="840" data-keywords="delivery operations teamwork toolkit">
-            <div class="project-top">
-              <h3 class="project-name"><a href="#" aria-disabled="true">Delivery Rhythm Toolkit</a></h3>
-              <span class="status-pill status-lab">Lab</span>
-            </div>
-            <p class="project-desc">为团队提供可落地的节奏管理模板，覆盖计划、评审、回顾与风险暴露的运营工作流。</p>
-            <div class="project-tags">
-              <span class="project-tag">delivery</span>
-              <span class="project-tag">operations</span>
-              <span class="project-tag">teamwork</span>
-            </div>
-            <div class="project-stats">
-              <div class="stat-box"><p class="stat-label">Updated</p><p class="stat-value">2025-12</p></div>
-              <div class="stat-box"><p class="stat-label">Category</p><p class="stat-value">Ops</p></div>
-              <div class="stat-box"><p class="stat-label">Downloads</p><p class="stat-value">840</p></div>
-            </div>
-            <div class="project-actions">
-              <a class="btn" href="../journal/index.html">Read Journal</a>
-              <a class="btn" href="../contact/index.html">Contact</a>
-            </div>
-          </article>
-
-          <article class="project-card" data-status="lab" data-type="ai-lab" data-year="2025" data-updated="2025-11" data-downloads="620" data-keywords="prompting qa eval harness">
-            <div class="project-top">
-              <h3 class="project-name"><a href="#" aria-disabled="true">Prompt QA Harness</a></h3>
-              <span class="status-pill status-lab">Lab</span>
-            </div>
-            <p class="project-desc">用于验证提示词策略与输出质量的一致性基线，目标是降低 AI 协作中的回归风险。</p>
-            <div class="project-tags">
-              <span class="project-tag">prompting</span>
-              <span class="project-tag">qa</span>
-              <span class="project-tag">eval</span>
-            </div>
-            <div class="project-stats">
-              <div class="stat-box"><p class="stat-label">Updated</p><p class="stat-value">2025-11</p></div>
-              <div class="stat-box"><p class="stat-label">Category</p><p class="stat-value">AI Lab</p></div>
-              <div class="stat-box"><p class="stat-label">Downloads</p><p class="stat-value">620</p></div>
-            </div>
-            <div class="project-actions">
-              <a class="btn" href="../contact/index.html">Request Access</a>
-              <a class="btn" href="https://github.com/lambertlab" target="_blank" rel="noreferrer">GitHub</a>
-            </div>
-          </article>
+        <div class="catalog-state" data-loading-state role="status" aria-live="polite">正在从 /projects 加载目录，请稍候...</div>
+        <div class="catalog-state catalog-state-error" data-error-state hidden>
+          <p class="catalog-state-title">目录加载失败</p>
+          <p class="catalog-state-detail" data-error-detail>请求失败，请检查后端连接状态。</p>
+          <button class="ghost-btn" type="button" id="retry-fetch">Retry</button>
         </div>
 
-        <p class="empty-state" data-empty-state hidden>未找到匹配项。可以放宽关键词，或重置筛选条件后再试。</p>
+        <div class="projects-grid" data-project-grid data-view="grid" hidden></div>
+        <p class="empty-state" data-empty-state hidden>未找到符合条件的项目。可以放宽关键词，或重置筛选后再试。</p>
 
         <div class="list-footer">
-          <span>Stage 2 已启用：搜索、筛选、排序与视图切换。</span>
-          <span>当前筛选会自动同步到 URL，便于刷新和分享。</span>
+          <span>目录主链路：GET /projects（Contract v1）。</span>
+          <span>筛选状态自动同步到 URL，可刷新与分享回放。</span>
         </div>
       </div>
     </section>

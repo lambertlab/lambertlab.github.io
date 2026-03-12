@@ -57,6 +57,10 @@ function toJournalDetailSource(source: string): string {
     .replace(/href="__LL_HOME_INDEX__"/g, 'href="../../index.html"')
 }
 
+function toProjectsDetailSource(source: string): string {
+  return source.replace(/href="\.\.\/index\.html"/g, 'href="../"')
+}
+
 export const legacyPages = {
   home: buildLegacyPage('home', indexHtmlRaw, ['/css/page-home.css'], { enableHomeSplit: true }),
   about: buildLegacyPage('about', aboutHtmlRaw, ['/css/page-about.css']),
@@ -65,8 +69,16 @@ export const legacyPages = {
     runtimeScripts: ['/js/projects-catalog.js'],
   }),
   journal: buildLegacyPage('journal', toJournalIndexSource(journalIndexHtmlRaw), ['/css/page-journal.css']),
-  projectPersonalToolbox: buildLegacyPage('project-personal-toolbox', projectToolboxRaw, ['/css/bento-pages.css']),
-  projectAiMessageValueTriage: buildLegacyPage('project-ai-message-value-triage', projectAIMsgRaw, ['/css/bento-pages.css']),
+  projectPersonalToolbox: buildLegacyPage(
+    'project-personal-toolbox',
+    toProjectsDetailSource(projectToolboxRaw),
+    ['/css/bento-pages.css'],
+  ),
+  projectAiMessageValueTriage: buildLegacyPage(
+    'project-ai-message-value-triage',
+    toProjectsDetailSource(projectAIMsgRaw),
+    ['/css/bento-pages.css'],
+  ),
   journalModelFirstEngineering: buildLegacyPage(
     'journal-model-first-engineering',
     toJournalDetailSource(journalModelFirstRaw),

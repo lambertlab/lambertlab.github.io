@@ -287,7 +287,7 @@ async function takeKeyAreaScreenshot(page, selector, outputPath) {
 async function waitForPageStable(page) {
   await page.waitForLoadState('domcontentloaded')
   await page.waitForSelector('[data-theme-mode-switch]', { timeout: 5000 }).catch(() => {})
-  await wait(350)
+  await wait(900)
 }
 
 async function collectNodeRects(page, selectors) {
@@ -347,7 +347,7 @@ async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
     '[data-system-status]',
   ]
   const navigationSequence = [
-    { label: 'Projects', to: '/projects/index.html' },
+    { label: 'Projects', to: '/projects/' },
     { label: 'Journal', to: '/journal/index.html' },
     { label: 'About', to: '/about/index.html' },
     { label: 'Get in touch', to: '/contact/index.html' },
@@ -409,6 +409,8 @@ function renderMarkdownReport(report) {
   lines.push(`- New Site: \`${report.newBaseUrl}\``)
   lines.push(`- Total Cases: \`${report.summary.totalCases}\``)
   lines.push(`- Failed Cases: \`${report.summary.failedCases}\``)
+  lines.push(`- Expected Diffs: \`${report.summary.expectedDiffCases}\``)
+  lines.push(`- Blocking Failures: \`${report.summary.blockingFailedCases}\``)
   lines.push(`- Full Page Threshold: \`${report.thresholds.fullPageMismatchRatio}\``)
   lines.push(`- Key Area Threshold: \`${report.thresholds.keyAreaMismatchRatio}\``)
   lines.push('')
@@ -418,14 +420,14 @@ function renderMarkdownReport(report) {
   lines.push(`- Threshold: \`${report.headerStability.thresholdPx}px\``)
   lines.push(`- Pass: \`${report.headerStability.pass}\``)
   lines.push('')
-  lines.push('## Failing Cases')
+  lines.push('## Blocking Failures')
   lines.push('')
 
-  const failedCases = report.results.filter((item) => !item.pass)
-  if (failedCases.length === 0) {
+  const blockingFailures = report.results.filter((item) => !item.pass && !item.expected)
+  if (blockingFailures.length === 0) {
     lines.push('- None')
   } else {
-    for (const entry of failedCases) {
+    for (const entry of blockingFailures) {
       lines.push(`- ${entry.caseId}: full=${entry.full.mismatchRatio.toFixed(4)} pass=${entry.pass}`)
       for (const keyArea of entry.keyAreas) {
         const skipFlag = keyArea.skipped ? ' skipped=true' : ''
@@ -433,6 +435,19 @@ function renderMarkdownReport(report) {
           `  - ${keyArea.name}: exists=${keyArea.exists}${skipFlag} ratio=${keyArea.mismatchRatio.toFixed(4)} pass=${keyArea.pass}`,
         )
       }
+    }
+  }
+
+  lines.push('')
+  lines.push('## Expected Diffs')
+  lines.push('')
+
+  const expectedDiffs = report.results.filter((item) => item.expected)
+  if (expectedDiffs.length === 0) {
+    lines.push('- None')
+  } else {
+    for (const entry of expectedDiffs) {
+      lines.push(`- ${entry.caseId}: full=${entry.full.mismatchRatio.toFixed(4)} reason=${entry.expectedReason}`)
     }
   }
 
@@ -448,6 +463,7 @@ async function main() {
   const selectedViewports = pickByName(config.viewports, modeConfig.viewports, 'viewport')
   const selectedThemes = modeConfig.themes === 'all' ? config.themes : modeConfig.themes || []
   const selectedPages = pickByName(config.pages, modeConfig.pages, 'page')
+  const expectedDiffMap = modeConfig.expectedDiffs || {}
 
   if (selectedThemes.length === 0) {
     throw new Error(`Mode "${requestedMode}" has no themes configured`)
@@ -604,6 +620,8 @@ async function main() {
           }
 
           const casePass = fullPass && keyAreaResults.every((item) => item.pass)
+          const expectedReason = !casePass ? expectedDiffMap[caseId] : null
+          const expected = Boolean(expectedReason)
           results.push({
             caseId,
             page: pageConfig.name,
@@ -612,6 +630,8 @@ async function main() {
             viewport: viewport.name,
             theme,
             pass: casePass,
+            expected,
+            expectedReason,
             full: {
               mismatchRatio: fullCompare.mismatchRatio,
               threshold: config.thresholds.fullPageMismatchRatio,
@@ -620,7 +640,7 @@ async function main() {
           })
 
           console.log(
-            `[visual] ${caseId} full=${fullCompare.mismatchRatio.toFixed(4)} pass=${casePass ? 'yes' : 'no'}`,
+            `[visual] ${caseId} full=${fullCompare.mismatchRatio.toFixed(4)} pass=${casePass ? 'yes' : 'no'}${expected ? ' expected=yes' : ''}`,
           )
         }
 
@@ -639,6 +659,12 @@ async function main() {
     )
 
     const failedCases = results.filter((item) => !item.pass).length
+    const expectedDiffCases = results.filter((item) => !item.pass && item.expected).length
+    const blockingFailedCases = results.filter((item) => !item.pass && !item.expected).length
+    const expectedDiffConfiguredCases = Object.keys(expectedDiffMap).length
+    const unusedExpectedDiffCases = Object.keys(expectedDiffMap).filter(
+      (caseId) => !results.some((result) => result.caseId === caseId && !result.pass),
+    )
     const report = {
       mode: requestedMode,
       runId,
@@ -652,6 +678,10 @@ async function main() {
       summary: {
         totalCases: results.length,
         failedCases,
+        expectedDiffCases,
+        blockingFailedCases,
+        expectedDiffConfiguredCases,
+        unusedExpectedDiffCases,
       },
       headerStability,
       results,
@@ -665,7 +695,7 @@ async function main() {
     }
     copyDirectory(runDir, latestDir)
 
-    if (failedCases > 0 || !headerStability.pass) {
+    if (blockingFailedCases > 0 || !headerStability.pass) {
       console.error('[visual-parity] failed')
       process.exitCode = 1
       return

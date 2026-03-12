@@ -18,11 +18,18 @@ const pagesToCheck = [
 const requiredFragments = [
   'class="ll-header"',
   'data-system-status',
-  'href="/projects/index.html"',
+  'href="/projects/"',
   'href="/journal/index.html"',
   'href="/about/index.html"',
   'href="/contact/index.html"',
 ]
+
+const forbiddenFragments = ['href="/projects/index.html"']
+
+const pageSpecificForbiddenFragments = {
+  'projects/personal-toolbox/index.html': ['href="../index.html"', 'href="/projects/personal-toolbox/index.html"'],
+  'projects/ai-message-value-triage/index.html': ['href="../index.html"', 'href="/projects/ai-message-value-triage/index.html"'],
+}
 
 let failed = false
 
@@ -38,6 +45,21 @@ for (const relativePagePath of pagesToCheck) {
   for (const fragment of requiredFragments) {
     if (!html.includes(fragment)) {
       console.error(`[contract] ${relativePagePath} missing "${fragment}"`)
+      failed = true
+    }
+  }
+
+  for (const fragment of forbiddenFragments) {
+    if (html.includes(fragment)) {
+      console.error(`[contract] ${relativePagePath} should not contain "${fragment}"`)
+      failed = true
+    }
+  }
+
+  const pageSpecificFragments = pageSpecificForbiddenFragments[relativePagePath] ?? []
+  for (const fragment of pageSpecificFragments) {
+    if (html.includes(fragment)) {
+      console.error(`[contract] ${relativePagePath} should not contain "${fragment}"`)
       failed = true
     }
   }

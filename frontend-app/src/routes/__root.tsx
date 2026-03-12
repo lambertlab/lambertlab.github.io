@@ -156,7 +156,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               <span className="ll-brand-text">lambertlab</span>
             </a>
             <div className="ll-nav">
-              <a className="ll-nav-link" href="/projects/index.html">
+              <a className="ll-nav-link" href="/projects/">
                 Projects
               </a>
               <a className="ll-nav-link" href="/journal/index.html">

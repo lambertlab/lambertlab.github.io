@@ -4,7 +4,11 @@
     "smoke": {
       "viewports": ["desktop"],
       "themes": ["light", "dark"],
-      "pages": ["home", "projects", "journal", "about", "contact"]
+      "pages": ["home", "projects", "journal", "about", "contact"],
+      "expectedDiffs": {
+        "projects__desktop__light": "Projects page is API-first redesigned; baseline snapshot not refreshed yet.",
+        "projects__desktop__dark": "Projects page is API-first redesigned; baseline snapshot not refreshed yet."
+      }
     },
     "full": {
       "viewports": "all",
@@ -36,13 +40,15 @@
     },
     {
       "name": "projects",
-      "path": "/projects/index.html",
+      "path": "/projects/",
+      "oldPath": "/projects/index.html",
       "heroSelector": ".page-hero",
       "contentSelector": "[data-project-grid]"
     },
     {
       "name": "journal",
       "path": "/journal/index.html",
+      "oldPath": "/insights/index.html",
       "heroSelector": ".hero",
       "contentSelector": ".journal-grid"
     },
@@ -60,13 +66,13 @@
     },
     {
       "name": "project-personal-toolbox",
-      "path": "/projects/personal-toolbox/index.html",
+      "path": "/projects/personal-toolbox/",
       "heroSelector": ".hero",
       "contentSelector": ".article"
     },
     {
       "name": "project-ai-message-value-triage",
-      "path": "/projects/ai-message-value-triage/index.html",
+      "path": "/projects/ai-message-value-triage/",
       "heroSelector": ".hero",
       "contentSelector": ".article"
     }

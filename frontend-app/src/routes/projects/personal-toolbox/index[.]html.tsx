@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { LegacyPageView } from '~/components/LegacyPageView'
+import { useProjectsCompatPathNormalization } from '~/lib/projectsCompatPathNormalization'
 import { buildLegacyHead, legacyPages } from '~/legacy/pages'
 
 export const Route = createFileRoute('/projects/personal-toolbox/index.html')({
@@ -8,6 +9,6 @@ export const Route = createFileRoute('/projects/personal-toolbox/index.html')({
 })
 
 function ProjectPersonalToolboxHtmlPage() {
+  useProjectsCompatPathNormalization()
   return <LegacyPageView page={legacyPages.projectPersonalToolbox} />
 }
-

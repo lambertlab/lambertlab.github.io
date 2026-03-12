@@ -315,6 +315,23 @@
       color: #475569;
     }
 
+    .catalog-note {
+      margin: 10px 0 0;
+      color: #64748b;
+      font-size: 0.84rem;
+      line-height: 1.62;
+    }
+
+    .catalog-note code {
+      background: #f8fbff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1px 5px;
+      color: #1e40af;
+      font-family: var(--ll-font-mono);
+      font-size: 0.74rem;
+    }
+
     .results-panel {
       padding: 14px;
     }
@@ -365,6 +382,41 @@
     .view-btn.active {
       background: var(--chip);
       color: #1e40af;
+    }
+
+    .catalog-state {
+      border: 1px dashed var(--line-strong);
+      border-radius: 14px;
+      background: #fff;
+      color: #475569;
+      padding: 14px;
+      font-size: 0.9rem;
+      line-height: 1.65;
+      margin-bottom: 10px;
+    }
+
+    .catalog-state-title {
+      margin: 0;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+
+    .catalog-state-detail {
+      margin: 8px 0 0;
+      color: #64748b;
+      font-size: 0.88rem;
+      line-height: 1.65;
+    }
+
+    .catalog-state-error {
+      border-style: solid;
+      border-color: #fecaca;
+      background: #fff7f7;
+    }
+
+    .catalog-state-error .ghost-btn {
+      margin-top: 10px;
     }
 
     .projects-grid {
