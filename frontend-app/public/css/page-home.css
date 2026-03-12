@@ -267,6 +267,77 @@
       color: #334155;
     }
 
+    .featured-project-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .featured-project-card:hover .featured-project-arrow,
+    .featured-project-card:focus-visible .featured-project-arrow {
+      transform: translateX(2px);
+      background: #dbeafe;
+    }
+
+    .featured-project-card-hero {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 188px;
+    }
+
+    .featured-project-copy {
+      display: grid;
+      gap: 0.72rem;
+      max-width: 32rem;
+    }
+
+    .featured-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .featured-chip-row .card-meta {
+      margin-top: 0;
+    }
+
+    .featured-project-arrow {
+      flex: 0 0 auto;
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #eff6ff;
+      color: #2563eb;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    .featured-directory-card {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .featured-directory-card:hover,
+    .featured-directory-card:focus-visible {
+      border-color: #bfd3fa;
+    }
+
+    .featured-project-card[data-featured-state="error"] .featured-project-arrow {
+      background: #f8fafc;
+      color: #64748b;
+    }
+
+    .featured-project-card[data-featured-state="error"] .accent-label,
+    .featured-project-card[data-featured-state="error"] h3,
+    .featured-project-card[data-featured-state="error"] p {
+      color: #475569;
+    }
+
     @media (max-width: 1024px) {
       .split-layout {
         flex-direction: column;
@@ -295,6 +366,14 @@
       .hero-title {
         font-size: 2.2rem !important;
         line-height: 1.15 !important;
+      }
+
+      .featured-project-card-hero {
+        min-height: auto;
+      }
+
+      .featured-project-card-hero {
+        align-items: flex-start !important;
       }
     }
 

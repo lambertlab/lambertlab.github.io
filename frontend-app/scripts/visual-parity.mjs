@@ -259,6 +259,222 @@ async function applyMockRoutes(context) {
       body: JSON.stringify({ ok: false, reason: 'mock-disabled' }),
     })
   })
+
+  const mockProjects = [
+    {
+      project_key: 'personal-toolbox',
+      slug: 'personal-toolbox',
+      canonical_path: '/projects/personal-toolbox/',
+      name: 'Personal Toolbox',
+      summary: 'A compact personal tooling workspace for daily execution loops.',
+      headline: 'A stable toolbox surface for recurring work and small utilities.',
+      overview: 'This project consolidates task helpers, repeatable commands, and lightweight automation into one practical workspace.',
+      stage: 'active',
+      source_type: 'github',
+      project_type: 'tooling',
+      stack: ['TypeScript', 'Node.js'],
+      is_featured: true,
+      featured_rank: 1,
+      status_note: 'Actively iterating on operator workflows.',
+      highlights: ['Shared project truth source.', 'Stable detail routing.'],
+      links: {
+        primary: 'https://example.com/projects/personal-toolbox/',
+        repo: 'https://github.com/lambertlab/personal-toolbox',
+        demo: null,
+        docs: null,
+        notes: null,
+      },
+      source_refs: {
+        repo_full_name: 'lambertlab/personal-toolbox',
+        repo_url: 'https://github.com/lambertlab/personal-toolbox',
+        visibility: 'public',
+      },
+      updated_at: '2026-03-12T00:00:00Z',
+      synced_at: '2026-03-12T00:00:00Z',
+      full_name: 'lambertlab/personal-toolbox',
+      url: 'https://github.com/lambertlab/personal-toolbox',
+      description: 'Legacy compatibility description.',
+      language: 'TypeScript',
+      stargazers_count: 0,
+      forks_count: 0,
+      pushed_at: '2026-03-12T00:00:00Z',
+      visibility: 'public',
+      archived: false,
+      fork: false,
+      source: 'github',
+      tags: ['tooling', 'automation'],
+      is_active: true,
+      created_at: '2026-03-11T00:00:00Z',
+    },
+    {
+      project_key: 'ai-message-value-triage',
+      slug: 'ai-message-value-triage',
+      canonical_path: '/projects/ai-message-value-triage/',
+      name: 'AI Message Value Triage',
+      summary: 'Evaluate message quality with reusable triage heuristics.',
+      headline: 'Message analysis with lightweight operational scoring.',
+      overview: 'The project explores message review workflows and repeatable signal extraction for AI collaboration.',
+      stage: 'research',
+      source_type: 'github',
+      project_type: 'agent',
+      stack: ['Python', 'Prompts'],
+      is_featured: true,
+      featured_rank: 2,
+      status_note: 'Research track remains active.',
+      highlights: ['Shared homepage and catalog entry fields.', 'Detail page reads backend contract.'],
+      links: {
+        primary: 'https://example.com/projects/ai-message-value-triage/',
+        repo: 'https://github.com/lambertlab/ai-message-value-triage',
+        demo: null,
+        docs: null,
+        notes: null,
+      },
+      source_refs: {
+        repo_full_name: 'lambertlab/ai-message-value-triage',
+        repo_url: 'https://github.com/lambertlab/ai-message-value-triage',
+        visibility: 'public',
+      },
+      updated_at: '2026-03-11T00:00:00Z',
+      synced_at: '2026-03-12T00:00:00Z',
+      full_name: 'lambertlab/ai-message-value-triage',
+      url: 'https://github.com/lambertlab/ai-message-value-triage',
+      description: 'Legacy compatibility description.',
+      language: 'Python',
+      stargazers_count: 0,
+      forks_count: 0,
+      pushed_at: '2026-03-11T00:00:00Z',
+      visibility: 'public',
+      archived: false,
+      fork: false,
+      source: 'github',
+      tags: ['agent', 'ai'],
+      is_active: true,
+      created_at: '2026-03-11T00:00:00Z',
+    },
+    {
+      project_key: 'personal-website',
+      slug: 'personal-website',
+      canonical_path: '/projects/personal-website/',
+      name: 'Personal Website',
+      summary: 'A unified home for projects, journal, and profile content.',
+      headline: 'The main site rebuilt around a durable project catalog.',
+      overview: 'This project aligns homepage entry points, catalog cards, and detail routes around a shared project contract.',
+      stage: 'building',
+      source_type: 'github',
+      project_type: 'website',
+      stack: ['TypeScript', 'React', 'Nitro'],
+      is_featured: true,
+      featured_rank: 3,
+      status_note: 'Catalog phase 2 is in flight.',
+      highlights: ['Homepage featured sync.', 'Detail skeleton foundation.'],
+      links: {
+        primary: 'https://example.com/projects/personal-website/',
+        repo: 'https://github.com/lambertlab/lambertlab.github.io',
+        demo: 'https://example.com',
+        docs: null,
+        notes: null,
+      },
+      source_refs: {
+        repo_full_name: 'lambertlab/lambertlab.github.io',
+        repo_url: 'https://github.com/lambertlab/lambertlab.github.io',
+        visibility: 'public',
+      },
+      updated_at: '2026-03-10T00:00:00Z',
+      synced_at: '2026-03-12T00:00:00Z',
+      full_name: 'lambertlab/lambertlab.github.io',
+      url: 'https://github.com/lambertlab/lambertlab.github.io',
+      description: 'Legacy compatibility description.',
+      language: 'TypeScript',
+      stargazers_count: 0,
+      forks_count: 0,
+      pushed_at: '2026-03-10T00:00:00Z',
+      visibility: 'public',
+      archived: false,
+      fork: false,
+      source: 'github',
+      tags: ['website', 'catalog'],
+      is_active: true,
+      created_at: '2026-03-11T00:00:00Z',
+    },
+  ]
+
+  await context.route('http://127.0.0.1:8000/projects/featured**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        count: mockProjects.length,
+        projects: mockProjects,
+        fetched_at: '2026-03-12T00:00:00Z',
+      }),
+    })
+  })
+
+  await context.route('http://127.0.0.1:8000/projects', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        count: mockProjects.length,
+        projects: mockProjects,
+        fetched_at: '2026-03-12T00:00:00Z',
+      }),
+    })
+  })
+
+  await context.route('http://127.0.0.1:8000/projects?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        count: mockProjects.length,
+        projects: mockProjects,
+        fetched_at: '2026-03-12T00:00:00Z',
+      }),
+    })
+  })
+
+  await context.route('http://127.0.0.1:8000/projects/*', async (route) => {
+    const url = new URL(route.request().url())
+    const slug = url.pathname.split('/').filter(Boolean).pop()
+    if (slug === 'featured') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          count: mockProjects.length,
+          projects: mockProjects,
+          fetched_at: '2026-03-12T00:00:00Z',
+        }),
+      })
+      return
+    }
+    const matchedProject = mockProjects.find((item) => item.slug === slug)
+
+    if (!matchedProject) {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          detail: 'Project not found.',
+        }),
+      })
+      return
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: true,
+        project: matchedProject,
+      }),
+    })
+  })
 }
 
 async function configureContext(context, theme) {

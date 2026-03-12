@@ -2,11 +2,13 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ProjectDetailPage } from '~/components/projects/ProjectDetailPage'
 import { buildProjectDetailHead } from '~/components/projects/projectDetailHead'
 
-export const Route = createFileRoute('/projects/ai-message-value-triage/')({
+export const Route = createFileRoute('/projects/$projectSlug/')({
   head: () => buildProjectDetailHead(),
-  component: ProjectAiMessageValueTriagePage,
+  component: DynamicProjectDetailPage,
 })
 
-function ProjectAiMessageValueTriagePage() {
-  return <ProjectDetailPage slug="ai-message-value-triage" />
+function DynamicProjectDetailPage() {
+  const { projectSlug } = Route.useParams()
+
+  return <ProjectDetailPage slug={projectSlug} />
 }

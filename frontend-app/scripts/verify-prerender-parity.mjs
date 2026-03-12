@@ -9,6 +9,7 @@ const pagesToCheck = [
   'projects/index.html',
   'projects/personal-toolbox/index.html',
   'projects/ai-message-value-triage/index.html',
+  'projects/personal-website/index.html',
   'journal/index.html',
   'journal/model-first-engineering/index.html',
   'journal/ai-collaboration-checklist/index.html',

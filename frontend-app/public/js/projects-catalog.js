@@ -15,6 +15,7 @@
   var clearButton = document.getElementById("clear-filters");
   var retryButton = document.getElementById("retry-fetch");
   var grid = catalogRoot.querySelector("[data-project-grid]");
+  var projectsRuntime = window.__LL_PROJECTS_RUNTIME__ || null;
   var resultsMeta = catalogRoot.querySelector("[data-results-meta]");
   var fetchStatus = catalogRoot.querySelector("[data-fetch-status]");
   var tagCloud = catalogRoot.querySelector("[data-tag-cloud]");
@@ -65,11 +66,6 @@
     agent: true,
     data: true,
     library: true
-  };
-
-  var knownDetailPages = {
-    "personal-toolbox": "./personal-toolbox/",
-    "ai-message-value-triage": "./ai-message-value-triage/"
   };
 
   function resolveCanonicalCatalogPath(pathname) {
@@ -189,6 +185,10 @@
   }
 
   function mapProject(rawProject, index) {
+    if (projectsRuntime && typeof projectsRuntime.normalizeProject === "function") {
+      return projectsRuntime.normalizeProject(rawProject, index);
+    }
+
     var project = rawProject && typeof rawProject === "object" ? rawProject : {};
     var fullName = toText(project.full_name);
     var fallbackName = fullName ? fullName.split("/").pop() : "";
@@ -248,6 +248,10 @@
       tags: tags,
       status: status,
       isFeatured: project.is_featured === true,
+      detailPath: "",
+      canonicalPath: "",
+      slug: toText(project.slug),
+      featuredRank: null,
       isActive: isActive,
       archived: archived,
       pushedAt: pushedAt,
@@ -546,13 +550,10 @@
     var titleLink = document.createElement("a");
     titleLink.textContent = record.name;
 
-    var primaryUrl = record.links.primary || record.url;
+    var primaryUrl = record.detailPath || record.canonicalPath;
     titleLink.href = primaryUrl || "#";
     if (!primaryUrl) {
       titleLink.setAttribute("aria-disabled", "true");
-    } else if (/^https?:\/\//i.test(primaryUrl)) {
-      titleLink.target = "_blank";
-      titleLink.rel = "noreferrer";
     }
     title.appendChild(titleLink);
     top.appendChild(title);
@@ -588,24 +589,32 @@
     var actions = document.createElement("div");
     actions.className = "project-actions";
 
-    var mainUrl = record.links.primary || record.url;
+    var mainUrl = record.detailPath || record.canonicalPath;
     if (mainUrl) {
       var mainButton = document.createElement("a");
       mainButton.className = "btn primary";
       mainButton.href = mainUrl;
-      if (/^https?:\/\//i.test(mainUrl)) {
-        mainButton.target = "_blank";
-        mainButton.rel = "noreferrer";
-      }
-      mainButton.textContent = "View Project";
+      mainButton.textContent = "Project Detail";
       actions.appendChild(mainButton);
     } else {
       var disabledButton = document.createElement("a");
       disabledButton.className = "btn primary";
       disabledButton.href = "#";
       disabledButton.setAttribute("aria-disabled", "true");
-      disabledButton.textContent = "No Link";
+      disabledButton.textContent = "Detail Pending";
       actions.appendChild(disabledButton);
+    }
+
+    if (record.links.primary && record.links.primary !== mainUrl) {
+      var primaryLinkButton = document.createElement("a");
+      primaryLinkButton.className = "btn";
+      primaryLinkButton.href = record.links.primary;
+      if (/^https?:\/\//i.test(record.links.primary)) {
+        primaryLinkButton.target = "_blank";
+        primaryLinkButton.rel = "noreferrer";
+      }
+      primaryLinkButton.textContent = "Primary Link";
+      actions.appendChild(primaryLinkButton);
     }
 
     if (record.links.repo) {
@@ -636,26 +645,6 @@
       docsButton.rel = "noreferrer";
       docsButton.textContent = "Docs";
       actions.appendChild(docsButton);
-    }
-
-    // Fallback: detail page or fullName link if no links.repo
-    if (!record.links.repo) {
-      var detailPath = knownDetailPages[(record.name || "").toLowerCase()];
-      if (detailPath) {
-        var detailButton = document.createElement("a");
-        detailButton.className = "btn";
-        detailButton.href = detailPath;
-        detailButton.textContent = "View Detail";
-        actions.appendChild(detailButton);
-      } else if (record.fullName) {
-        var fullNameButton = document.createElement("a");
-        fullNameButton.className = "btn";
-        fullNameButton.href = "https://github.com/" + record.fullName;
-        fullNameButton.target = "_blank";
-        fullNameButton.rel = "noreferrer";
-        fullNameButton.textContent = record.fullName;
-        actions.appendChild(fullNameButton);
-      }
     }
 
     article.appendChild(actions);

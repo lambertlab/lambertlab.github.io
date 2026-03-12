@@ -3,12 +3,15 @@ import { ProjectDetailPage } from '~/components/projects/ProjectDetailPage'
 import { buildProjectDetailHead } from '~/components/projects/projectDetailHead'
 import { useProjectsCompatPathNormalization } from '~/lib/projectsCompatPathNormalization'
 
-export const Route = createFileRoute('/projects/personal-toolbox/index.html')({
+export const Route = createFileRoute('/projects/$projectSlug/index.html')({
   head: () => buildProjectDetailHead(),
-  component: ProjectPersonalToolboxHtmlPage,
+  component: DynamicProjectDetailHtmlPage,
 })
 
-function ProjectPersonalToolboxHtmlPage() {
+function DynamicProjectDetailHtmlPage() {
+  const { projectSlug } = Route.useParams()
+
   useProjectsCompatPathNormalization()
-  return <ProjectDetailPage slug="personal-toolbox" />
+
+  return <ProjectDetailPage slug={projectSlug} />
 }

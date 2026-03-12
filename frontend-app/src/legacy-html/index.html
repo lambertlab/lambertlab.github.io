@@ -387,7 +387,7 @@
 
     <section class="max-w-7xl mx-auto">
       <div class="split-layout" data-split-layout>
-        <section class="panel" data-purpose="tech-panel" aria-label="Technology world">
+        <section class="panel" data-purpose="tech-panel" data-home-managed-by-projects aria-label="Technology world">
           <div class="absolute inset-0 bg-grid pointer-events-none"></div>
           <div class="relative z-10 mb-10 flex justify-between items-end">
             <div>
@@ -399,42 +399,48 @@
             </div>
           </div>
 
-          <div class="panel-content-grid grid grid-cols-2 gap-4 flex-grow relative z-10">
-            <a class="bento-card col-span-2 flex justify-between items-center group" href="./projects/personal-toolbox/">
-              <div>
-                <span class="accent-label text-blue-600">Latest Release</span>
-                <h3 class="font-bold text-lg">Project: Personal Toolbox</h3>
-                <p class="text-xs text-slate-500 mt-2">本周优先入口，查看项目详情与更新。</p>
-                <span class="card-meta">entry · primary</span>
+          <div class="panel-content-grid grid grid-cols-2 gap-4 flex-grow relative z-10" data-home-featured-projects>
+            <a class="bento-card col-span-2 flex justify-between items-center group featured-project-card featured-project-card-hero" data-home-featured-slot="0" href="./projects/" aria-busy="true">
+              <div class="featured-project-copy">
+                <span class="accent-label text-blue-600" data-project-rank>Featured Projects</span>
+                <h3 class="font-bold text-lg" data-project-name>Loading featured project</h3>
+                <p class="text-xs text-slate-500 mt-2" data-project-summary>正在从统一 Projects 真相源加载首页精选。</p>
+                <div class="featured-chip-row">
+                  <span class="card-meta" data-project-stage>Loading</span>
+                  <span class="card-meta" data-meta-tone="neutral" data-project-type>Type pending</span>
+                  <span class="card-meta" data-meta-tone="neutral" data-project-source>Source pending</span>
+                </div>
               </div>
-              <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+              <div class="featured-project-arrow" aria-hidden="true">
                 <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 8l4 4m0 0l-4 4m4-4H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
               </div>
             </a>
 
-            <a class="bento-card" href="./projects/">
-              <span class="accent-label text-slate-400">Toolkit</span>
-              <h3 class="font-bold mt-1">Project Directory</h3>
-              <p class="text-xs text-slate-500 mt-2">持续维护中的项目归档。</p>
-              <span class="card-meta" data-meta-tone="neutral">entry · directory</span>
+            <a class="bento-card featured-project-card" data-home-featured-slot="1" href="./projects/" aria-busy="true">
+              <span class="accent-label text-slate-400" data-project-rank>Featured Projects</span>
+              <h3 class="font-bold mt-1" data-project-name>Loading next featured project</h3>
+              <p class="text-xs text-slate-500 mt-2" data-project-summary>目录精选会与首页卡片保持同一字段口径。</p>
+              <div class="featured-chip-row">
+                <span class="card-meta" data-project-stage>Loading</span>
+                <span class="card-meta" data-meta-tone="neutral" data-project-type>Type pending</span>
+              </div>
             </a>
 
-            <a class="bento-card" href="./journal/index.html">
-              <span class="accent-label text-slate-400">R&D</span>
-              <h3 class="font-bold mt-1">Insight Notes</h3>
-              <p class="text-xs text-slate-500 mt-2">工程方法与 AI 协作相关洞察。</p>
-              <span class="card-meta" data-meta-tone="neutral">content · notes</span>
+            <a class="bento-card featured-project-card" data-home-featured-slot="2" href="./projects/" aria-busy="true">
+              <span class="accent-label text-slate-400" data-project-rank>Featured Projects</span>
+              <h3 class="font-bold mt-1" data-project-name>Loading featured project</h3>
+              <p class="text-xs text-slate-500 mt-2" data-project-summary>主动作将统一进入详情主路径。</p>
+              <div class="featured-chip-row">
+                <span class="card-meta" data-project-stage>Loading</span>
+                <span class="card-meta" data-meta-tone="neutral" data-project-type>Type pending</span>
+              </div>
             </a>
 
-            <a class="bento-card col-span-2 flex items-center gap-4" href="https://github.com/lambertlab" target="_blank" rel="noreferrer">
-              <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-white">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"></path></svg>
-              </div>
-              <div>
-                <h3 class="font-bold">GitHub Source</h3>
-                <p class="text-xs text-slate-500 mt-2">查看公开仓库与代码实践。</p>
-                <span class="card-meta" data-meta-tone="external">external · github</span>
-              </div>
+            <a class="bento-card col-span-2 featured-directory-card" href="./projects/">
+              <span class="accent-label text-slate-400">Project Directory</span>
+              <h3 class="font-bold mt-1">Browse All Projects</h3>
+              <p class="text-xs text-slate-500 mt-2">打开完整目录，继续使用一期已验收的搜索、筛选、URL Replay 与详情入口。</p>
+              <span class="card-meta" data-meta-tone="neutral">entry · catalog</span>
             </a>
           </div>
 

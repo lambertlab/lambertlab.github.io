@@ -670,7 +670,12 @@
       return;
     }
 
-    var cards = document.querySelectorAll('.panel[data-purpose="' + panelPurpose + '"] .panel-content-grid .bento-card');
+    var panel = document.querySelector('.panel[data-purpose="' + panelPurpose + '"]');
+    if (!panel || panel.hasAttribute("data-home-managed-by-projects")) {
+      return;
+    }
+
+    var cards = panel.querySelectorAll(".panel-content-grid .bento-card");
     if (!cards.length) {
       return;
     }

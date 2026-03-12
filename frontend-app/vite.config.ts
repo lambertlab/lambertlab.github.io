@@ -17,6 +17,8 @@ const prerenderPages = [
   '/projects/personal-toolbox/index.html',
   '/projects/ai-message-value-triage/',
   '/projects/ai-message-value-triage/index.html',
+  '/projects/personal-website/',
+  '/projects/personal-website/index.html',
   '/journal/',
   '/journal/index.html',
   '/journal/model-first-engineering/',

@@ -21,11 +21,13 @@ import { Route as ContactIndexDothtmlRouteImport } from './routes/contact/index[
 import { Route as AboutIndexDothtmlRouteImport } from './routes/about/index[.]html'
 import { Route as ProjectsPersonalToolboxIndexRouteImport } from './routes/projects/personal-toolbox/index'
 import { Route as ProjectsAiMessageValueTriageIndexRouteImport } from './routes/projects/ai-message-value-triage/index'
+import { Route as ProjectsProjectSlugIndexRouteImport } from './routes/projects/$projectSlug/index'
 import { Route as JournalOperationalHabitsThatStickIndexRouteImport } from './routes/journal/operational-habits-that-stick/index'
 import { Route as JournalModelFirstEngineeringIndexRouteImport } from './routes/journal/model-first-engineering/index'
 import { Route as JournalAiCollaborationChecklistIndexRouteImport } from './routes/journal/ai-collaboration-checklist/index'
 import { Route as ProjectsPersonalToolboxIndexDothtmlRouteImport } from './routes/projects/personal-toolbox/index[.]html'
 import { Route as ProjectsAiMessageValueTriageIndexDothtmlRouteImport } from './routes/projects/ai-message-value-triage/index[.]html'
+import { Route as ProjectsProjectSlugIndexDothtmlRouteImport } from './routes/projects/$projectSlug/index[.]html'
 import { Route as JournalOperationalHabitsThatStickIndexDothtmlRouteImport } from './routes/journal/operational-habits-that-stick/index[.]html'
 import { Route as JournalModelFirstEngineeringIndexDothtmlRouteImport } from './routes/journal/model-first-engineering/index[.]html'
 import { Route as JournalAiCollaborationChecklistIndexDothtmlRouteImport } from './routes/journal/ai-collaboration-checklist/index[.]html'
@@ -92,6 +94,12 @@ const ProjectsAiMessageValueTriageIndexRoute =
     path: '/projects/ai-message-value-triage/',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ProjectsProjectSlugIndexRoute =
+  ProjectsProjectSlugIndexRouteImport.update({
+    id: '/projects/$projectSlug/',
+    path: '/projects/$projectSlug/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const JournalOperationalHabitsThatStickIndexRoute =
   JournalOperationalHabitsThatStickIndexRouteImport.update({
     id: '/journal/operational-habits-that-stick/',
@@ -120,6 +128,12 @@ const ProjectsAiMessageValueTriageIndexDothtmlRoute =
   ProjectsAiMessageValueTriageIndexDothtmlRouteImport.update({
     id: '/projects/ai-message-value-triage/index.html',
     path: '/projects/ai-message-value-triage/index.html',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ProjectsProjectSlugIndexDothtmlRoute =
+  ProjectsProjectSlugIndexDothtmlRouteImport.update({
+    id: '/projects/$projectSlug/index.html',
+    path: '/projects/$projectSlug/index.html',
     getParentRoute: () => rootRouteImport,
   } as any)
 const JournalOperationalHabitsThatStickIndexDothtmlRoute =
@@ -155,11 +169,13 @@ export interface FileRoutesByFullPath {
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
   '/journal/operational-habits-that-stick/index.html': typeof JournalOperationalHabitsThatStickIndexDothtmlRoute
+  '/projects/$projectSlug/index.html': typeof ProjectsProjectSlugIndexDothtmlRoute
   '/projects/ai-message-value-triage/index.html': typeof ProjectsAiMessageValueTriageIndexDothtmlRoute
   '/projects/personal-toolbox/index.html': typeof ProjectsPersonalToolboxIndexDothtmlRoute
   '/journal/ai-collaboration-checklist/': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering/': typeof JournalModelFirstEngineeringIndexRoute
   '/journal/operational-habits-that-stick/': typeof JournalOperationalHabitsThatStickIndexRoute
+  '/projects/$projectSlug/': typeof ProjectsProjectSlugIndexRoute
   '/projects/ai-message-value-triage/': typeof ProjectsAiMessageValueTriageIndexRoute
   '/projects/personal-toolbox/': typeof ProjectsPersonalToolboxIndexRoute
 }
@@ -177,11 +193,13 @@ export interface FileRoutesByTo {
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
   '/journal/operational-habits-that-stick/index.html': typeof JournalOperationalHabitsThatStickIndexDothtmlRoute
+  '/projects/$projectSlug/index.html': typeof ProjectsProjectSlugIndexDothtmlRoute
   '/projects/ai-message-value-triage/index.html': typeof ProjectsAiMessageValueTriageIndexDothtmlRoute
   '/projects/personal-toolbox/index.html': typeof ProjectsPersonalToolboxIndexDothtmlRoute
   '/journal/ai-collaboration-checklist': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering': typeof JournalModelFirstEngineeringIndexRoute
   '/journal/operational-habits-that-stick': typeof JournalOperationalHabitsThatStickIndexRoute
+  '/projects/$projectSlug': typeof ProjectsProjectSlugIndexRoute
   '/projects/ai-message-value-triage': typeof ProjectsAiMessageValueTriageIndexRoute
   '/projects/personal-toolbox': typeof ProjectsPersonalToolboxIndexRoute
 }
@@ -200,11 +218,13 @@ export interface FileRoutesById {
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
   '/journal/operational-habits-that-stick/index.html': typeof JournalOperationalHabitsThatStickIndexDothtmlRoute
+  '/projects/$projectSlug/index.html': typeof ProjectsProjectSlugIndexDothtmlRoute
   '/projects/ai-message-value-triage/index.html': typeof ProjectsAiMessageValueTriageIndexDothtmlRoute
   '/projects/personal-toolbox/index.html': typeof ProjectsPersonalToolboxIndexDothtmlRoute
   '/journal/ai-collaboration-checklist/': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering/': typeof JournalModelFirstEngineeringIndexRoute
   '/journal/operational-habits-that-stick/': typeof JournalOperationalHabitsThatStickIndexRoute
+  '/projects/$projectSlug/': typeof ProjectsProjectSlugIndexRoute
   '/projects/ai-message-value-triage/': typeof ProjectsAiMessageValueTriageIndexRoute
   '/projects/personal-toolbox/': typeof ProjectsPersonalToolboxIndexRoute
 }
@@ -224,11 +244,13 @@ export interface FileRouteTypes {
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
     | '/journal/operational-habits-that-stick/index.html'
+    | '/projects/$projectSlug/index.html'
     | '/projects/ai-message-value-triage/index.html'
     | '/projects/personal-toolbox/index.html'
     | '/journal/ai-collaboration-checklist/'
     | '/journal/model-first-engineering/'
     | '/journal/operational-habits-that-stick/'
+    | '/projects/$projectSlug/'
     | '/projects/ai-message-value-triage/'
     | '/projects/personal-toolbox/'
   fileRoutesByTo: FileRoutesByTo
@@ -246,11 +268,13 @@ export interface FileRouteTypes {
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
     | '/journal/operational-habits-that-stick/index.html'
+    | '/projects/$projectSlug/index.html'
     | '/projects/ai-message-value-triage/index.html'
     | '/projects/personal-toolbox/index.html'
     | '/journal/ai-collaboration-checklist'
     | '/journal/model-first-engineering'
     | '/journal/operational-habits-that-stick'
+    | '/projects/$projectSlug'
     | '/projects/ai-message-value-triage'
     | '/projects/personal-toolbox'
   id:
@@ -268,11 +292,13 @@ export interface FileRouteTypes {
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
     | '/journal/operational-habits-that-stick/index.html'
+    | '/projects/$projectSlug/index.html'
     | '/projects/ai-message-value-triage/index.html'
     | '/projects/personal-toolbox/index.html'
     | '/journal/ai-collaboration-checklist/'
     | '/journal/model-first-engineering/'
     | '/journal/operational-habits-that-stick/'
+    | '/projects/$projectSlug/'
     | '/projects/ai-message-value-triage/'
     | '/projects/personal-toolbox/'
   fileRoutesById: FileRoutesById
@@ -291,11 +317,13 @@ export interface RootRouteChildren {
   JournalAiCollaborationChecklistIndexDothtmlRoute: typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   JournalModelFirstEngineeringIndexDothtmlRoute: typeof JournalModelFirstEngineeringIndexDothtmlRoute
   JournalOperationalHabitsThatStickIndexDothtmlRoute: typeof JournalOperationalHabitsThatStickIndexDothtmlRoute
+  ProjectsProjectSlugIndexDothtmlRoute: typeof ProjectsProjectSlugIndexDothtmlRoute
   ProjectsAiMessageValueTriageIndexDothtmlRoute: typeof ProjectsAiMessageValueTriageIndexDothtmlRoute
   ProjectsPersonalToolboxIndexDothtmlRoute: typeof ProjectsPersonalToolboxIndexDothtmlRoute
   JournalAiCollaborationChecklistIndexRoute: typeof JournalAiCollaborationChecklistIndexRoute
   JournalModelFirstEngineeringIndexRoute: typeof JournalModelFirstEngineeringIndexRoute
   JournalOperationalHabitsThatStickIndexRoute: typeof JournalOperationalHabitsThatStickIndexRoute
+  ProjectsProjectSlugIndexRoute: typeof ProjectsProjectSlugIndexRoute
   ProjectsAiMessageValueTriageIndexRoute: typeof ProjectsAiMessageValueTriageIndexRoute
   ProjectsPersonalToolboxIndexRoute: typeof ProjectsPersonalToolboxIndexRoute
 }
@@ -386,6 +414,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsAiMessageValueTriageIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectSlug/': {
+      id: '/projects/$projectSlug/'
+      path: '/projects/$projectSlug'
+      fullPath: '/projects/$projectSlug/'
+      preLoaderRoute: typeof ProjectsProjectSlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/journal/operational-habits-that-stick/': {
       id: '/journal/operational-habits-that-stick/'
       path: '/journal/operational-habits-that-stick'
@@ -419,6 +454,13 @@ declare module '@tanstack/react-router' {
       path: '/projects/ai-message-value-triage/index.html'
       fullPath: '/projects/ai-message-value-triage/index.html'
       preLoaderRoute: typeof ProjectsAiMessageValueTriageIndexDothtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/$projectSlug/index.html': {
+      id: '/projects/$projectSlug/index.html'
+      path: '/projects/$projectSlug/index.html'
+      fullPath: '/projects/$projectSlug/index.html'
+      preLoaderRoute: typeof ProjectsProjectSlugIndexDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/journal/operational-habits-that-stick/index.html': {
@@ -462,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
     JournalModelFirstEngineeringIndexDothtmlRoute,
   JournalOperationalHabitsThatStickIndexDothtmlRoute:
     JournalOperationalHabitsThatStickIndexDothtmlRoute,
+  ProjectsProjectSlugIndexDothtmlRoute: ProjectsProjectSlugIndexDothtmlRoute,
   ProjectsAiMessageValueTriageIndexDothtmlRoute:
     ProjectsAiMessageValueTriageIndexDothtmlRoute,
   ProjectsPersonalToolboxIndexDothtmlRoute:
@@ -472,6 +515,7 @@ const rootRouteChildren: RootRouteChildren = {
     JournalModelFirstEngineeringIndexRoute,
   JournalOperationalHabitsThatStickIndexRoute:
     JournalOperationalHabitsThatStickIndexRoute,
+  ProjectsProjectSlugIndexRoute: ProjectsProjectSlugIndexRoute,
   ProjectsAiMessageValueTriageIndexRoute:
     ProjectsAiMessageValueTriageIndexRoute,
   ProjectsPersonalToolboxIndexRoute: ProjectsPersonalToolboxIndexRoute,

@@ -62,11 +62,14 @@ function toProjectsDetailSource(source: string): string {
 }
 
 export const legacyPages = {
-  home: buildLegacyPage('home', indexHtmlRaw, ['/css/page-home.css'], { enableHomeSplit: true }),
+  home: buildLegacyPage('home', indexHtmlRaw, ['/css/page-home.css'], {
+    enableHomeSplit: true,
+    runtimeScripts: ['/js/projects-runtime.js', '/js/home-featured-projects.js'],
+  }),
   about: buildLegacyPage('about', aboutHtmlRaw, ['/css/page-about.css']),
   contact: buildLegacyPage('contact', contactHtmlRaw, ['/css/bento-pages.css', '/css/page-contact.css']),
   projects: buildLegacyPage('projects', projectsIndexHtmlRaw, ['/css/page-projects.css'], {
-    runtimeScripts: ['/js/projects-catalog.js'],
+    runtimeScripts: ['/js/projects-runtime.js', '/js/projects-catalog.js'],
   }),
   journal: buildLegacyPage('journal', toJournalIndexSource(journalIndexHtmlRaw), ['/css/page-journal.css']),
   projectPersonalToolbox: buildLegacyPage(

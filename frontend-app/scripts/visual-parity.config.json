@@ -6,6 +6,8 @@
       "themes": ["light", "dark"],
       "pages": ["home", "projects", "journal", "about", "contact"],
       "expectedDiffs": {
+        "home__desktop__light": "Homepage Technology panel now renders Featured Projects from the unified projects contract.",
+        "home__desktop__dark": "Homepage Technology panel now renders Featured Projects from the unified projects contract.",
         "projects__desktop__light": "Projects page is API-first redesigned; baseline snapshot not refreshed yet.",
         "projects__desktop__dark": "Projects page is API-first redesigned; baseline snapshot not refreshed yet."
       }
