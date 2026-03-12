@@ -4,12 +4,18 @@
     "smoke": {
       "viewports": ["desktop"],
       "themes": ["light", "dark"],
-      "pages": ["home", "projects", "journal", "about", "contact"],
+      "pages": ["home", "projects", "journal", "about", "contact", "status-empty", "status-single", "status-multi"],
       "expectedDiffs": {
         "home__desktop__light": "Homepage Technology panel now renders Featured Projects from the unified projects contract.",
         "home__desktop__dark": "Homepage Technology panel now renders Featured Projects from the unified projects contract.",
         "projects__desktop__light": "Projects page is API-first redesigned; baseline snapshot not refreshed yet.",
-        "projects__desktop__dark": "Projects page is API-first redesigned; baseline snapshot not refreshed yet."
+        "projects__desktop__dark": "Projects page is API-first redesigned; baseline snapshot not refreshed yet.",
+        "status-empty__desktop__light": "Status page has no legacy baseline snapshot and now includes phase 2 public trust semantics.",
+        "status-empty__desktop__dark": "Status page has no legacy baseline snapshot and now includes phase 2 public trust semantics.",
+        "status-single__desktop__light": "Status page has no legacy baseline snapshot and now includes structured public issue cards.",
+        "status-single__desktop__dark": "Status page has no legacy baseline snapshot and now includes structured public issue cards.",
+        "status-multi__desktop__light": "Status page has no legacy baseline snapshot and now includes multi-issue public trust coverage.",
+        "status-multi__desktop__dark": "Status page has no legacy baseline snapshot and now includes multi-issue public trust coverage."
       }
     },
     "full": {
@@ -65,6 +71,27 @@
       "path": "/contact/index.html",
       "heroSelector": ".hero",
       "contentSelector": ".grid"
+    },
+    {
+      "name": "status-empty",
+      "path": "/status/?issues=empty",
+      "oldPath": "/status/index.html?issues=empty",
+      "heroSelector": ".status-page-hero",
+      "contentSelector": ".status-sections"
+    },
+    {
+      "name": "status-single",
+      "path": "/status/?issues=single",
+      "oldPath": "/status/index.html?issues=single",
+      "heroSelector": ".status-page-hero",
+      "contentSelector": ".status-sections"
+    },
+    {
+      "name": "status-multi",
+      "path": "/status/?issues=multi",
+      "oldPath": "/status/index.html?issues=multi",
+      "heroSelector": ".status-page-hero",
+      "contentSelector": ".status-sections"
     },
     {
       "name": "project-personal-toolbox",

@@ -2,11 +2,19 @@ export type PublicStatusTone = 'green' | 'yellow' | 'red'
 export type PublicSurfaceHealth = 'up' | 'degraded' | 'down' | 'unknown'
 export type ContentFreshnessLevel = 'fresh' | 'aging' | 'stale' | 'unknown'
 export type KnownIssueLevel = 'info' | 'warn'
+export type KnownIssueStatus = 'active' | 'monitoring' | 'resolved'
+
+export interface StatusOverallContext {
+  label: string
+  scope: string
+  note: string
+}
 
 export interface StatusOverallSummary {
   status: PublicStatusTone
   summary: string
   updated_at: string | null
+  context: StatusOverallContext
 }
 
 export interface StatusPublicSurfaceSummary {
@@ -31,8 +39,13 @@ export interface StatusContentFreshnessArea {
 }
 
 export interface StatusKnownIssue {
+  key: string
   level: KnownIssueLevel
+  status: KnownIssueStatus
   title: string
+  summary: string
+  surfaces: string[]
+  updated_at: string | null
   detail: string
 }
 
@@ -106,12 +119,50 @@ function normalizeIssueLevel(value: unknown): KnownIssueLevel {
   return toText(value).toLowerCase() === 'warn' ? 'warn' : 'info'
 }
 
+function normalizeIssueStatus(value: unknown): KnownIssueStatus {
+  const status = toText(value).toLowerCase()
+  if (status === 'active' || status === 'resolved') {
+    return status
+  }
+  return 'monitoring'
+}
+
+function normalizeTextList(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.map((entry) => toText(entry)).filter(Boolean)
+}
+
+function normalizeIssueKey(value: unknown, fallback: string): string {
+  const rawKey = toText(value) || fallback
+  const key = rawKey
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return key || 'issue'
+}
+
 function normalizeSummary(value: unknown, fallbackLabel: string): StatusPublicSurfaceSummary {
   const summary = isRecord(value) ? value : {}
 
   return {
     status: normalizeTone(summary.status),
     label: toText(summary.label) || fallbackLabel,
+  }
+}
+
+function normalizeOverallContext(value: unknown): StatusOverallContext {
+  const context = isRecord(value) ? value : {}
+
+  return {
+    label: toText(context.label) || 'Public trust summary',
+    scope: toText(context.scope) || 'public-trust',
+    note:
+      toText(context.note) ||
+      'The header status light reflects system health only. This page also considers public surface availability, content freshness, and visitor-facing issues.',
   }
 }
 
@@ -122,6 +173,7 @@ function normalizeOverallStatus(value: unknown): StatusOverallSummary {
     status: normalizeTone(overall.status),
     summary: toText(overall.summary) || 'Public summary is being refreshed.',
     updated_at: normalizeNullableText(overall.updated_at),
+    context: normalizeOverallContext(overall.context),
   }
 }
 
@@ -185,16 +237,22 @@ function normalizeKnownIssues(value: unknown): StatusKnownIssue[] {
     .map((entry) => {
       const issue = isRecord(entry) ? entry : {}
       const title = toText(issue.title)
+      const summary = toText(issue.summary)
       const detail = toText(issue.detail)
 
-      if (!title || !detail) {
+      if (!title) {
         return null
       }
 
       return {
+        key: normalizeIssueKey(issue.key, title),
         level: normalizeIssueLevel(issue.level),
+        status: normalizeIssueStatus(issue.status),
         title,
-        detail,
+        summary: summary || detail || 'Public issue summary is not available yet.',
+        surfaces: normalizeTextList(issue.surfaces),
+        updated_at: normalizeNullableText(issue.updated_at),
+        detail: detail || summary || 'Additional public detail is not available yet.',
       }
     })
     .filter((entry): entry is StatusKnownIssue => entry !== null)

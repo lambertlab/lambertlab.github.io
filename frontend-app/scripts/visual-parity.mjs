@@ -207,6 +207,151 @@ function comparePngs(oldFilePath, newFilePath, diffFilePath) {
   }
 }
 
+function getStatusIssueScenario(request) {
+  try {
+    const frameUrl = request.frame()?.url()
+    if (!frameUrl) {
+      return 'single'
+    }
+
+    const issueMode = new URL(frameUrl).searchParams.get('issues')
+    if (issueMode === 'empty' || issueMode === 'multi') {
+      return issueMode
+    }
+  } catch {
+    return 'single'
+  }
+
+  return 'single'
+}
+
+function buildStatusPublicPayload(issueMode) {
+  const knownIssuesByMode = {
+    empty: [],
+    single: [
+      {
+        key: 'content-latency',
+        level: 'warn',
+        status: 'monitoring',
+        title: 'Some content updates may appear with delay.',
+        summary: 'Recent updates can take longer than usual to appear on public pages.',
+        surfaces: ['projects', 'journal'],
+        updated_at: '2026-03-12T00:00:00Z',
+        detail: 'We are monitoring the delay. Public pages remain available while newer updates catch up.',
+      },
+    ],
+    multi: [
+      {
+        key: 'content-latency',
+        level: 'warn',
+        status: 'active',
+        title: 'Some content updates may appear with delay.',
+        summary: 'Recent updates can take longer than usual to appear on public pages.',
+        surfaces: ['projects', 'journal'],
+        updated_at: '2026-03-12T00:00:00Z',
+        detail: 'Public pages remain available, but new content may take longer than usual to show up.',
+      },
+      {
+        key: 'status-clarity-followup',
+        level: 'info',
+        status: 'resolved',
+        title: 'Status wording was recently clarified.',
+        summary: 'The page now explains the difference between the header light and this public trust summary.',
+        surfaces: ['status'],
+        updated_at: '2026-03-12T00:00:00Z',
+        detail: 'The wording update is live. We are keeping the note visible for a short period so returning visitors can reorient.',
+      },
+    ],
+  }
+
+  const knownIssues = knownIssuesByMode[issueMode] || knownIssuesByMode.single
+  const hasKnownIssues = knownIssues.length > 0
+  const overallStatus = issueMode === 'multi' ? 'yellow' : 'green'
+  const overallSummary = hasKnownIssues
+    ? 'Core public surfaces remain available, with a few visitor-facing issues or follow-up notes listed below.'
+    : 'Core public surfaces are available and no visitor-facing issues are currently listed.'
+
+  return {
+    ok: true,
+    page: {
+      overall_status: {
+        status: overallStatus,
+        summary: overallSummary,
+        updated_at: '2026-03-12T00:00:00Z',
+        context: {
+          label: 'Public trust summary',
+          scope: 'public-trust',
+          note: 'The header status light reflects system health only. This page also considers public surface availability, content freshness, and visitor-facing issues.',
+        },
+      },
+      public_surface: {
+        summary: {
+          status: 'green',
+          label: 'Core public surfaces are available.',
+        },
+        key_surfaces: [
+          {
+            key: 'home',
+            label: 'Home',
+            path: '/',
+            health: 'up',
+            note: 'Entry surface is serving normally.',
+          },
+          {
+            key: 'projects',
+            label: 'Projects',
+            path: '/projects/',
+            health: 'up',
+            note: 'Project catalog is available.',
+          },
+          {
+            key: 'journal',
+            label: 'Journal',
+            path: '/journal/',
+            health: 'up',
+            note: 'Writing surface is available.',
+          },
+        ],
+      },
+      content_freshness: {
+        summary: {
+          status: hasKnownIssues ? 'yellow' : 'green',
+          label: hasKnownIssues
+            ? 'Some public content updates are moving more slowly than usual.'
+            : 'Projects and journal content are up to date.',
+        },
+        areas: [
+          {
+            key: 'projects-catalog',
+            label: 'Projects Catalog',
+            freshness: hasKnownIssues ? 'aging' : 'fresh',
+            updated_at: '2026-03-12T00:00:00Z',
+            note: hasKnownIssues
+              ? 'New project updates may take longer than usual to appear.'
+              : 'Project directory data is current.',
+          },
+          {
+            key: 'featured-projects',
+            label: 'Featured Projects',
+            freshness: 'fresh',
+            updated_at: '2026-03-12T00:00:00Z',
+            note: 'Homepage featured project projection is current.',
+          },
+          {
+            key: 'journal',
+            label: 'Journal',
+            freshness: hasKnownIssues ? 'aging' : 'fresh',
+            updated_at: '2026-03-12T00:00:00Z',
+            note: hasKnownIssues ? 'Some new journal updates may appear with delay.' : 'Journal content is current.',
+          },
+        ],
+        active_focus: 'Improving public information architecture and trust surfaces.',
+      },
+      known_issues: knownIssues,
+    },
+  }
+}
+
 async function applyMockRoutes(context) {
   await context.route('https://cdn.tailwindcss.com/**', async (route) => {
     await route.fulfill({
@@ -239,85 +384,12 @@ async function applyMockRoutes(context) {
   })
 
   await context.route('**/status/public', async (route) => {
+    const issueMode = getStatusIssueScenario(route.request())
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        ok: true,
-        page: {
-          overall_status: {
-            status: 'green',
-            summary: 'Core public surfaces are available and content signals look healthy.',
-            updated_at: '2026-03-12T00:00:00Z',
-          },
-          public_surface: {
-            summary: {
-              status: 'green',
-              label: 'Core public surfaces are available.',
-            },
-            key_surfaces: [
-              {
-                key: 'home',
-                label: 'Home',
-                path: '/',
-                health: 'up',
-                note: 'Entry surface is serving normally.',
-              },
-              {
-                key: 'projects',
-                label: 'Projects',
-                path: '/projects/',
-                health: 'up',
-                note: 'Project catalog is available.',
-              },
-              {
-                key: 'journal',
-                label: 'Journal',
-                path: '/journal/',
-                health: 'up',
-                note: 'Writing surface is available.',
-              },
-            ],
-          },
-          content_freshness: {
-            summary: {
-              status: 'green',
-              label: 'Projects and journal content are up to date.',
-            },
-            areas: [
-              {
-                key: 'projects-catalog',
-                label: 'Projects Catalog',
-                freshness: 'fresh',
-                updated_at: '2026-03-12T00:00:00Z',
-                note: 'Project directory data is current.',
-              },
-              {
-                key: 'featured-projects',
-                label: 'Featured Projects',
-                freshness: 'fresh',
-                updated_at: '2026-03-12T00:00:00Z',
-                note: 'Homepage featured project projection is current.',
-              },
-              {
-                key: 'journal',
-                label: 'Journal',
-                freshness: 'fresh',
-                updated_at: '2026-03-12T00:00:00Z',
-                note: 'Journal content is current.',
-              },
-            ],
-            active_focus: 'Improving public information architecture and trust surfaces.',
-          },
-          known_issues: [
-            {
-              level: 'info',
-              title: 'Status is a public summary',
-              detail: 'Operational diagnostics and maintenance controls are intentionally excluded.',
-            },
-          ],
-        },
-      }),
+      body: JSON.stringify(buildStatusPublicPayload(issueMode)),
     })
   })
 

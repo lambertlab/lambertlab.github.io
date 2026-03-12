@@ -6,7 +6,8 @@ export function buildStatusPageHead() {
       },
       {
         name: 'description',
-        content: 'Public trust page for lambertlab covering overall status, public surface availability, content freshness, and known notes.',
+        content:
+          'Public trust page for lambertlab explaining system health boundaries, public surface availability, content freshness, and visitor-facing issues.',
       },
     ],
     links: [
