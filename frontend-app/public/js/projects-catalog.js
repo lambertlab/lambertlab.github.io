@@ -8,7 +8,9 @@
 
   var searchInput = document.getElementById("project-search");
   var sortSelect = document.getElementById("sort-by");
-  var statusSelect = document.getElementById("status-filter");
+  var stageSelect = document.getElementById("stage-filter");
+  var sourceSelect = document.getElementById("source-filter");
+  var typeSelect = document.getElementById("type-filter");
   var featuredOnlyInput = document.getElementById("featured-only");
   var clearButton = document.getElementById("clear-filters");
   var retryButton = document.getElementById("retry-fetch");
@@ -23,9 +25,10 @@
   var totalItemsValue = catalogRoot.querySelector("[data-total-items]");
   var liveItemsValue = catalogRoot.querySelector("[data-live-items]");
   var lastSyncValue = catalogRoot.querySelector("[data-last-sync]");
+  var sourceCountValue = catalogRoot.querySelector("[data-source-count]");
   var viewButtons = Array.prototype.slice.call(catalogRoot.querySelectorAll("[data-view-mode]"));
 
-  if (!searchInput || !sortSelect || !statusSelect || !featuredOnlyInput || !clearButton || !retryButton || !grid) {
+  if (!searchInput || !sortSelect || !stageSelect || !sourceSelect || !typeSelect || !featuredOnlyInput || !clearButton || !retryButton || !grid) {
     return;
   }
 
@@ -35,11 +38,33 @@
     name: true
   };
 
-  var validStatus = {
+  var validStage = {
     all: true,
+    building: true,
     active: true,
-    inactive: true,
+    maintenance: true,
+    research: true,
     archived: true
+  };
+
+  var validSource = {
+    all: true,
+    github: true,
+    local: true,
+    "private": true,
+    hybrid: true
+  };
+
+  var validType = {
+    all: true,
+    website: true,
+    backend: true,
+    tooling: true,
+    infra: true,
+    research: true,
+    agent: true,
+    data: true,
+    library: true
   };
 
   var knownDetailPages = {
@@ -152,6 +177,17 @@
     return tags;
   }
 
+  function normalizeLinks(rawLinks) {
+    var links = rawLinks && typeof rawLinks === "object" ? rawLinks : {};
+    return {
+      primary: toText(links.primary),
+      repo: toText(links.repo),
+      demo: toText(links.demo),
+      docs: toText(links.docs),
+      notes: toText(links.notes)
+    };
+  }
+
   function mapProject(rawProject, index) {
     var project = rawProject && typeof rawProject === "object" ? rawProject : {};
     var fullName = toText(project.full_name);
@@ -164,18 +200,31 @@
     }
 
     var tags = normalizeTags(project.tags);
+    var stack = normalizeTags(project.stack);
     var pushedAt = toText(project.pushed_at);
     var updatedAt = toText(project.updated_at);
     var recencyScore = parseTimeScore(pushedAt) || parseTimeScore(updatedAt);
     var isActive = project.is_active === true;
     var archived = project.archived === true;
     var status = archived ? "archived" : (isActive ? "active" : "inactive");
+
+    var summary = toText(project.summary) || toText(project.description);
+    var stage = toText(project.stage) || status;
+    var sourceType = toText(project.source_type) || toText(project.source);
+    var projectType = toText(project.project_type);
+    var links = normalizeLinks(project.links);
+
     var searchText = [
       name,
       fullName,
       toText(project.description),
+      summary,
       toText(project.language),
-      tags.join(" ")
+      stage,
+      sourceType,
+      projectType,
+      tags.join(" "),
+      stack.join(" ")
     ].join(" ").toLowerCase();
 
     return {
@@ -185,6 +234,12 @@
       fullName: fullName,
       url: sourceUrl,
       description: toText(project.description),
+      summary: summary,
+      stage: stage,
+      sourceType: sourceType,
+      projectType: projectType,
+      stack: stack,
+      links: links,
       language: toText(project.language),
       stars: toInteger(project.stargazers_count),
       forks: toInteger(project.forks_count),
@@ -206,7 +261,9 @@
   var defaultState = {
     q: "",
     sort: "recent",
-    status: "all",
+    stage: "all",
+    source: "all",
+    type: "all",
     featured: false,
     view: "grid"
   };
@@ -247,18 +304,36 @@
 
     var q = (params.get("q") || "").trim();
     var sort = (params.get("sort") || defaultState.sort).trim().toLowerCase();
-    var status = (params.get("status") || defaultState.status).trim().toLowerCase();
     var featured = toBoolean(params.get("featured"));
     var view = (params.get("view") || defaultState.view).trim().toLowerCase();
+
+    // Read new three-dimensional filters
+    var stage = (params.get("stage") || "").trim().toLowerCase();
+    var source = (params.get("source") || "").trim().toLowerCase();
+    var type = (params.get("type") || "").trim().toLowerCase();
+
+    // Backward compatibility: map old ?status= to stage
+    if (!stage && params.has("status")) {
+      var oldStatus = (params.get("status") || "").trim().toLowerCase();
+      if (oldStatus === "active" || oldStatus === "archived") {
+        stage = oldStatus;
+      } else if (oldStatus === "inactive") {
+        stage = "maintenance";
+      }
+    }
 
     if (!Object.prototype.hasOwnProperty.call(validSort, sort)) {
       sort = defaultState.sort;
     }
-
-    if (!Object.prototype.hasOwnProperty.call(validStatus, status)) {
-      status = defaultState.status;
+    if (!stage || !Object.prototype.hasOwnProperty.call(validStage, stage)) {
+      stage = defaultState.stage;
     }
-
+    if (!source || !Object.prototype.hasOwnProperty.call(validSource, source)) {
+      source = defaultState.source;
+    }
+    if (!type || !Object.prototype.hasOwnProperty.call(validType, type)) {
+      type = defaultState.type;
+    }
     if (view !== "list") {
       view = "grid";
     }
@@ -266,7 +341,9 @@
     return {
       q: q,
       sort: sort,
-      status: status,
+      stage: stage,
+      source: source,
+      type: type,
       featured: featured,
       view: view
     };
@@ -275,7 +352,9 @@
   function writeStateToControls(state) {
     searchInput.value = state.q;
     sortSelect.value = state.sort;
-    statusSelect.value = state.status;
+    stageSelect.value = state.stage;
+    sourceSelect.value = state.source;
+    typeSelect.value = state.type;
     featuredOnlyInput.checked = state.featured === true;
     setView(state.view);
   }
@@ -283,22 +362,31 @@
   function readStateFromControls() {
     var q = (searchInput.value || "").trim();
     var sort = (sortSelect.value || "").trim().toLowerCase();
-    var status = (statusSelect.value || "").trim().toLowerCase();
+    var stage = (stageSelect.value || "").trim().toLowerCase();
+    var source = (sourceSelect.value || "").trim().toLowerCase();
+    var type = (typeSelect.value || "").trim().toLowerCase();
     var featured = featuredOnlyInput.checked === true;
     var view = getActiveView();
 
     if (!Object.prototype.hasOwnProperty.call(validSort, sort)) {
       sort = defaultState.sort;
     }
-
-    if (!Object.prototype.hasOwnProperty.call(validStatus, status)) {
-      status = defaultState.status;
+    if (!Object.prototype.hasOwnProperty.call(validStage, stage)) {
+      stage = defaultState.stage;
+    }
+    if (!Object.prototype.hasOwnProperty.call(validSource, source)) {
+      source = defaultState.source;
+    }
+    if (!Object.prototype.hasOwnProperty.call(validType, type)) {
+      type = defaultState.type;
     }
 
     return {
       q: q,
       sort: sort,
-      status: status,
+      stage: stage,
+      source: source,
+      type: type,
       featured: featured,
       view: view
     };
@@ -315,8 +403,16 @@
       params.set("sort", state.sort);
     }
 
-    if (state.status !== defaultState.status) {
-      params.set("status", state.status);
+    if (state.stage !== defaultState.stage) {
+      params.set("stage", state.stage);
+    }
+
+    if (state.source !== defaultState.source) {
+      params.set("source", state.source);
+    }
+
+    if (state.type !== defaultState.type) {
+      params.set("type", state.type);
     }
 
     if (state.featured) {
@@ -354,9 +450,9 @@
 
   function filterRecords(records, state) {
     return records.filter(function (record) {
-      if (state.status !== "all" && record.status !== state.status) {
-        return false;
-      }
+      if (state.stage !== "all" && record.stage !== state.stage) return false;
+      if (state.source !== "all" && record.sourceType !== state.source) return false;
+      if (state.type !== "all" && record.projectType !== state.type) return false;
       return matchSearch(record, state.q);
     });
   }
@@ -386,23 +482,39 @@
     return sorted;
   }
 
-  function createStatusBadge(status) {
+  function createStageBadge(stage) {
     var badge = document.createElement("span");
     badge.className = "status-pill";
 
-    if (status === "active") {
-      badge.classList.add("status-live");
+    if (stage === "active") {
+      badge.classList.add("stage-active");
       badge.textContent = "Active";
       return badge;
     }
-    if (status === "archived") {
-      badge.classList.add("status-beta");
+    if (stage === "building") {
+      badge.classList.add("stage-building");
+      badge.textContent = "Building";
+      return badge;
+    }
+    if (stage === "research") {
+      badge.classList.add("stage-research");
+      badge.textContent = "Research";
+      return badge;
+    }
+    if (stage === "archived") {
+      badge.classList.add("stage-archived");
       badge.textContent = "Archived";
       return badge;
     }
+    if (stage === "maintenance") {
+      badge.classList.add("stage-maintenance");
+      badge.textContent = "Maintenance";
+      return badge;
+    }
 
-    badge.classList.add("status-lab");
-    badge.textContent = "Inactive";
+    // fallback for unknown/inactive
+    badge.classList.add("stage-maintenance");
+    badge.textContent = stage || "Unknown";
     return badge;
   }
 
@@ -424,7 +536,7 @@
   function createProjectCard(record) {
     var article = document.createElement("article");
     article.className = "project-card";
-    article.setAttribute("data-status", record.status);
+    article.setAttribute("data-stage", record.stage);
 
     var top = document.createElement("div");
     top.className = "project-top";
@@ -433,19 +545,21 @@
     title.className = "project-name";
     var titleLink = document.createElement("a");
     titleLink.textContent = record.name;
-    titleLink.href = record.url || "#";
-    if (!record.url) {
+
+    var primaryUrl = record.links.primary || record.url;
+    titleLink.href = primaryUrl || "#";
+    if (!primaryUrl) {
       titleLink.setAttribute("aria-disabled", "true");
-    } else if (/^https?:\/\//i.test(record.url)) {
+    } else if (/^https?:\/\//i.test(primaryUrl)) {
       titleLink.target = "_blank";
       titleLink.rel = "noreferrer";
     }
     title.appendChild(titleLink);
     top.appendChild(title);
-    top.appendChild(createStatusBadge(record.status));
+    top.appendChild(createStageBadge(record.stage));
     article.appendChild(top);
 
-    var description = record.description || "No description provided.";
+    var description = record.summary || "No description provided.";
     article.appendChild(createTextNodeWithClass("p", "project-desc", description));
 
     var tagsWrap = document.createElement("div");
@@ -457,50 +571,91 @@
     } else {
       tagsWrap.appendChild(createTextNodeWithClass("span", "project-tag", "untagged"));
     }
+    if (record.stack.length) {
+      record.stack.slice(0, 3).forEach(function (s) {
+        tagsWrap.appendChild(createTextNodeWithClass("span", "project-tag stack-tag", s));
+      });
+    }
     article.appendChild(tagsWrap);
 
     var stats = document.createElement("div");
     stats.className = "project-stats";
-    stats.appendChild(createStatBox("Pushed", formatDate(record.pushedAt || record.updatedAt)));
-    stats.appendChild(createStatBox("Language", record.language || "--"));
-    stats.appendChild(createStatBox("Stars", formatNumber(record.stars)));
+    stats.appendChild(createStatBox("Source", record.sourceType || "--"));
+    stats.appendChild(createStatBox("Type", record.projectType || "--"));
+    stats.appendChild(createStatBox("Updated", formatDate(record.updatedAt || record.pushedAt)));
     article.appendChild(stats);
 
     var actions = document.createElement("div");
     actions.className = "project-actions";
 
-    if (record.url) {
-      var sourceButton = document.createElement("a");
-      sourceButton.className = "btn primary";
-      sourceButton.href = record.url;
-      sourceButton.target = "_blank";
-      sourceButton.rel = "noreferrer";
-      sourceButton.textContent = "Open Source";
-      actions.appendChild(sourceButton);
+    var mainUrl = record.links.primary || record.url;
+    if (mainUrl) {
+      var mainButton = document.createElement("a");
+      mainButton.className = "btn primary";
+      mainButton.href = mainUrl;
+      if (/^https?:\/\//i.test(mainUrl)) {
+        mainButton.target = "_blank";
+        mainButton.rel = "noreferrer";
+      }
+      mainButton.textContent = "View Project";
+      actions.appendChild(mainButton);
     } else {
       var disabledButton = document.createElement("a");
       disabledButton.className = "btn primary";
       disabledButton.href = "#";
       disabledButton.setAttribute("aria-disabled", "true");
-      disabledButton.textContent = "No Source URL";
+      disabledButton.textContent = "No Link";
       actions.appendChild(disabledButton);
     }
 
-    var detailPath = knownDetailPages[(record.name || "").toLowerCase()];
-    if (detailPath) {
-      var detailButton = document.createElement("a");
-      detailButton.className = "btn";
-      detailButton.href = detailPath;
-      detailButton.textContent = "View Detail";
-      actions.appendChild(detailButton);
-    } else if (record.fullName) {
-      var fullNameButton = document.createElement("a");
-      fullNameButton.className = "btn";
-      fullNameButton.href = "https://github.com/" + record.fullName;
-      fullNameButton.target = "_blank";
-      fullNameButton.rel = "noreferrer";
-      fullNameButton.textContent = record.fullName;
-      actions.appendChild(fullNameButton);
+    if (record.links.repo) {
+      var repoButton = document.createElement("a");
+      repoButton.className = "btn";
+      repoButton.href = record.links.repo;
+      repoButton.target = "_blank";
+      repoButton.rel = "noreferrer";
+      repoButton.textContent = "Repository";
+      actions.appendChild(repoButton);
+    }
+
+    if (record.links.demo) {
+      var demoButton = document.createElement("a");
+      demoButton.className = "btn";
+      demoButton.href = record.links.demo;
+      demoButton.target = "_blank";
+      demoButton.rel = "noreferrer";
+      demoButton.textContent = "Demo";
+      actions.appendChild(demoButton);
+    }
+
+    if (record.links.docs) {
+      var docsButton = document.createElement("a");
+      docsButton.className = "btn";
+      docsButton.href = record.links.docs;
+      docsButton.target = "_blank";
+      docsButton.rel = "noreferrer";
+      docsButton.textContent = "Docs";
+      actions.appendChild(docsButton);
+    }
+
+    // Fallback: detail page or fullName link if no links.repo
+    if (!record.links.repo) {
+      var detailPath = knownDetailPages[(record.name || "").toLowerCase()];
+      if (detailPath) {
+        var detailButton = document.createElement("a");
+        detailButton.className = "btn";
+        detailButton.href = detailPath;
+        detailButton.textContent = "View Detail";
+        actions.appendChild(detailButton);
+      } else if (record.fullName) {
+        var fullNameButton = document.createElement("a");
+        fullNameButton.className = "btn";
+        fullNameButton.href = "https://github.com/" + record.fullName;
+        fullNameButton.target = "_blank";
+        fullNameButton.rel = "noreferrer";
+        fullNameButton.textContent = record.fullName;
+        actions.appendChild(fullNameButton);
+      }
     }
 
     article.appendChild(actions);
@@ -516,7 +671,7 @@
   function showLoading(message) {
     if (loadingState) {
       loadingState.hidden = false;
-      loadingState.textContent = message || "正在加载目录数据...";
+      loadingState.textContent = message || "正在加载项目目录...";
     }
     if (errorState) {
       errorState.hidden = true;
@@ -543,7 +698,7 @@
     grid.hidden = true;
     setFetchStatus("目录读取失败，可点击 Retry 重试。");
     if (resultsMeta) {
-      resultsMeta.textContent = "Failed to load /projects";
+      resultsMeta.textContent = "Failed to load projects";
     }
   }
 
@@ -605,16 +760,26 @@
     });
   }
 
+  function countSourceTypes(projects) {
+    var seen = {};
+    projects.forEach(function (p) {
+      var st = p.sourceType;
+      if (st) {
+        seen[st] = true;
+      }
+    });
+    return Object.keys(seen).length;
+  }
+
   function updateSummary(state, visibleCount) {
     var totalCount = allProjects.length;
     var activeCount = allProjects.filter(function (project) {
-      return project.status === "active";
+      return project.stage === "active" || project.status === "active";
     }).length;
 
     if (resultsMeta) {
-      var filterLabel = state.q || state.status !== "all" || state.featured
-        ? "Filters active"
-        : "All filters";
+      var hasFilter = state.q || state.stage !== "all" || state.source !== "all" || state.type !== "all" || state.featured;
+      var filterLabel = hasFilter ? "Filters active" : "All filters";
       var fetchedLabel = fetchedAtValue ? ("Fetched " + formatDateTime(fetchedAtValue)) : "Fetched --";
       resultsMeta.textContent = "Showing " + visibleCount + " of " + totalCount + " entries · " + filterLabel + " · " + fetchedLabel;
     }
@@ -629,6 +794,11 @@
 
     if (lastSyncValue) {
       lastSyncValue.textContent = fetchedAtValue ? formatDateTime(fetchedAtValue) : "--";
+    }
+
+    if (sourceCountValue) {
+      var sourceTypeCount = countSourceTypes(allProjects);
+      sourceCountValue.textContent = sourceTypeCount > 0 ? sourceTypeCount + " Types" : "--";
     }
   }
 
@@ -680,20 +850,11 @@
     var endpoint = buildProjectsEndpoint();
     var params = new URLSearchParams();
     params.set("limit", "200");
+    params.set("include_inactive", "true");
+    params.set("include_archived", "true");
 
     if (state.featured) {
       params.set("featured_only", "true");
-    }
-
-    if (state.status === "all") {
-      params.set("include_inactive", "true");
-      params.set("include_archived", "true");
-    } else if (state.status === "inactive") {
-      params.set("include_inactive", "true");
-      params.set("include_archived", "false");
-    } else if (state.status === "archived") {
-      params.set("include_inactive", "true");
-      params.set("include_archived", "true");
     }
 
     return endpoint + "?" + params.toString();
@@ -701,7 +862,7 @@
 
   function parseResponsePayload(payload) {
     if (!payload || payload.ok !== true || !Array.isArray(payload.projects)) {
-      throw new Error("`GET /projects` 响应不符合协议（ok/projects）。");
+      throw new Error("项目目录响应不符合协议（ok/projects）。");
     }
 
     fetchedCount = toInteger(payload.count);
@@ -713,7 +874,7 @@
   }
 
   function getFetchKey(state) {
-    return state.status + "|" + (state.featured ? "1" : "0");
+    return state.featured ? "1" : "0";
   }
 
   function fetchProjects(state) {
@@ -724,8 +885,8 @@
     var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     var timeoutId = null;
 
-    showLoading("正在请求 " + url + " ...");
-    setFetchStatus("正在读取后端目录数据...");
+    showLoading("正在加载项目目录...");
+    setFetchStatus("正在读取目录数据...");
 
     if (controller) {
       timeoutId = window.setTimeout(function () {
@@ -822,10 +983,24 @@
     });
   });
 
-  statusSelect.addEventListener("change", function () {
+  stageSelect.addEventListener("change", function () {
     applyFromControls({
       syncUrl: true,
-      refetch: true
+      refetch: false
+    });
+  });
+
+  sourceSelect.addEventListener("change", function () {
+    applyFromControls({
+      syncUrl: true,
+      refetch: false
+    });
+  });
+
+  typeSelect.addEventListener("change", function () {
+    applyFromControls({
+      syncUrl: true,
+      refetch: false
     });
   });
 

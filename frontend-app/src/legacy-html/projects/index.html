@@ -191,7 +191,7 @@
       box-shadow: var(--shadow-soft);
       padding: 14px;
       display: grid;
-      grid-template-columns: minmax(260px, 1fr) auto auto auto;
+      grid-template-columns: minmax(260px, 1fr) auto auto auto auto auto;
       gap: 10px;
       align-items: end;
       margin-bottom: 14px;
@@ -442,22 +442,37 @@
       white-space: nowrap;
     }
 
-    .status-live {
+    .status-live,
+    .stage-active {
       background: var(--chip-green);
       border-color: #b7ebcc;
       color: #047857;
     }
 
-    .status-beta {
+    .status-beta,
+    .stage-archived {
       background: var(--chip-amber);
       border-color: #fbd7ad;
       color: #b45309;
     }
 
-    .status-lab {
+    .status-lab,
+    .stage-maintenance {
       background: var(--chip-gray);
       border-color: #dbe3ef;
       color: #475569;
+    }
+
+    .stage-building {
+      background: var(--chip);
+      border-color: var(--line-strong);
+      color: #1e40af;
+    }
+
+    .stage-research {
+      background: #f5f0ff;
+      border-color: #d8ccf0;
+      color: #6d28d9;
     }
 
     .project-desc {
@@ -486,6 +501,12 @@
       font-size: 0.62rem;
       letter-spacing: 0.08em;
       text-transform: uppercase;
+    }
+
+    .project-tag.stack-tag {
+      background: #f5f0ff;
+      border-color: #d8ccf0;
+      color: #6d28d9;
     }
 
     .project-stats {
@@ -630,7 +651,7 @@
       }
 
       .control-strip {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
       }
 
       .projects-grid {
@@ -715,39 +736,38 @@
     <section class="page-hero" aria-label="Projects intro">
       <div class="hero-grid">
         <div>
-          <p class="hero-kicker">Project Catalog · API First</p>
-          <h1 class="hero-title">Browse projects with a single backend source.</h1>
+          <p class="hero-kicker">Project Catalog</p>
+          <h1 class="hero-title">Explore the Project Catalog</h1>
           <p class="hero-desc">
-            目录主数据源已切换到后端 <code>/projects</code>。
-            页面支持 loading / empty / error / retry 四态，并保持 URL 参数刷新与分享回放一致。
+            浏览所有项目，按阶段、来源与类型快速筛选和发现。支持搜索、排序与 URL 分享。
           </p>
           <div class="hero-chip-row">
-            <span class="chip">GET /projects</span>
-            <span class="chip">Contract v1</span>
+            <span class="chip">Stage Filter</span>
+            <span class="chip">Source Type</span>
+            <span class="chip">Project Type</span>
             <span class="chip">URL Replay</span>
-            <span class="chip">State Governance</span>
           </div>
         </div>
         <div class="hero-metrics" aria-label="catalog metrics">
           <article class="metric">
-            <p class="label">Total Items</p>
+            <p class="label">Projects</p>
             <p class="value" data-total-items>--</p>
-            <p class="desc">后端返回的目录条目总数</p>
+            <p class="desc">目录项目总数</p>
           </article>
           <article class="metric">
-            <p class="label">Active Track</p>
+            <p class="label">Active</p>
             <p class="value" data-live-items>--</p>
-            <p class="desc">当前数据中 active 条目数量</p>
+            <p class="desc">当前活跃项目数量</p>
           </article>
           <article class="metric">
-            <p class="label">Last Fetch</p>
+            <p class="label">Last Updated</p>
             <p class="value" data-last-sync>Pending</p>
-            <p class="desc">本次目录读取时间</p>
+            <p class="desc">目录最近更新时间</p>
           </article>
           <article class="metric">
-            <p class="label">Main Source</p>
-            <p class="value">/projects</p>
-            <p class="desc">静态卡片不再作为业务真值</p>
+            <p class="label">Sources</p>
+            <p class="value" data-source-count>--</p>
+            <p class="desc">项目来源类型数量</p>
           </article>
         </div>
       </div>
@@ -756,47 +776,72 @@
     <section class="control-strip" aria-label="Project controls">
       <div class="field">
         <label class="field-label" for="project-search">Search</label>
-        <input class="field-input" id="project-search" type="search" placeholder="Search by name, description, tags, language" />
+        <input class="field-input" id="project-search" type="search" placeholder="Search by name, summary, tags, stack" />
       </div>
       <div class="field">
         <label class="field-label" for="sort-by">Sort</label>
         <select class="field-select" id="sort-by">
-          <option value="recent">Most Recent Push</option>
-          <option value="stars">Most Stars</option>
+          <option value="recent">Most Recent</option>
+          <option value="stars">Stars</option>
           <option value="name">Name (A-Z)</option>
         </select>
       </div>
       <div class="field">
-        <label class="field-label" for="status-filter">Status</label>
-        <select class="field-select" id="status-filter">
+        <label class="field-label" for="stage-filter">Stage</label>
+        <select class="field-select" id="stage-filter">
           <option value="all">All</option>
+          <option value="building">Building</option>
           <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="research">Research</option>
           <option value="archived">Archived</option>
         </select>
       </div>
-      <button class="ghost-btn" type="button" id="clear-filters">Clear Filters</button>
+      <div class="field">
+        <label class="field-label" for="source-filter">Source</label>
+        <select class="field-select" id="source-filter">
+          <option value="all">All</option>
+          <option value="github">GitHub</option>
+          <option value="local">Local</option>
+          <option value="private">Private</option>
+          <option value="hybrid">Hybrid</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label" for="type-filter">Type</label>
+        <select class="field-select" id="type-filter">
+          <option value="all">All</option>
+          <option value="website">Website</option>
+          <option value="backend">Backend</option>
+          <option value="tooling">Tooling</option>
+          <option value="infra">Infra</option>
+          <option value="research">Research</option>
+          <option value="agent">Agent</option>
+          <option value="data">Data</option>
+          <option value="library">Library</option>
+        </select>
+      </div>
+      <button class="ghost-btn" type="button" id="clear-filters">Clear</button>
     </section>
 
     <section class="catalog-layout" aria-label="Project catalog">
       <aside class="filter-panel" aria-label="Catalog filters">
         <section class="filter-group">
-          <h2 class="filter-title">Contract Scope</h2>
+          <h2 class="filter-title">Highlight</h2>
           <div class="check-list">
-            <label class="check-item"><input type="checkbox" id="featured-only" /> Featured only (API)</label>
+            <label class="check-item"><input type="checkbox" id="featured-only" /> Featured only</label>
           </div>
-          <p class="catalog-note">目录主数据固定来自 <code>GET /projects</code>，静态卡片链路已退场。</p>
         </section>
 
         <section class="filter-group">
-          <h2 class="filter-title">Tag Snapshot</h2>
+          <h2 class="filter-title">Tags</h2>
           <div class="tag-cloud" data-tag-cloud>
             <span class="tag">Waiting</span>
           </div>
         </section>
 
         <section class="filter-group">
-          <h2 class="filter-title">Fetch Status</h2>
+          <h2 class="filter-title">Status</h2>
           <p class="catalog-note" data-fetch-status>准备加载目录数据。</p>
         </section>
       </aside>
@@ -813,7 +858,7 @@
           </div>
         </div>
 
-        <div class="catalog-state" data-loading-state role="status" aria-live="polite">正在从 /projects 加载目录，请稍候...</div>
+        <div class="catalog-state" data-loading-state role="status" aria-live="polite">正在加载项目目录...</div>
         <div class="catalog-state catalog-state-error" data-error-state hidden>
           <p class="catalog-state-title">目录加载失败</p>
           <p class="catalog-state-detail" data-error-detail>请求失败，请检查后端连接状态。</p>
@@ -824,7 +869,7 @@
         <p class="empty-state" data-empty-state hidden>未找到符合条件的项目。可以放宽关键词，或重置筛选后再试。</p>
 
         <div class="list-footer">
-          <span>目录主链路：GET /projects（Contract v1）。</span>
+          <span>项目目录</span>
           <span>筛选状态自动同步到 URL，可刷新与分享回放。</span>
         </div>
       </div>
