@@ -5,6 +5,9 @@
       "viewports": ["desktop"],
       "themes": ["light", "dark"],
       "pages": ["home", "projects", "journal", "about", "contact", "status-empty", "status-single", "status-multi"],
+      "headerStability": {
+        "skipAllowlist": []
+      },
       "expectedDiffs": {
         "home__desktop__light": {
           "category": "intentional-change",

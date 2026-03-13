@@ -9,6 +9,14 @@ const __dirname = path.dirname(__filename)
 const configPath = path.join(__dirname, 'visual-parity.config.json')
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
 const modeConfig = config.modes?.smoke
+const rawHeaderStabilitySkipAllowlist = modeConfig?.headerStability?.skipAllowlist
+const headerStabilitySkipAllowlist = Array.isArray(rawHeaderStabilitySkipAllowlist)
+  ? rawHeaderStabilitySkipAllowlist
+    .filter((entry) => typeof entry === 'string' && entry.trim().length > 0)
+    .map((entry) => entry.trim())
+  : []
+const headerStabilityMaxAttempts = 3
+const headerStabilityRetryDelayMs = 350
 
 if (!modeConfig) {
   throw new Error('Missing smoke mode in visual-parity.config.json')
@@ -481,6 +489,92 @@ function calculateMaxShift(baseRects, nextRects) {
   return maxShift
 }
 
+function resolveHeaderStabilitySkipReason(errorMessage) {
+  for (const entry of headerStabilitySkipAllowlist) {
+    if (errorMessage.includes(entry)) {
+      return entry
+    }
+  }
+  return null
+}
+
+function buildUncheckedShellAssertions() {
+  return shellKeyAreas.map((area) => ({
+    name: area.name,
+    selector: area.selector,
+    present: null,
+  }))
+}
+
+async function collectShellAssertions(page) {
+  const shellAssertions = []
+  const missingShellAreas = []
+  for (const area of shellKeyAreas) {
+    const present = (await page.locator(area.selector).first().count()) > 0
+    shellAssertions.push({
+      name: area.name,
+      selector: area.selector,
+      present,
+    })
+    if (!present) {
+      missingShellAreas.push(area.name)
+    }
+  }
+  return { shellAssertions, missingShellAreas }
+}
+
+function summarizeShellAssertionCoverage(results) {
+  const summary = Object.fromEntries(
+    shellKeyAreas.map((area) => [area.name, { checkedCases: 0, missingCases: 0 }]),
+  )
+  for (const entry of results) {
+    for (const assertion of entry.shellAssertions || []) {
+      const areaSummary = summary[assertion.name]
+      if (!areaSummary || typeof assertion.present !== 'boolean') {
+        continue
+      }
+      areaSummary.checkedCases += 1
+      if (!assertion.present) {
+        areaSummary.missingCases += 1
+      }
+    }
+  }
+  return summary
+}
+
+function resolveHeaderStabilityConclusion(headerStability) {
+  if (headerStability.skipped) {
+    return 'skipped'
+  }
+  return headerStability.pass ? 'pass' : 'fail'
+}
+
+function formatErrorWithStack(error) {
+  if (error instanceof Error) {
+    return error.stack ? String(error.stack) : `${error.name}: ${error.message}`
+  }
+  return String(error)
+}
+
+function isHeaderStabilityRetryableError(errorMessage) {
+  const normalized = errorMessage.toLowerCase()
+  return (
+    normalized.includes('browsercontext.newpage') ||
+    normalized.includes('browser.newcontext') ||
+    normalized.includes('browser.newpage') ||
+    (normalized.includes('target page, context or browser has been closed') &&
+      (normalized.includes('browsercontext') || normalized.includes('newpage') || normalized.includes('browser')))
+  )
+}
+
+async function launchVisualBrowser() {
+  try {
+    return await chromium.launch({ headless: true, channel: 'msedge' })
+  } catch {
+    return chromium.launch({ headless: true })
+  }
+}
+
 async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
   const selectors = ['.ll-header', '.ll-brand', '.ll-nav', '[data-theme-mode-switch]', '[data-system-status]']
   const navigationSequence = [
@@ -490,31 +584,88 @@ async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
     { selector: '.ll-header .ll-cta[href="/contact/index.html"]', to: '/contact/index.html' },
   ]
 
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
-    colorScheme: 'light',
-  })
-  await configureContext(context, 'light')
-  const page = await context.newPage()
-  await page.goto(joinUrl(baseUrl, '/index.html'))
-  await waitForPageStable(page)
-
-  const baselineRects = await collectNodeRects(page, selectors)
-  let maxShift = 0
-  const records = []
-
-  for (const item of navigationSequence) {
-    await page.locator(item.selector).first().click()
-    await page.waitForURL(`**${item.to}`)
+  let context
+  let page
+  try {
+    context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      colorScheme: 'light',
+    })
+    await configureContext(context, 'light')
+    page = await context.newPage()
+    await page.goto(joinUrl(baseUrl, '/index.html'))
     await waitForPageStable(page)
-    const nextRects = await collectNodeRects(page, selectors)
-    const shift = calculateMaxShift(baselineRects, nextRects)
-    records.push({ step: item.to, shift })
-    maxShift = Math.max(maxShift, shift)
+
+    const baselineRects = await collectNodeRects(page, selectors)
+    let maxShift = 0
+    const records = []
+
+    for (const item of navigationSequence) {
+      await page.locator(item.selector).first().click()
+      await page.waitForURL(`**${item.to}`)
+      await waitForPageStable(page)
+      const nextRects = await collectNodeRects(page, selectors)
+      const shift = calculateMaxShift(baselineRects, nextRects)
+      records.push({ step: item.to, shift })
+      maxShift = Math.max(maxShift, shift)
+    }
+
+    return { thresholdPx, maxShift, pass: maxShift <= thresholdPx, records }
+  } finally {
+    if (page) {
+      await page.close().catch(() => {})
+    }
+    if (context) {
+      await context.close().catch(() => {})
+    }
+  }
+}
+
+async function runHeaderStabilityCheckWithRetry(baseUrl, thresholdPx) {
+  const attemptLogs = []
+  for (let attempt = 1; attempt <= headerStabilityMaxAttempts; attempt += 1) {
+    let attemptBrowser
+    try {
+      attemptBrowser = await launchVisualBrowser()
+      const result = await runHeaderStabilityCheck(attemptBrowser, baseUrl, thresholdPx)
+      return {
+        ...result,
+        retry: {
+          maxAttempts: headerStabilityMaxAttempts,
+          attemptCount: attempt,
+          retried: attempt > 1,
+        },
+        attemptLogs,
+      }
+    } catch (error) {
+      const errorMessage = formatErrorWithStack(error)
+      const retryable = isHeaderStabilityRetryableError(errorMessage)
+      attemptLogs.push({
+        attempt,
+        retryable,
+        error: errorMessage,
+      })
+      console.error(
+        `[visual-shell][header-stability] attempt ${attempt}/${headerStabilityMaxAttempts} failed retryable=${retryable}: ${errorMessage}`,
+      )
+      const shouldRetry = retryable && attempt < headerStabilityMaxAttempts
+      if (!shouldRetry) {
+        const detail = attemptLogs
+          .map((entry) => `attempt=${entry.attempt} retryable=${entry.retryable} error=${entry.error}`)
+          .join('\n')
+        const finalError = new Error(`header stability failed after ${attempt} attempt(s)\n${detail}`)
+        finalError.attemptLogs = attemptLogs
+        throw finalError
+      }
+      await wait(headerStabilityRetryDelayMs * attempt)
+    } finally {
+      if (attemptBrowser) {
+        await attemptBrowser.close().catch(() => {})
+      }
+    }
   }
 
-  await context.close()
-  return { thresholdPx, maxShift, pass: maxShift <= thresholdPx, records }
+  throw new Error(`header stability failed without result after ${headerStabilityMaxAttempts} attempts`)
 }
 
 function renderMarkdownReport(report) {
@@ -526,13 +677,55 @@ function renderMarkdownReport(report) {
   lines.push(`- Base URL: \`${report.baseUrl}\``)
   lines.push(`- Total Cases: \`${report.summary.totalCases}\``)
   lines.push(`- Failed Cases: \`${report.summary.failedCases}\``)
+  lines.push(`- Warning Signals: \`${report.summary.warningCount}\``)
   lines.push(`- Missing Expected Attribution: \`${report.summary.missingExpectedAttribution}\``)
+  lines.push('')
+  lines.push('## Check Conclusions')
+  lines.push('')
+  for (const check of report.checks) {
+    const detailSuffix = check.detail ? ` (${check.detail})` : ''
+    lines.push(`- ${check.name}: \`${check.result}\`${detailSuffix}`)
+  }
   lines.push('')
   lines.push('## Header Stability')
   lines.push('')
+  lines.push(`- Conclusion: \`${report.headerStability.conclusion}\``)
   lines.push(`- Max Shift: \`${report.headerStability.maxShift.toFixed(3)}px\``)
   lines.push(`- Threshold: \`${report.headerStability.thresholdPx}px\``)
   lines.push(`- Pass: \`${report.headerStability.pass}\``)
+  lines.push(`- Attempts: \`${report.headerStability.retry.attemptCount}/${report.headerStability.retry.maxAttempts}\``)
+  lines.push(`- Retried: \`${report.headerStability.retry.retried}\``)
+  if (report.headerStability.error) {
+    lines.push(`- Error: \`${report.headerStability.error}\``)
+  }
+  if (report.headerStability.skipReason) {
+    lines.push(`- Skip Reason: \`${report.headerStability.skipReason}\``)
+  }
+  if ((report.headerStability.attemptLogs || []).length > 0) {
+    lines.push('- Attempt Logs:')
+    for (const attemptEntry of report.headerStability.attemptLogs) {
+      lines.push(
+        `  - attempt=${attemptEntry.attempt} retryable=${attemptEntry.retryable} error=${attemptEntry.error}`,
+      )
+    }
+  }
+  lines.push('')
+  lines.push('## Shell Assertion Coverage')
+  lines.push('')
+  for (const area of shellKeyAreas) {
+    const areaSummary = report.shellAssertionCoverage[area.name]
+    lines.push(`- ${area.name}: checked=${areaSummary.checkedCases} missing=${areaSummary.missingCases}`)
+  }
+  lines.push('')
+  lines.push('## Warning Signals')
+  lines.push('')
+  if (report.warnings.length === 0) {
+    lines.push('- None')
+  } else {
+    for (const warning of report.warnings) {
+      lines.push(`- ${warning}`)
+    }
+  }
   lines.push('')
   lines.push('## Failures')
   lines.push('')
@@ -542,7 +735,9 @@ function renderMarkdownReport(report) {
     lines.push('- None')
   } else {
     for (const entry of failed) {
-      lines.push(`- ${entry.caseId}: missing=${entry.missingShellAreas.join(', ') || 'none'} error=${entry.error || 'none'}`)
+      lines.push(
+        `- ${entry.caseId}: reason=${entry.blockingReason || 'shell-assertion'} missing=${entry.missingShellAreas.join(', ') || 'none'} error=${entry.error || 'none'}`,
+      )
     }
   }
 
@@ -580,13 +775,10 @@ async function main() {
   let browser
 
   try {
-    try {
-      browser = await chromium.launch({ headless: true, channel: 'msedge' })
-    } catch {
-      browser = await chromium.launch({ headless: true })
-    }
+    browser = await launchVisualBrowser()
 
     const results = []
+    const warnings = []
     for (const viewport of selectedViewports) {
       for (const theme of selectedThemes) {
         const context = await browser.newContext({
@@ -608,13 +800,7 @@ async function main() {
             await page.goto(joinUrl(baseUrl, targetPath), { waitUntil: 'domcontentloaded', timeout: 10000 })
             await waitForPageStable(page)
 
-            const missingShellAreas = []
-            for (const area of shellKeyAreas) {
-              const exists = (await page.locator(area.selector).first().count()) > 0
-              if (!exists) {
-                missingShellAreas.push(area.name)
-              }
-            }
+            const { shellAssertions, missingShellAreas } = await collectShellAssertions(page)
 
             results.push({
               caseId,
@@ -624,10 +810,16 @@ async function main() {
               targetPath,
               expectedCategory: expectedDiffMap[caseId]?.category || null,
               expectedReason: expectedDiffMap[caseId]?.reason || null,
+              blockingReason: missingShellAreas.length > 0 ? 'missing-shell-areas' : null,
+              shellAssertions,
               missingShellAreas,
               pass: missingShellAreas.length === 0,
             })
-            console.log(`[visual-shell] ${caseId} pass=${missingShellAreas.length === 0 ? 'yes' : 'no'}`)
+            if (missingShellAreas.length > 0) {
+              console.error(`[visual-shell][block] ${caseId} missing shell areas: ${missingShellAreas.join(', ')}`)
+            } else {
+              console.log(`[visual-shell] ${caseId} pass=yes`)
+            }
           } catch (error) {
             results.push({
               caseId,
@@ -637,11 +829,13 @@ async function main() {
               targetPath,
               expectedCategory: expectedDiffMap[caseId]?.category || null,
               expectedReason: expectedDiffMap[caseId]?.reason || null,
-              missingShellAreas: ['navigation'],
+              blockingReason: 'navigation-error',
+              shellAssertions: buildUncheckedShellAssertions(),
+              missingShellAreas: [],
               pass: false,
               error: String(error),
             })
-            console.log(`[visual-shell] ${caseId} navigation failed`)
+            console.error(`[visual-shell][block] ${caseId} navigation failed: ${String(error)}`)
           } finally {
             await page.close().catch(() => {})
           }
@@ -654,25 +848,93 @@ async function main() {
     let headerStability = {
       thresholdPx: config.thresholds.headerShiftPx,
       maxShift: 0,
-      pass: true,
+      pass: false,
       records: [],
       skipped: false,
       error: null,
+      skipReason: null,
+      conclusion: 'fail',
+      retry: {
+        maxAttempts: headerStabilityMaxAttempts,
+        attemptCount: 0,
+        retried: false,
+      },
+      attemptLogs: [],
     }
     try {
-      headerStability = await runHeaderStabilityCheck(browser, baseUrl, config.thresholds.headerShiftPx)
-    } catch (error) {
+      headerStability = await runHeaderStabilityCheckWithRetry(baseUrl, config.thresholds.headerShiftPx)
       headerStability = {
-        thresholdPx: config.thresholds.headerShiftPx,
-        maxShift: 0,
-        pass: true,
-        records: [],
-        skipped: true,
-        error: String(error),
+        ...headerStability,
+        skipped: false,
+        error: null,
+        skipReason: null,
       }
-      console.warn(`[visual-shell] header stability skipped: ${String(error)}`)
+      headerStability.conclusion = resolveHeaderStabilityConclusion(headerStability)
+      if (!headerStability.pass) {
+        console.error(
+          `[visual-shell][block] header stability exceeded threshold: maxShift=${headerStability.maxShift.toFixed(3)} threshold=${headerStability.thresholdPx}`,
+        )
+      }
+    } catch (error) {
+      const errorMessage = String(error)
+      const skipReason = resolveHeaderStabilitySkipReason(errorMessage)
+      if (skipReason) {
+        headerStability = {
+          thresholdPx: config.thresholds.headerShiftPx,
+          maxShift: 0,
+          pass: true,
+          records: [],
+          skipped: true,
+          error: errorMessage,
+          skipReason,
+          retry: {
+            maxAttempts: headerStabilityMaxAttempts,
+            attemptCount: 1,
+            retried: false,
+          },
+          attemptLogs: error?.attemptLogs || [],
+        }
+        warnings.push(`header-stability skipped via allowlist match "${skipReason}"`)
+        console.warn(`[visual-shell][warn] header stability skipped via allowlist "${skipReason}": ${errorMessage}`)
+      } else {
+        headerStability = {
+          thresholdPx: config.thresholds.headerShiftPx,
+          maxShift: 0,
+          pass: false,
+          records: [],
+          skipped: false,
+          error: errorMessage,
+          skipReason: null,
+          retry: {
+            maxAttempts: headerStabilityMaxAttempts,
+            attemptCount: Math.max(1, error?.attemptLogs?.length || 0),
+            retried: (error?.attemptLogs?.length || 0) > 1,
+          },
+          attemptLogs: error?.attemptLogs || [],
+        }
+        console.error(`[visual-shell][block] header stability failed: ${errorMessage}`)
+      }
+      headerStability.conclusion = resolveHeaderStabilityConclusion(headerStability)
     }
     const failedCases = results.filter((entry) => !entry.pass).length
+    const shellAssertionCoverage = summarizeShellAssertionCoverage(results)
+    const checks = [
+      {
+        name: 'shell-key-areas',
+        result: failedCases > 0 ? 'fail' : 'pass',
+        detail: `blockingCases=${failedCases}`,
+      },
+      {
+        name: 'header-stability',
+        result: headerStability.conclusion,
+        detail: `maxShift=${headerStability.maxShift.toFixed(3)} threshold=${headerStability.thresholdPx}`,
+      },
+      {
+        name: 'runtime-noise',
+        result: warnings.length > 0 ? 'warn' : 'pass',
+        detail: `warnings=${warnings.length}`,
+      },
+    ]
     const report = {
       mode: 'smoke-shell',
       runId,
@@ -683,9 +945,13 @@ async function main() {
       summary: {
         totalCases: results.length,
         failedCases,
+        warningCount: warnings.length,
         missingExpectedAttribution: missingExpectedAttribution.length,
       },
+      warnings,
+      checks,
       headerStability,
+      shellAssertionCoverage,
       results,
     }
 
