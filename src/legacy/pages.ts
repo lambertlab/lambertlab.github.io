@@ -1,9 +1,7 @@
 import type { JSX } from 'react'
 import aboutHtmlRaw from '~/legacy-html/about/index.html?raw'
-import contactHtmlRaw from '~/legacy-html/contact/index.html?raw'
 import indexHtmlRaw from '~/legacy-html/index.html?raw'
 import journalAiCollabRaw from '~/legacy-html/journal/ai-collaboration-checklist.html?raw'
-import journalIndexHtmlRaw from '~/legacy-html/journal/index.html?raw'
 import journalModelFirstRaw from '~/legacy-html/journal/model-first-engineering.html?raw'
 import journalHabitsRaw from '~/legacy-html/journal/operational-habits-that-stick.html?raw'
 import projectsIndexHtmlRaw from '~/legacy-html/projects/index.html?raw'
@@ -53,13 +51,6 @@ function buildLegacyPage(
   }
 }
 
-function toJournalIndexSource(source: string): string {
-  return source
-    .replace(/href="\.\/*model-first-engineering\.html"/g, 'href="./model-first-engineering/index.html"')
-    .replace(/href="\.\/*ai-collaboration-checklist\.html"/g, 'href="./ai-collaboration-checklist/index.html"')
-    .replace(/href="\.\/*operational-habits-that-stick\.html"/g, 'href="./operational-habits-that-stick/index.html"')
-}
-
 function toJournalDetailSource(source: string): string {
   return source
     .replace(/href="\.\.\/index\.html"/g, 'href="__LL_HOME_INDEX__"')
@@ -80,15 +71,9 @@ export const legacyPages = {
   about: buildLegacyPage('about', aboutHtmlRaw, ['/css/page-about.css'], {
     metadata: legacyPageMetadata.about,
   }),
-  contact: buildLegacyPage('contact', contactHtmlRaw, ['/css/bento-pages.css', '/css/page-contact.css'], {
-    metadata: legacyPageMetadata.contact,
-  }),
   projects: buildLegacyPage('projects', projectsIndexHtmlRaw, ['/css/page-projects.css'], {
     metadata: legacyPageMetadata.projects,
     runtimeScripts: ['/js/projects-runtime.js', '/js/projects-catalog.js'],
-  }),
-  journal: buildLegacyPage('journal', toJournalIndexSource(journalIndexHtmlRaw), ['/css/page-journal.css'], {
-    metadata: legacyPageMetadata.journal,
   }),
   projectPersonalToolbox: buildLegacyPage(
     'project-personal-toolbox',

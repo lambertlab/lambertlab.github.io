@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
-import { buildLegacyHead, legacyPages } from '~/legacy/pages'
+import { ContactPage } from '~/components/content/ContactPage'
+import { buildContentPageHead } from '~/lib/contentPageHead'
+import { legacyPageMetadata } from '~/lib/siteCopy'
 
 export const Route = createFileRoute('/contact/index.html')({
-  head: () => buildLegacyHead(legacyPages.contact),
+  head: () => buildContentPageHead(legacyPageMetadata.contact, ['/css/bento-pages.css', '/css/page-contact.css']),
   component: ContactHtmlPage,
 })
 
 function ContactHtmlPage() {
-  return <LegacyPageView page={legacyPages.contact} />
+  return <ContactPage />
 }
-

@@ -33,10 +33,19 @@ const shellRequiredFragments = [
 const forbiddenFragments = ['href="/projects/index.html"', 'Control Center']
 
 const pageSpecificRequiredFragments = {
+  'contact/index.html': ['class="wrap"', 'class="grid"', 'href="https://github.com/lambertlab"', 'href="mailto:you@example.com"'],
   'index.html': [
     'data-home-managed-by-projects',
     'data-home-featured-projects',
     'data-home-featured-slot="0"',
+  ],
+  'journal/index.html': [
+    'class="journal-grid"',
+    'class="note-list"',
+    'class="archive-row"',
+    'href="/journal/model-first-engineering/"',
+    'href="/journal/ai-collaboration-checklist/"',
+    'href="/journal/operational-habits-that-stick/"',
   ],
   'projects/index.html': [
     'data-project-catalog',
@@ -53,6 +62,8 @@ const pageSpecificRequiredFragments = {
 }
 
 const pageSpecificForbiddenFragments = {
+  'contact/index.html': ['data-legacy-page="contact"'],
+  'journal/index.html': ['data-legacy-page="journal"'],
   'projects/personal-toolbox/index.html': ['href="../index.html"', 'href="/projects/personal-toolbox/index.html"'],
   'projects/ai-message-value-triage/index.html': ['href="../index.html"', 'href="/projects/ai-message-value-triage/index.html"'],
 }

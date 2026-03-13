@@ -1,12 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
-import { buildLegacyHead, legacyPages } from '~/legacy/pages'
+import { JournalIndexPage } from '~/components/content/JournalIndexPage'
+import { buildContentPageHead } from '~/lib/contentPageHead'
+import { legacyPageMetadata } from '~/lib/siteCopy'
 
 export const Route = createFileRoute('/journal/')({
-  head: () => buildLegacyHead(legacyPages.journal),
-  component: JournalPage,
+  head: () => buildContentPageHead(legacyPageMetadata.journal, ['/css/page-journal.css']),
+  component: JournalRoutePage,
 })
 
-function JournalPage() {
-  return <LegacyPageView page={legacyPages.journal} />
+function JournalRoutePage() {
+  return <JournalIndexPage />
 }

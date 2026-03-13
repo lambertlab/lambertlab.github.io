@@ -19,6 +19,7 @@ npm run visual:parity:smoke
 - `docs/frontend-governance-p0-gate-layers.md`
 - `docs/legacy-html-inventory-p0-2026-03-13.md`
 - `docs/legacy-html-exit-checklist-p1-entry.md`
+- `docs/content-page-convergence-p4-2026-03-13.md`
 
 ## baseline-site 定位
 `baseline-site` 已完成退场，不再作为门禁输入。`visual:parity:smoke` 统一采用单站壳层结构稳定门禁（关键节点断言 + header stability）。
