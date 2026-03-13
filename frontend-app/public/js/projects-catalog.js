@@ -1,5 +1,8 @@
 (function () {
   "use strict";
+  if (window.__LL_PROJECTS_CATALOG_BOOTSTRAPPED__) {
+    return;
+  }
 
   var catalogRoot = document.querySelector("[data-project-catalog]");
   if (!catalogRoot) {
@@ -32,6 +35,7 @@
   if (!searchInput || !sortSelect || !stageSelect || !sourceSelect || !typeSelect || !featuredOnlyInput || !clearButton || !retryButton || !grid) {
     return;
   }
+  window.__LL_PROJECTS_CATALOG_BOOTSTRAPPED__ = true;
 
   var validSort = {
     recent: true,
@@ -701,7 +705,15 @@
     setText('label[for="type-filter"]', getUiText("类型", "Type"));
     setText("#clear-filters", getUiText("重置", "Clear"));
     setText(".filter-group:nth-child(1) .filter-title", getUiText("精选", "Highlight"));
-    setText(".filter-group:nth-child(1) .check-item", getUiText("仅看精选", "Featured only"));
+    var featuredOnlyLabel = catalogRoot.querySelector(".filter-group:nth-child(1) .check-item");
+    if (featuredOnlyLabel) {
+      var featuredOnlyCheckbox = featuredOnlyLabel.querySelector("input");
+      featuredOnlyLabel.textContent = "";
+      if (featuredOnlyCheckbox) {
+        featuredOnlyLabel.appendChild(featuredOnlyCheckbox);
+      }
+      featuredOnlyLabel.appendChild(document.createTextNode(" " + getUiText("仅看精选", "Featured only")));
+    }
     setText(".filter-group:nth-child(2) .filter-title", getUiText("标签", "Tags"));
     setText(".filter-group:nth-child(3) .filter-title", getUiText("状态", "Status"));
     setText(".results-title", getUiText("项目目录", "Project Directory"));

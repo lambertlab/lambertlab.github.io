@@ -1,36 +1,24 @@
-# TanStack Start - Basic Example
+# LambertLab Frontend
 
-This is the basic TanStack Start example, demonstrating the fundamentals of building applications with TanStack Router and TanStack Start.
+## 门禁分层（P0 冻结）
+- `L1` 构建与预渲染契约：`npm run gate:l1`
+- `L2` 壳层视觉稳定：`npm run gate:l2`
+- `L3` 动态页面数据与结构：`npm run gate:l3`
+- 一键串行：`npm run gate:all`
 
-- [TanStack Router Docs](https://tanstack.com/router)
+`npm run build:verify` 当前等价于 `build + L1 + L3`，用于结构与动态合同放行。
 
-It's deployed automagically with Netlify!
-
-- [Netlify](https://netlify.com/)
-
-## Start a new project based on this example
-
-To start a new project based on this example, run:
-
-```sh
-npx gitpick TanStack/router/tree/main/examples/react/start-basic start-basic
+## 关键命令
+```bash
+npm install
+npm run build:verify
+npm run visual:parity:smoke
 ```
 
-## Getting Started
+## 治理文档
+- `docs/frontend-governance-p0-gate-layers.md`
+- `docs/legacy-html-inventory-p0-2026-03-13.md`
+- `docs/legacy-html-exit-checklist-p1-entry.md`
 
-From your terminal:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-This starts your app in development mode, rebuilding assets on file changes.
-
-## Build
-
-To build the app for production:
-
-```sh
-pnpm build
-```
+## baseline-site 定位
+`baseline-site` 已降级为迁移期历史参照。整页像素对比仅用于诊断，不再单独决定放行。

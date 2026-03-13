@@ -6,22 +6,70 @@
       "themes": ["light", "dark"],
       "pages": ["home", "projects", "journal", "about", "contact", "status-empty", "status-single", "status-multi"],
       "expectedDiffs": {
-        "home__desktop__light": "Homepage Technology panel now renders Featured Projects from the unified projects contract.",
-        "home__desktop__dark": "Homepage Technology panel now renders Featured Projects from the unified projects contract.",
-        "projects__desktop__light": "Projects page is API-first redesigned; baseline snapshot not refreshed yet.",
-        "projects__desktop__dark": "Projects page is API-first redesigned; baseline snapshot not refreshed yet.",
-        "journal__desktop__light": "Journal now inherits the unified public footer and clickable Status entry shell.",
-        "journal__desktop__dark": "Journal now inherits the unified public footer and clickable Status entry shell.",
-        "about__desktop__light": "About now inherits the unified public footer and clickable Status entry shell.",
-        "about__desktop__dark": "About now inherits the unified public footer and clickable Status entry shell.",
-        "contact__desktop__light": "Contact now inherits the unified public footer and clickable Status entry shell.",
-        "contact__desktop__dark": "Contact now inherits the unified public footer and clickable Status entry shell.",
-        "status-empty__desktop__light": "Status page has no legacy baseline snapshot and now includes phase 2 public trust semantics.",
-        "status-empty__desktop__dark": "Status page has no legacy baseline snapshot and now includes phase 2 public trust semantics.",
-        "status-single__desktop__light": "Status page has no legacy baseline snapshot and now includes structured public issue cards.",
-        "status-single__desktop__dark": "Status page has no legacy baseline snapshot and now includes structured public issue cards.",
-        "status-multi__desktop__light": "Status page has no legacy baseline snapshot and now includes multi-issue public trust coverage.",
-        "status-multi__desktop__dark": "Status page has no legacy baseline snapshot and now includes multi-issue public trust coverage."
+        "home__desktop__light": {
+          "category": "intentional-change",
+          "reason": "Homepage Technology panel now renders Featured Projects from the unified projects contract."
+        },
+        "home__desktop__dark": {
+          "category": "intentional-change",
+          "reason": "Homepage Technology panel now renders Featured Projects from the unified projects contract."
+        },
+        "projects__desktop__light": {
+          "category": "baseline-drift",
+          "reason": "Projects page is API-first redesigned and the legacy baseline screenshot has not been refreshed."
+        },
+        "projects__desktop__dark": {
+          "category": "baseline-drift",
+          "reason": "Projects page is API-first redesigned and the legacy baseline screenshot has not been refreshed."
+        },
+        "journal__desktop__light": {
+          "category": "intentional-change",
+          "reason": "Journal now inherits the unified public footer and clickable Status entry shell."
+        },
+        "journal__desktop__dark": {
+          "category": "intentional-change",
+          "reason": "Journal now inherits the unified public footer and clickable Status entry shell."
+        },
+        "about__desktop__light": {
+          "category": "intentional-change",
+          "reason": "About now inherits the unified public footer and clickable Status entry shell."
+        },
+        "about__desktop__dark": {
+          "category": "intentional-change",
+          "reason": "About now inherits the unified public footer and clickable Status entry shell."
+        },
+        "contact__desktop__light": {
+          "category": "intentional-change",
+          "reason": "Contact now inherits the unified public footer and clickable Status entry shell."
+        },
+        "contact__desktop__dark": {
+          "category": "intentional-change",
+          "reason": "Contact now inherits the unified public footer and clickable Status entry shell."
+        },
+        "status-empty__desktop__light": {
+          "category": "baseline-drift",
+          "reason": "Status page has no legacy baseline snapshot and now includes public trust semantics."
+        },
+        "status-empty__desktop__dark": {
+          "category": "baseline-drift",
+          "reason": "Status page has no legacy baseline snapshot and now includes public trust semantics."
+        },
+        "status-single__desktop__light": {
+          "category": "baseline-drift",
+          "reason": "Status page has no legacy baseline snapshot and now includes structured public issue cards."
+        },
+        "status-single__desktop__dark": {
+          "category": "baseline-drift",
+          "reason": "Status page has no legacy baseline snapshot and now includes structured public issue cards."
+        },
+        "status-multi__desktop__light": {
+          "category": "baseline-drift",
+          "reason": "Status page has no legacy baseline snapshot and now includes multi-issue public trust coverage."
+        },
+        "status-multi__desktop__dark": {
+          "category": "baseline-drift",
+          "reason": "Status page has no legacy baseline snapshot and now includes multi-issue public trust coverage."
+        }
       }
     },
     "full": {

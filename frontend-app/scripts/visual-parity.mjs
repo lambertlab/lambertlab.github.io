@@ -39,11 +39,16 @@ const mimeTypes = {
   '.webmanifest': 'application/manifest+json',
 }
 
-const keyAreas = [
+const shellKeyAreas = [
   { name: 'header', selector: '.ll-header' },
+  { name: 'main-nav', selector: '.ll-nav' },
   { name: 'theme-switch', selector: '[data-theme-mode-switch]' },
-  { name: 'status-lamp', selector: '[data-system-status]' },
+  { name: 'status-entry', selector: '[data-system-status]' },
+  { name: 'footer', selector: '.ll-site-footer' },
 ]
+
+const expectedDiffCategories = new Set(['intentional-change', 'baseline-drift', 'suspected-regression'])
+const requiredShellAreaNames = new Set(shellKeyAreas.map((area) => area.name))
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true })
@@ -55,6 +60,34 @@ function wait(ms) {
 
 function sanitize(input) {
   return input.replace(/[^a-zA-Z0-9-_./]/g, '_')
+}
+
+function parseExpectedDiffMap(rawMap) {
+  const map = {}
+  for (const [caseId, entry] of Object.entries(rawMap || {})) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(
+        `Invalid expectedDiffs entry for "${caseId}". Expected { category, reason } with explicit attribution.`,
+      )
+    }
+
+    const category = typeof entry.category === 'string' ? entry.category.trim() : ''
+    const reason = typeof entry.reason === 'string' ? entry.reason.trim() : ''
+
+    if (!expectedDiffCategories.has(category)) {
+      throw new Error(
+        `Invalid expectedDiff category for "${caseId}": "${category}". Allowed: ${Array.from(expectedDiffCategories).join(', ')}`,
+      )
+    }
+
+    if (!reason) {
+      throw new Error(`Missing expectedDiff reason for "${caseId}".`)
+    }
+
+    map[caseId] = { category, reason }
+  }
+
+  return map
 }
 
 function pickByName(allItems, selectedNames, label) {
@@ -75,6 +108,12 @@ function pickByName(allItems, selectedNames, label) {
 
 function joinUrl(baseUrl, pathname) {
   return new URL(pathname, baseUrl).toString()
+}
+
+function appendQuery(pathname, key, value) {
+  const parsed = new URL(pathname, 'http://localhost')
+  parsed.searchParams.set(key, value)
+  return `${parsed.pathname}${parsed.search}`
 }
 
 function pickContentType(filePath) {
@@ -247,6 +286,19 @@ function getStatusIssueScenario(request) {
   return 'single'
 }
 
+function shouldDisableStatusHydration(request) {
+  try {
+    const frameUrl = request.frame()?.url()
+    if (!frameUrl) {
+      return false
+    }
+    const parsed = new URL(frameUrl)
+    return parsed.pathname.startsWith('/status/') && parsed.searchParams.get('visual_nojs') === '1'
+  } catch {
+    return false
+  }
+}
+
 function buildStatusPublicPayload(issueMode) {
   const knownIssuesByMode = {
     empty: [],
@@ -375,6 +427,18 @@ function buildStatusPublicPayload(issueMode) {
 }
 
 async function applyMockRoutes(context) {
+  await context.route('**/assets/*.js', async (route) => {
+    if (shouldDisableStatusHydration(route.request())) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/javascript; charset=utf-8',
+        body: '',
+      })
+      return
+    }
+    await route.continue()
+  })
+
   await context.route('https://cdn.tailwindcss.com/**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -670,7 +734,25 @@ async function takeKeyAreaScreenshot(page, selector, outputPath) {
   }
   try {
     await locator.scrollIntoViewIfNeeded()
-    await locator.screenshot({ path: outputPath, animations: 'disabled' })
+    const box = await locator.boundingBox()
+    const viewport = page.viewportSize()
+    if (!box || !viewport) {
+      return false
+    }
+
+    const clip = {
+      x: Math.max(0, Math.min(box.x, viewport.width - 1)),
+      y: Math.max(0, Math.min(box.y, viewport.height - 1)),
+      width: Math.max(1, Math.min(box.width, viewport.width)),
+      height: Math.max(1, Math.min(box.height, viewport.height)),
+    }
+
+    await page.screenshot({
+      path: outputPath,
+      clip,
+      fullPage: false,
+      animations: 'disabled',
+    })
     return true
   } catch {
     return false
@@ -806,10 +888,12 @@ function renderMarkdownReport(report) {
   lines.push(`- New Site: \`${report.newBaseUrl}\``)
   lines.push(`- Total Cases: \`${report.summary.totalCases}\``)
   lines.push(`- Failed Cases: \`${report.summary.failedCases}\``)
-  lines.push(`- Expected Diffs: \`${report.summary.expectedDiffCases}\``)
+  lines.push(`- Attributed Full Diffs: \`${report.summary.attributedFullDiffCases}\``)
+  lines.push(`- Unattributed Full Diffs: \`${report.summary.unattributedFullDiffCases}\``)
+  lines.push(`- Shell Blocking Cases: \`${report.summary.shellBlockingCases}\``)
   lines.push(`- Blocking Failures: \`${report.summary.blockingFailedCases}\``)
   lines.push(`- Full Page Threshold: \`${report.thresholds.fullPageMismatchRatio}\``)
-  lines.push(`- Key Area Threshold: \`${report.thresholds.keyAreaMismatchRatio}\``)
+  lines.push(`- Key Area Diagnostic Threshold: \`${report.thresholds.keyAreaMismatchRatio}\``)
   lines.push('')
   lines.push('## Header Stability')
   lines.push('')
@@ -820,17 +904,16 @@ function renderMarkdownReport(report) {
   lines.push('## Blocking Failures')
   lines.push('')
 
-  const blockingFailures = report.results.filter((item) => !item.pass && !item.expected)
+  const blockingFailures = report.results.filter((item) => !item.pass)
   if (blockingFailures.length === 0) {
     lines.push('- None')
   } else {
     for (const entry of blockingFailures) {
-      lines.push(`- ${entry.caseId}: full=${entry.full.mismatchRatio.toFixed(4)} pass=${entry.pass}`)
+      lines.push(
+        `- ${entry.caseId}: full=${entry.full.mismatchRatio.toFixed(4)} fullBlocking=${entry.fullBlocking} shellBlocking=${entry.missingShellAreas.length > 0}`,
+      )
       for (const keyArea of entry.keyAreas) {
-        const skipFlag = keyArea.skipped ? ' skipped=true' : ''
-        lines.push(
-          `  - ${keyArea.name}: exists=${keyArea.exists}${skipFlag} ratio=${keyArea.mismatchRatio.toFixed(4)} pass=${keyArea.pass}`,
-        )
+        lines.push(`  - ${keyArea.name}: newExists=${keyArea.newExists} pass=${keyArea.pass}`)
       }
     }
   }
@@ -844,7 +927,9 @@ function renderMarkdownReport(report) {
     lines.push('- None')
   } else {
     for (const entry of expectedDiffs) {
-      lines.push(`- ${entry.caseId}: full=${entry.full.mismatchRatio.toFixed(4)} reason=${entry.expectedReason}`)
+      lines.push(
+        `- ${entry.caseId}: category=${entry.expectedCategory} full=${entry.full.mismatchRatio.toFixed(4)} reason=${entry.expectedReason}`,
+      )
     }
   }
 
@@ -860,7 +945,7 @@ async function main() {
   const selectedViewports = pickByName(config.viewports, modeConfig.viewports, 'viewport')
   const selectedThemes = modeConfig.themes === 'all' ? config.themes : modeConfig.themes || []
   const selectedPages = pickByName(config.pages, modeConfig.pages, 'page')
-  const expectedDiffMap = modeConfig.expectedDiffs || {}
+  const expectedDiffMap = parseExpectedDiffMap(modeConfig.expectedDiffs || {})
 
   if (selectedThemes.length === 0) {
     throw new Error(`Mode "${requestedMode}" has no themes configured`)
@@ -907,31 +992,37 @@ async function main() {
         newContext.setDefaultNavigationTimeout(20000)
         await configureContext(oldContext, theme)
         await configureContext(newContext, theme)
-        const oldPage = await oldContext.newPage()
-        const newPage = await newContext.newPage()
 
         for (const pageConfig of selectedPages) {
+          let oldPage
+          let newPage
           const caseId = `${pageConfig.name}__${viewport.name}__${theme}`
           const relativeDir = sanitize(`${viewport.name}/${theme}/${pageConfig.name}`)
           const oldPath = pageConfig.oldPath || pageConfig.path
-          const newPath = pageConfig.newPath || pageConfig.path
-          const expectedReason = expectedDiffMap[caseId] ?? null
-          const expected = Boolean(expectedReason)
-          const legacylessStatusExpected = expected && pageConfig.name.startsWith('status-')
+          const baseNewPath = pageConfig.newPath || pageConfig.path
+          const newPath = pageConfig.name.startsWith('status-')
+            ? appendQuery(baseNewPath, 'visual_nojs', '1')
+            : baseNewPath
+          const expectedDiff = expectedDiffMap[caseId] ?? null
+          const expected = Boolean(expectedDiff)
+          const expectedCategory = expectedDiff?.category ?? null
+          const expectedReason = expectedDiff?.reason ?? null
+          const legacylessStatusExpected = expectedCategory === 'baseline-drift' && pageConfig.name.startsWith('status-')
 
           console.log(`[visual] start ${caseId}`)
 
-          let oldResponse = null
-          let newResponse = null
+          let oldPageReady = false
           try {
+            oldPage = await oldContext.newPage()
+            newPage = await newContext.newPage()
             if (legacylessStatusExpected) {
-              newResponse = await newPage.goto(joinUrl(newBaseUrl, newPath), {
+              await newPage.goto(joinUrl(newBaseUrl, newPath), {
                 waitUntil: 'domcontentloaded',
                 timeout: 10000,
               })
               await waitForPageStable(newPage, pageConfig)
             } else {
-              ;[oldResponse, newResponse] = await Promise.all([
+              await Promise.all([
                 oldPage.goto(joinUrl(oldBaseUrl, oldPath), {
                   waitUntil: 'domcontentloaded',
                   timeout: 10000,
@@ -942,6 +1033,7 @@ async function main() {
                 }),
               ])
               await Promise.all([waitForPageStable(oldPage, pageConfig), waitForPageStable(newPage, pageConfig)])
+              oldPageReady = true
             }
           } catch (error) {
             results.push({
@@ -957,9 +1049,17 @@ async function main() {
                 mismatchRatio: 1,
                 threshold: config.thresholds.fullPageMismatchRatio,
               },
+              fullBlocking: true,
+              missingShellAreas: ['navigation'],
               keyAreas: [],
             })
             console.log(`[visual] ${caseId} navigation failed`)
+            if (oldPage) {
+              await oldPage.close().catch(() => {})
+            }
+            if (newPage) {
+              await newPage.close().catch(() => {})
+            }
             continue
           }
 
@@ -980,70 +1080,51 @@ async function main() {
               height: 0,
               dimensionMismatch: true,
             }
+          } else if (expected) {
+            await oldPage.screenshot({ path: oldFullPath, fullPage: false, animations: 'disabled' })
+            await newPage.screenshot({ path: newFullPath, fullPage: false, animations: 'disabled' })
+            fullCompare = {
+              mismatchedPixels: Number.MAX_SAFE_INTEGER,
+              mismatchRatio: 1,
+              width: viewport.width,
+              height: viewport.height,
+              dimensionMismatch: false,
+            }
           } else {
-            await oldPage.screenshot({ path: oldFullPath, fullPage: true, animations: 'disabled' })
-            await newPage.screenshot({ path: newFullPath, fullPage: true, animations: 'disabled' })
+            await oldPage.screenshot({ path: oldFullPath, fullPage: false, animations: 'disabled' })
+            await newPage.screenshot({ path: newFullPath, fullPage: false, animations: 'disabled' })
             fullCompare = comparePngs(oldFullPath, newFullPath, diffFullPath)
           }
 
           const fullPass = fullCompare.mismatchRatio <= config.thresholds.fullPageMismatchRatio
 
           const keyAreaResults = []
-          if (!expected) {
-            const areaSelectors = [
-              ...keyAreas,
-              { name: 'hero', selector: pageConfig.heroSelector },
-              { name: 'content', selector: pageConfig.contentSelector },
-            ]
+          const areaSelectors = [
+            ...shellKeyAreas,
+            { name: 'hero', selector: pageConfig.heroSelector },
+            { name: 'content', selector: pageConfig.contentSelector },
+          ]
 
-            for (const area of areaSelectors) {
-              const oldAreaPath = path.join(runDir, 'old', `${relativeDir}__${area.name}.png`)
-              const newAreaPath = path.join(runDir, 'new', `${relativeDir}__${area.name}.png`)
-              const diffAreaPath = path.join(runDir, 'diff', `${relativeDir}__${area.name}.png`)
-              const oldExists = await takeKeyAreaScreenshot(oldPage, area.selector, oldAreaPath)
-              const newExists = await takeKeyAreaScreenshot(newPage, area.selector, newAreaPath)
+          for (const area of areaSelectors) {
+            const newAreaPath = path.join(runDir, 'new', `${relativeDir}__${area.name}.png`)
+            const newExists = await takeKeyAreaScreenshot(newPage, area.selector, newAreaPath)
+            const oldExists = oldPageReady ? await oldPage.locator(area.selector).first().count() > 0 : false
 
-              if (!oldExists && !newExists) {
-                keyAreaResults.push({
-                  name: area.name,
-                  selector: area.selector,
-                  exists: false,
-                  symmetricMissing: true,
-                  skipped: true,
-                  mismatchRatio: 0,
-                  pass: true,
-                })
-                continue
-              }
-
-              if (!oldExists || !newExists) {
-                keyAreaResults.push({
-                  name: area.name,
-                  selector: area.selector,
-                  exists: false,
-                  symmetricMissing: false,
-                  skipped: false,
-                  mismatchRatio: 1,
-                  pass: false,
-                })
-                continue
-              }
-
-              ensureDir(path.dirname(diffAreaPath))
-              const compareResult = comparePngs(oldAreaPath, newAreaPath, diffAreaPath)
-              keyAreaResults.push({
-                name: area.name,
-                selector: area.selector,
-                exists: true,
-                symmetricMissing: false,
-                skipped: false,
-                mismatchRatio: compareResult.mismatchRatio,
-                pass: compareResult.mismatchRatio <= config.thresholds.keyAreaMismatchRatio,
-              })
-            }
+            keyAreaResults.push({
+              name: area.name,
+              selector: area.selector,
+              newExists,
+              oldExists,
+              diagnosticMismatchRatio: null,
+              pass: newExists,
+            })
           }
 
-          const casePass = fullPass && keyAreaResults.every((item) => item.pass)
+          const missingShellAreas = keyAreaResults
+            .filter((item) => requiredShellAreaNames.has(item.name) && !item.pass)
+            .map((item) => item.name)
+          const fullBlocking = !fullPass && !expected
+          const casePass = !fullBlocking && missingShellAreas.length === 0
           results.push({
             caseId,
             page: pageConfig.name,
@@ -1053,17 +1134,27 @@ async function main() {
             theme,
             pass: casePass,
             expected,
+            expectedCategory,
             expectedReason,
             full: {
               mismatchRatio: fullCompare.mismatchRatio,
               threshold: config.thresholds.fullPageMismatchRatio,
             },
+            fullBlocking,
+            missingShellAreas,
             keyAreas: keyAreaResults,
           })
 
           console.log(
-            `[visual] ${caseId} full=${fullCompare.mismatchRatio.toFixed(4)} pass=${casePass ? 'yes' : 'no'}${expected ? ' expected=yes' : ''}`,
+            `[visual] ${caseId} full=${fullCompare.mismatchRatio.toFixed(4)} pass=${casePass ? 'yes' : 'no'}${expected ? ` expected=${expectedCategory}` : ''}`,
           )
+
+          if (oldPage) {
+            await oldPage.close().catch(() => {})
+          }
+          if (newPage) {
+            await newPage.close().catch(() => {})
+          }
         }
 
         await oldContext.close()
@@ -1081,11 +1172,19 @@ async function main() {
     )
 
     const failedCases = results.filter((item) => !item.pass).length
-    const expectedDiffCases = results.filter((item) => !item.pass && item.expected).length
-    const blockingFailedCases = results.filter((item) => !item.pass && !item.expected).length
+    const attributedFullDiffCases = results.filter(
+      (item) => item.expected && item.full.mismatchRatio > item.full.threshold,
+    ).length
+    const unattributedFullDiffCases = results.filter((item) => item.fullBlocking).length
+    const shellBlockingCases = results.filter((item) => item.missingShellAreas.length > 0).length
+    const blockingFailedCases = failedCases
     const expectedDiffConfiguredCases = Object.keys(expectedDiffMap).length
     const unusedExpectedDiffCases = Object.keys(expectedDiffMap).filter(
-      (caseId) => !results.some((result) => result.caseId === caseId && !result.pass),
+      (caseId) =>
+        !results.some(
+          (result) =>
+            result.caseId === caseId && result.expected && result.full.mismatchRatio > result.full.threshold,
+        ),
     )
     const report = {
       mode: requestedMode,
@@ -1100,7 +1199,9 @@ async function main() {
       summary: {
         totalCases: results.length,
         failedCases,
-        expectedDiffCases,
+        attributedFullDiffCases,
+        unattributedFullDiffCases,
+        shellBlockingCases,
         blockingFailedCases,
         expectedDiffConfiguredCases,
         unusedExpectedDiffCases,

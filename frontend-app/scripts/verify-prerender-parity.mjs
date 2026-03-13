@@ -17,9 +17,11 @@ const pagesToCheck = [
   'journal/operational-habits-that-stick/index.html',
 ]
 
-const requiredFragments = [
+const shellRequiredFragments = [
   'class="ll-header"',
   'class="ll-site-footer"',
+  'id="main-content"',
+  'data-theme-mode-switch',
   'data-system-status',
   'href="/projects/"',
   'href="/journal/index.html"',
@@ -29,6 +31,26 @@ const requiredFragments = [
 ]
 
 const forbiddenFragments = ['href="/projects/index.html"', 'Control Center']
+
+const pageSpecificRequiredFragments = {
+  'index.html': [
+    'data-home-managed-by-projects',
+    'data-home-featured-projects',
+    'data-home-featured-slot="0"',
+  ],
+  'projects/index.html': [
+    'data-project-catalog',
+    'data-loading-state',
+    'data-empty-state',
+    'data-error-state',
+    'id="retry-fetch"',
+    'data-project-grid',
+  ],
+  'status/index.html': ['class="status-page-shell"', 'class="status-state-panel"', 'class="status-page-hero"'],
+  'projects/personal-toolbox/index.html': ['project-detail-shell', 'project-detail-loading'],
+  'projects/ai-message-value-triage/index.html': ['project-detail-shell', 'project-detail-loading'],
+  'projects/personal-website/index.html': ['project-detail-shell', 'project-detail-loading'],
+}
 
 const pageSpecificForbiddenFragments = {
   'projects/personal-toolbox/index.html': ['href="../index.html"', 'href="/projects/personal-toolbox/index.html"'],
@@ -46,9 +68,16 @@ for (const relativePagePath of pagesToCheck) {
   }
 
   const html = fs.readFileSync(fullPath, 'utf8')
-  for (const fragment of requiredFragments) {
+  for (const fragment of shellRequiredFragments) {
     if (!html.includes(fragment)) {
       console.error(`[contract] ${relativePagePath} missing "${fragment}"`)
+      failed = true
+    }
+  }
+
+  for (const fragment of pageSpecificRequiredFragments[relativePagePath] ?? []) {
+    if (!html.includes(fragment)) {
+      console.error(`[contract] ${relativePagePath} missing page-specific fragment "${fragment}"`)
       failed = true
     }
   }
