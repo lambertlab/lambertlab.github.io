@@ -1,13 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
-import { buildLegacyHead, legacyPages } from '~/legacy/pages'
+import { ProjectsCatalogPage } from '~/components/projects/ProjectsCatalogPage'
+import { buildProjectsCatalogHead } from '~/components/projects/projectsCatalogHead'
 
 export const Route = createFileRoute('/projects/')({
-  head: () => buildLegacyHead(legacyPages.projects),
+  head: () => buildProjectsCatalogHead(),
   component: ProjectsPage,
 })
 
 function ProjectsPage() {
-  return <LegacyPageView page={legacyPages.projects} />
+  return <ProjectsCatalogPage />
 }
-

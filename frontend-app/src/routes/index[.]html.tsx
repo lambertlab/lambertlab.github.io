@@ -1,15 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
-import { buildLegacyHead, homeTailwindHeadScripts, legacyPages } from '~/legacy/pages'
+import { HomePage } from '~/components/home/HomePage'
+import { buildHomePageHead } from '~/components/home/homePageHead'
 
 export const Route = createFileRoute('/index.html')({
-  head: () => ({
-    ...buildLegacyHead(legacyPages.home),
-    scripts: homeTailwindHeadScripts,
-  }),
+  head: () => buildHomePageHead(),
   component: HomeHtmlPage,
 })
 
 function HomeHtmlPage() {
-  return <LegacyPageView page={legacyPages.home} />
+  return <HomePage />
 }

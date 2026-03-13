@@ -1,14 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
+import { ProjectsCatalogPage } from '~/components/projects/ProjectsCatalogPage'
+import { buildProjectsCatalogHead } from '~/components/projects/projectsCatalogHead'
 import { useProjectsCompatPathNormalization } from '~/lib/projectsCompatPathNormalization'
-import { buildLegacyHead, legacyPages } from '~/legacy/pages'
 
 export const Route = createFileRoute('/projects/index.html')({
-  head: () => buildLegacyHead(legacyPages.projects),
+  head: () => buildProjectsCatalogHead(),
   component: ProjectsHtmlPage,
 })
 
 function ProjectsHtmlPage() {
   useProjectsCompatPathNormalization()
-  return <LegacyPageView page={legacyPages.projects} />
+  return <ProjectsCatalogPage />
 }
