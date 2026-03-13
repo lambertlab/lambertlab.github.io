@@ -232,6 +232,28 @@
   gap: 12px;
 }
 
+.project-detail-degraded {
+  display: grid;
+  gap: 12px;
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.project-detail-degraded h2 {
+  color: #92400e;
+}
+
+.project-detail-degraded p {
+  color: #78350f;
+}
+
+.project-detail-degraded-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #92400e;
+  line-height: 1.7;
+}
+
 @media (max-width: 900px) {
   .project-detail-shell {
     padding: 108px 14px 28px;

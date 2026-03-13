@@ -6,12 +6,24 @@ import { useDocumentMetadata, useUiLocale, type UiLocale } from '~/lib/uiLocale'
 type DetailState =
   | { status: 'loading' }
   | { status: 'ready'; project: ProjectDetailRecord }
+  | { status: 'degraded'; project: ProjectDetailRecord; missingFields: DegradedFieldKey[] }
   | { status: 'not-found'; message: string }
   | { status: 'error'; message: string }
 
 interface ProjectDetailPageProps {
   slug: string
 }
+
+type DegradedFieldKey =
+  | 'summary'
+  | 'headline'
+  | 'overview'
+  | 'stage'
+  | 'project_type'
+  | 'source_type'
+  | 'links'
+  | 'highlights'
+  | 'status_note'
 
 function isExternalUrl(value: string | null): value is string {
   return typeof value === 'string' && /^https?:\/\//i.test(value)
@@ -228,6 +240,21 @@ function buildDetailMetadata(state: DetailState, slug: string, locale: UiLocale)
     }
   }
 
+  if (state.status === 'degraded') {
+    const projectName =
+      state.project.name || state.project.slug || (locale === 'zh-CN' ? '未命名项目' : 'Untitled Project')
+    return {
+      title:
+        locale === 'zh-CN'
+          ? `${projectName} | 项目详情（降级） | lambertlab`
+          : `${projectName} | Project Detail (Degraded) | lambertlab`,
+      description:
+        locale === 'zh-CN'
+          ? '项目详情已降级展示：部分字段暂缺，页面仍保持可读。'
+          : 'Project detail is shown in degraded mode because some contract fields are currently missing.',
+    }
+  }
+
   if (state.status === 'not-found') {
     return {
       title: locale === 'zh-CN' ? '项目未找到 | lambertlab' : 'Project Not Found | lambertlab',
@@ -257,6 +284,48 @@ function buildDetailMetadata(state: DetailState, slug: string, locale: UiLocale)
   }
 }
 
+function collectDegradedFields(project: ProjectDetailRecord): DegradedFieldKey[] {
+  const missingFields: DegradedFieldKey[] = []
+
+  if (!project.summary) missingFields.push('summary')
+  if (!project.headline) missingFields.push('headline')
+  if (!project.overview) missingFields.push('overview')
+  if (!project.stage) missingFields.push('stage')
+  if (!project.project_type) missingFields.push('project_type')
+  if (!project.source_type) missingFields.push('source_type')
+  if (!project.status_note) missingFields.push('status_note')
+  if (project.highlights.length === 0) missingFields.push('highlights')
+  if (!project.links.primary && !project.links.repo && !project.links.demo && !project.links.docs && !project.links.notes) {
+    missingFields.push('links')
+  }
+
+  return missingFields
+}
+
+function localizeDegradedField(field: DegradedFieldKey, locale: UiLocale): string {
+  if (locale === 'en') {
+    if (field === 'summary') return 'summary'
+    if (field === 'headline') return 'headline'
+    if (field === 'overview') return 'overview'
+    if (field === 'stage') return 'stage'
+    if (field === 'project_type') return 'project type'
+    if (field === 'source_type') return 'source type'
+    if (field === 'status_note') return 'status note'
+    if (field === 'highlights') return 'highlights'
+    return 'links'
+  }
+
+  if (field === 'summary') return '摘要'
+  if (field === 'headline') return 'headline'
+  if (field === 'overview') return '概览'
+  if (field === 'stage') return '阶段'
+  if (field === 'project_type') return '项目类型'
+  if (field === 'source_type') return '来源类型'
+  if (field === 'status_note') return '状态备注'
+  if (field === 'highlights') return '亮点'
+  return '链接'
+}
+
 export function ProjectDetailPage({ slug }: ProjectDetailPageProps) {
   const { locale } = useUiLocale()
   const [state, setState] = React.useState<DetailState>({ status: 'loading' })
@@ -270,6 +339,12 @@ export function ProjectDetailPage({ slug }: ProjectDetailPageProps) {
 
     fetchProjectDetail(slug, controller.signal)
       .then((project) => {
+        const missingFields = collectDegradedFields(project)
+        if (missingFields.length > 0) {
+          setState({ status: 'degraded', project, missingFields })
+          return
+        }
+
         setState({ status: 'ready', project })
       })
       .catch((error: unknown) => {
@@ -358,7 +433,36 @@ export function ProjectDetailPage({ slug }: ProjectDetailPageProps) {
           </section>
         ) : null}
 
-        {state.status === 'ready' ? (
+        {state.status === 'degraded' ? (
+          <section className="project-detail-panel project-detail-degraded" data-detail-state="degraded">
+            <p className="project-detail-kicker">{locale === 'zh-CN' ? '降级展示' : 'Degraded fallback'}</p>
+            <h2>
+              {locale === 'zh-CN'
+                ? '详情已降级展示，部分字段暂缺'
+                : 'Detail is available in degraded mode while some fields are missing'}
+            </h2>
+            <p>
+              {locale === 'zh-CN'
+                ? '页面仍可浏览；我们将缺失字段标记如下，并保留重试能力。'
+                : 'The page remains readable. Missing fields are listed below and retry is available.'}
+            </p>
+            <ul className="project-detail-degraded-list">
+              {state.missingFields.map((field) => (
+                <li key={field}>{localizeDegradedField(field, locale)}</li>
+              ))}
+            </ul>
+            <div className="project-detail-actions">
+              <button className="project-detail-button primary" onClick={loadProject} type="button">
+                {locale === 'zh-CN' ? '重试' : 'Retry'}
+              </button>
+              <Link className="project-detail-button" to="/projects">
+                {locale === 'zh-CN' ? '返回项目目录' : 'Back to Projects'}
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        {state.status === 'ready' || state.status === 'degraded' ? (
           <ProjectDetailContent locale={locale} project={state.project} onRetry={loadProject} />
         ) : null}
       </div>

@@ -318,6 +318,32 @@ async function installRoutes(context, state) {
       return
     }
 
+    if (state.detailMode === 'degraded') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          project: {
+            ...project,
+            summary: '',
+            headline: '',
+            overview: '',
+            status_note: null,
+            highlights: [],
+            links: {
+              primary: null,
+              repo: null,
+              demo: null,
+              docs: null,
+              notes: null,
+            },
+          },
+        }),
+      })
+      return
+    }
+
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -580,6 +606,24 @@ async function testProjectDetailStatesAndReplay(browser, baseUrl) {
     await page.waitForSelector('.project-detail-message', { timeout: 8000 })
   } finally {
     await notFoundContext.close()
+  }
+
+  const degradedContext = await newContext(browser, {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'degraded',
+    delayMs: 0,
+  })
+  try {
+    const page = await degradedContext.newPage()
+    await page.goto(`${baseUrl}/projects/personal-toolbox/`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('.project-detail-degraded[data-detail-state="degraded"]', { timeout: 8000 })
+    await page.waitForSelector('.project-detail-layout', { timeout: 8000 })
+
+    const degradedItems = await page.locator('.project-detail-degraded-list li').count()
+    ensure(degradedItems > 0, 'project detail degraded mode did not show missing field hints')
+  } finally {
+    await degradedContext.close()
   }
 
   const errorState = {
