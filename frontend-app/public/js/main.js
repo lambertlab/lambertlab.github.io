@@ -27,6 +27,33 @@
     { value: "light", text: "亮色" },
     { value: "dark", text: "暗色" }
   ];
+  var validUiLocales = {
+    "zh-CN": true,
+    en: true
+  };
+
+  function normalizeUiLocale(value) {
+    return Object.prototype.hasOwnProperty.call(validUiLocales, value) ? value : "zh-CN";
+  }
+
+  function getUiLocale() {
+    var htmlLocale = root.getAttribute("data-ui-locale") || root.getAttribute("lang");
+    if (Object.prototype.hasOwnProperty.call(validUiLocales, htmlLocale)) {
+      return htmlLocale;
+    }
+    if (window.__LL_UI_LOCALE__ && Object.prototype.hasOwnProperty.call(validUiLocales, window.__LL_UI_LOCALE__)) {
+      return window.__LL_UI_LOCALE__;
+    }
+    return "zh-CN";
+  }
+
+  function isEnglishUi() {
+    return normalizeUiLocale(getUiLocale()) === "en";
+  }
+
+  function getUiText(zhText, enText) {
+    return isEnglishUi() ? enText : zhText;
+  }
 
   function ensureThemeStylesheet() {
     if (!document.head || document.getElementById("ll-theme-system-stylesheet")) {
@@ -761,15 +788,16 @@
     };
   }
 
-  function setSystemStatus(rootElement, state, badgeText, titleText, descriptionText, showRetryButton) {
+  function setSystemStatus(rootElement, state, badgeText, titleText, descriptionText, showRetryButton, snapshot) {
     var elements = getStatusElements(rootElement);
     var statusSummary = titleText;
     if (descriptionText) {
-      statusSummary = titleText + "：" + descriptionText;
+      statusSummary = titleText + (isEnglishUi() ? ": " : "：") + descriptionText;
     }
     rootElement.setAttribute("data-status-state", state);
     rootElement.setAttribute("aria-label", statusSummary);
     rootElement.setAttribute("title", statusSummary);
+    rootElement.__llSystemStatusSnapshot = snapshot || null;
 
     if (elements.badge) {
       elements.badge.textContent = badgeText;
@@ -782,6 +810,69 @@
     }
     if (elements.retry) {
       elements.retry.hidden = !showRetryButton;
+    }
+  }
+
+  function reapplySystemStatus(statusRoot) {
+    if (!statusRoot || !statusRoot.__llSystemStatusSnapshot) {
+      return;
+    }
+
+    var snapshot = statusRoot.__llSystemStatusSnapshot;
+    if (!snapshot || typeof snapshot !== "object") {
+      return;
+    }
+
+    if (snapshot.kind === "loading") {
+      setSystemStatus(
+        statusRoot,
+        "loading",
+        getUiText("检查中", "Checking"),
+        getUiText("功能可用性检查中", "Checking availability"),
+        getUiText("正在获取系统健康摘要，请稍候...", "Fetching the latest system health summary."),
+        false,
+        snapshot
+      );
+      return;
+    }
+
+    if (snapshot.kind === "unconfigured") {
+      setSystemStatus(
+        statusRoot,
+        "unconfigured",
+        getUiText("未配置", "Unconfigured"),
+        getUiText("功能可用性未配置", "Availability not configured"),
+        getUiText("未检测到后端地址配置，请先完成前端运行时配置。", "No backend endpoint is configured yet. Please finish the frontend runtime setup first."),
+        false,
+        snapshot
+      );
+      return;
+    }
+
+    if (snapshot.kind === "error") {
+      var descriptionText = getUiText("当前无法获取系统健康摘要，暂时无法确认功能可用性。", "The latest system health summary is unavailable, so availability cannot be confirmed right now.");
+      if (snapshot.reason === "summary-missing") {
+        descriptionText = getUiText("后端未提供状态摘要接口，暂时无法确认功能可用性。", "The backend does not expose a status summary endpoint, so availability cannot be confirmed right now.");
+      } else if (snapshot.reason === "bad-config") {
+        descriptionText = getUiText("状态摘要请求配置异常，暂时无法确认功能可用性。", "The status summary request is misconfigured, so availability cannot be confirmed right now.");
+      } else if (snapshot.reason === "timeout") {
+        descriptionText = getUiText("状态摘要请求超时，暂时无法确认功能可用性。", "The status summary request timed out, so availability cannot be confirmed right now.");
+      }
+
+      setSystemStatus(
+        statusRoot,
+        "red",
+        getUiText("异常", "Error"),
+        getUiText("功能可用性未知", "Availability unknown"),
+        descriptionText,
+        true,
+        snapshot
+      );
+      return;
+    }
+
+    if (snapshot.kind === "payload" && snapshot.payload) {
+      applyResolvedStatus(statusRoot, snapshot.payload);
     }
   }
 
@@ -810,7 +901,7 @@
   }
 
   function buildFunctionalAvailabilityMessage(payload) {
-    return "核心与扩展功能可用。";
+    return getUiText("核心与扩展功能可用。", "Core and non-core capabilities are available.");
   }
 
   function containsChineseCharacter(value) {
@@ -837,17 +928,17 @@
 
     var loweredReason = normalizedReason.toLowerCase();
     if (loweredReason.indexOf("all core and non-core services are healthy") !== -1) {
-      return "核心与扩展功能可用。";
+      return getUiText("核心与扩展功能可用。", "Core and non-core capabilities are available.");
     }
 
     if (healthState === "green") {
-      return "核心与扩展功能可用。";
+      return getUiText("核心与扩展功能可用。", "Core and non-core capabilities are available.");
     }
     if (healthState === "yellow") {
-      return "部分能力受限，核心功能仍可用。";
+      return getUiText("部分能力受限，核心功能仍可用。", "Some capabilities are limited, but core functionality remains available.");
     }
     if (healthState === "red") {
-      return "检测到核心组件异常，关键功能暂不可用。";
+      return getUiText("检测到核心组件异常，关键功能暂不可用。", "A core component is degraded, so key functionality is temporarily unavailable.");
     }
 
     return "";
@@ -866,7 +957,7 @@
         return componentKey;
       }
     }
-    return "组件#" + fallbackIndex;
+    return getUiText("组件#", "Component #") + fallbackIndex;
   }
 
   function formatImpactedComponentNames(names) {
@@ -874,9 +965,11 @@
       return "";
     }
     if (names.length <= 2) {
-      return names.join("、");
+      return isEnglishUi() ? names.join(", ") : names.join("、");
     }
-    return names.slice(0, 2).join("、") + " 等" + names.length + "项";
+    return isEnglishUi()
+      ? names.slice(0, 2).join(", ") + " and " + names.length + " total"
+      : names.slice(0, 2).join("、") + " 等" + names.length + "项";
   }
 
   function buildComponentsReason(payload, healthState) {
@@ -915,20 +1008,26 @@
 
     if (healthState === "red") {
       if (impactedCore.length > 0) {
-        return "核心组件异常（" + formatImpactedComponentNames(impactedCore) + "），关键功能暂不可用。";
+        return getUiText(
+          "核心组件异常（" + formatImpactedComponentNames(impactedCore) + "），关键功能暂不可用。",
+          "Core components are degraded (" + formatImpactedComponentNames(impactedCore) + "), so key functionality is temporarily unavailable."
+        );
       }
-      return "检测到系统异常，关键功能暂不可用。";
+      return getUiText("检测到系统异常，关键功能暂不可用。", "System degradation detected, so key functionality is temporarily unavailable.");
     }
 
     if (healthState === "yellow") {
       if (impactedNonCore.length > 0) {
-        return "部分能力受限（" + formatImpactedComponentNames(impactedNonCore) + "），核心功能仍可用。";
+        return getUiText(
+          "部分能力受限（" + formatImpactedComponentNames(impactedNonCore) + "），核心功能仍可用。",
+          "Some capabilities are limited (" + formatImpactedComponentNames(impactedNonCore) + "), but core functionality remains available."
+        );
       }
-      return "部分能力受限，核心功能仍可用。";
+      return getUiText("部分能力受限，核心功能仍可用。", "Some capabilities are limited, but core functionality remains available.");
     }
 
     if (healthState === "green") {
-      return "核心与扩展功能可用。";
+      return getUiText("核心与扩展功能可用。", "Core and non-core capabilities are available.");
     }
 
     return "";
@@ -1074,10 +1173,12 @@
       setSystemStatus(
         statusRoot,
         "yellow",
-        "受限",
-        "部分功能受限",
-        getStatusReason(payload, "检测到非核心组件异常，部分能力受限。", "yellow"),
+        getUiText("受限", "Limited"),
+        getUiText("部分功能受限", "Partial degradation"),
+        getStatusReason(payload, getUiText("检测到非核心组件异常，部分能力受限。", "Non-core components are degraded, so some capabilities are limited."), "yellow"),
         false
+        ,
+        { kind: "payload", payload: payload }
       );
       return true;
     }
@@ -1086,10 +1187,12 @@
       setSystemStatus(
         statusRoot,
         "red",
-        "异常",
-        "关键功能不可用",
-        getStatusReason(payload, "检测到核心组件异常，关键功能暂不可用。", "red"),
+        getUiText("异常", "Error"),
+        getUiText("关键功能不可用", "Key functionality unavailable"),
+        getStatusReason(payload, getUiText("检测到核心组件异常，关键功能暂不可用。", "Core components are degraded, so key functionality is temporarily unavailable."), "red"),
         false
+        ,
+        { kind: "payload", payload: payload }
       );
       return true;
     }
@@ -1098,10 +1201,12 @@
       setSystemStatus(
         statusRoot,
         "green",
-        "可用",
-        "功能可用",
+        getUiText("可用", "Available"),
+        getUiText("功能可用", "Capabilities available"),
         getStatusReason(payload, buildFunctionalAvailabilityMessage(payload), "green"),
         false
+        ,
+        { kind: "payload", payload: payload }
       );
       return true;
     }
@@ -1131,10 +1236,12 @@
       setSystemStatus(
         statusRoot,
         "unconfigured",
-        "未配置",
-        "功能可用性未配置",
-        "未检测到后端地址配置，请先完成前端运行时配置。",
+        getUiText("未配置", "Unconfigured"),
+        getUiText("功能可用性未配置", "Availability not configured"),
+        getUiText("未检测到后端地址配置，请先完成前端运行时配置。", "No backend endpoint is configured yet. Please finish the frontend runtime setup first."),
         false
+        ,
+        { kind: "unconfigured" }
       );
       return;
     }
@@ -1144,10 +1251,12 @@
         setSystemStatus(
           statusRoot,
           "loading",
-          "检查中",
-          "功能可用性检查中",
-          "正在获取系统健康摘要，请稍候...",
+          getUiText("检查中", "Checking"),
+          getUiText("功能可用性检查中", "Checking availability"),
+          getUiText("正在获取系统健康摘要，请稍候...", "Fetching the latest system health summary."),
           false
+          ,
+          { kind: "loading" }
         );
       }
       isProbing = true;
@@ -1165,18 +1274,28 @@
             return;
           }
 
-          var message = "当前无法获取系统健康摘要，暂时无法确认功能可用性。";
+          var message = getUiText("当前无法获取系统健康摘要，暂时无法确认功能可用性。", "The latest system health summary is unavailable, so availability cannot be confirmed right now.");
+          var snapshotReason = "generic";
           if (error && (error.message === "HTTP_404" || error.message === "HTTP_405")) {
-            message = "后端未提供状态摘要接口，暂时无法确认功能可用性。";
+            message = getUiText("后端未提供状态摘要接口，暂时无法确认功能可用性。", "The backend does not expose a status summary endpoint, so availability cannot be confirmed right now.");
+            snapshotReason = "summary-missing";
           } else if (error && error.message && error.message.indexOf("HTTP_4") === 0) {
-            message = "状态摘要请求配置异常，暂时无法确认功能可用性。";
+            message = getUiText("状态摘要请求配置异常，暂时无法确认功能可用性。", "The status summary request is misconfigured, so availability cannot be confirmed right now.");
+            snapshotReason = "bad-config";
           } else if (error && error.name === "AbortError") {
-            message = "状态摘要请求超时，暂时无法确认功能可用性。";
-          } else {
-            message = "当前无法获取系统健康摘要，暂时无法确认功能可用性。";
+            message = getUiText("状态摘要请求超时，暂时无法确认功能可用性。", "The status summary request timed out, so availability cannot be confirmed right now.");
+            snapshotReason = "timeout";
           }
 
-          setSystemStatus(statusRoot, "red", "异常", "功能可用性未知", message, true);
+          setSystemStatus(
+            statusRoot,
+            "red",
+            getUiText("异常", "Error"),
+            getUiText("功能可用性未知", "Availability unknown"),
+            message,
+            true,
+            { kind: "error", reason: snapshotReason }
+          );
         })
         .finally(function () {
           isProbing = false;
@@ -1203,6 +1322,9 @@
       }
       event.preventDefault();
       onManualRefresh();
+    });
+    window.addEventListener("ll-ui-locale-change", function () {
+      reapplySystemStatus(statusRoot);
     });
 
     var cachedPayload = getFreshSystemStatusCache(summaryEndpoint, cacheTtlMs);

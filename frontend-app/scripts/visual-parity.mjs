@@ -172,20 +172,42 @@ function copyDirectory(sourceDir, targetDir) {
   }
 }
 
-function comparePngs(oldFilePath, newFilePath, diffFilePath) {
-  const oldImage = PNG.sync.read(fs.readFileSync(oldFilePath))
-  const newImage = PNG.sync.read(fs.readFileSync(newFilePath))
+function readPngDimensions(filePath) {
+  const fd = fs.openSync(filePath, 'r')
+  try {
+    const header = Buffer.alloc(24)
+    fs.readSync(fd, header, 0, header.length, 0)
+    const signature = header.subarray(0, 8).toString('hex')
+    const ihdr = header.subarray(12, 16).toString('ascii')
+    if (signature !== '89504e470d0a1a0a' || ihdr !== 'IHDR') {
+      throw new Error(`Invalid PNG header for ${filePath}`)
+    }
 
-  if (oldImage.width !== newImage.width || oldImage.height !== newImage.height) {
+    return {
+      width: header.readUInt32BE(16),
+      height: header.readUInt32BE(20),
+    }
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
+function comparePngs(oldFilePath, newFilePath, diffFilePath) {
+  const oldDimensions = readPngDimensions(oldFilePath)
+  const newDimensions = readPngDimensions(newFilePath)
+
+  if (oldDimensions.width !== newDimensions.width || oldDimensions.height !== newDimensions.height) {
     return {
       mismatchedPixels: Number.MAX_SAFE_INTEGER,
       mismatchRatio: 1,
-      width: oldImage.width,
-      height: oldImage.height,
+      width: oldDimensions.width,
+      height: oldDimensions.height,
       dimensionMismatch: true,
     }
   }
 
+  const oldImage = PNG.sync.read(fs.readFileSync(oldFilePath))
+  const newImage = PNG.sync.read(fs.readFileSync(newFilePath))
   const diffImage = new PNG({ width: oldImage.width, height: oldImage.height })
   const mismatchedPixels = pixelmatch(
     oldImage.data,
@@ -655,9 +677,17 @@ async function takeKeyAreaScreenshot(page, selector, outputPath) {
   }
 }
 
-async function waitForPageStable(page) {
+async function waitForPageStable(page, pageConfig) {
   await page.waitForLoadState('domcontentloaded')
   await page.waitForSelector('[data-theme-mode-switch]', { timeout: 5000 }).catch(() => {})
+  if (pageConfig?.name?.startsWith('status-')) {
+    const hasStatusShell = await page.locator('.status-page-shell').count()
+    if (hasStatusShell > 0) {
+      await page.waitForFunction(() => {
+        return Boolean(document.querySelector('.status-sections') || document.querySelector('.status-state-panel-error'))
+      }, { timeout: 5000 }).catch(() => {})
+    }
+  }
   await wait(900)
 }
 
@@ -718,30 +748,26 @@ async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
     '[data-system-status]',
   ]
   const navigationSequence = [
-    { label: 'Projects', to: '/projects/' },
-    { label: 'Journal', to: '/journal/index.html' },
-    { label: 'About', to: '/about/index.html' },
-    { label: 'Get in touch', to: '/contact/index.html' },
+    { selector: '.ll-header .ll-nav-link[href="/projects/"]', to: '/projects/', pageName: 'projects' },
+    { selector: '.ll-header .ll-nav-link[href="/journal/index.html"]', to: '/journal/index.html', pageName: 'journal' },
+    { selector: '.ll-header .ll-nav-link[href="/about/index.html"]', to: '/about/index.html', pageName: 'about' },
+    { selector: '.ll-header .ll-cta[href="/contact/index.html"]', to: '/contact/index.html', pageName: 'contact' },
   ]
 
   const context = await browser.newContext({ viewport: desktopViewport, colorScheme: 'light' })
   await configureContext(context, 'light')
   const page = await context.newPage()
   await page.goto(joinUrl(baseUrl, '/index.html'))
-  await waitForPageStable(page)
+  await waitForPageStable(page, { name: 'home' })
 
   const baselineRects = await collectNodeRects(page, selectors)
   let maxShift = 0
   const records = []
 
   for (const item of navigationSequence) {
-    if (item.label === 'Get in touch') {
-      await page.locator('.ll-header .ll-cta').click()
-    } else {
-      await page.locator('.ll-header .ll-nav-link', { hasText: item.label }).first().click()
-    }
+    await page.locator(item.selector).first().click()
     await page.waitForURL(`**${item.to}`)
-    await waitForPageStable(page)
+    await waitForPageStable(page, { name: item.pageName })
     const nextRects = await collectNodeRects(page, selectors)
     const shift = calculateMaxShift(baselineRects, nextRects)
     records.push({ step: item.to, shift })
@@ -752,7 +778,7 @@ async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
 
   await page.locator('.ll-header .ll-brand').click()
   await page.waitForURL('**/index.html')
-  await waitForPageStable(page)
+  await waitForPageStable(page, { name: 'home' })
   const homeRects = await collectNodeRects(page, selectors)
   const homeShift = calculateMaxShift(baselineRects, homeRects)
   records.push({ step: '/index.html', shift: homeShift })
@@ -889,21 +915,34 @@ async function main() {
           const relativeDir = sanitize(`${viewport.name}/${theme}/${pageConfig.name}`)
           const oldPath = pageConfig.oldPath || pageConfig.path
           const newPath = pageConfig.newPath || pageConfig.path
+          const expectedReason = expectedDiffMap[caseId] ?? null
+          const expected = Boolean(expectedReason)
+          const legacylessStatusExpected = expected && pageConfig.name.startsWith('status-')
 
           console.log(`[visual] start ${caseId}`)
 
+          let oldResponse = null
+          let newResponse = null
           try {
-            await Promise.all([
-              oldPage.goto(joinUrl(oldBaseUrl, oldPath), {
+            if (legacylessStatusExpected) {
+              newResponse = await newPage.goto(joinUrl(newBaseUrl, newPath), {
                 waitUntil: 'domcontentloaded',
                 timeout: 10000,
-              }),
-              newPage.goto(joinUrl(newBaseUrl, newPath), {
-                waitUntil: 'domcontentloaded',
-                timeout: 10000,
-              }),
-            ])
-            await Promise.all([waitForPageStable(oldPage), waitForPageStable(newPage)])
+              })
+              await waitForPageStable(newPage, pageConfig)
+            } else {
+              ;[oldResponse, newResponse] = await Promise.all([
+                oldPage.goto(joinUrl(oldBaseUrl, oldPath), {
+                  waitUntil: 'domcontentloaded',
+                  timeout: 10000,
+                }),
+                newPage.goto(joinUrl(newBaseUrl, newPath), {
+                  waitUntil: 'domcontentloaded',
+                  timeout: 10000,
+                }),
+              ])
+              await Promise.all([waitForPageStable(oldPage, pageConfig), waitForPageStable(newPage, pageConfig)])
+            }
           } catch (error) {
             results.push({
               caseId,
@@ -931,68 +970,80 @@ async function main() {
           ensureDir(path.dirname(newFullPath))
           ensureDir(path.dirname(diffFullPath))
 
-          await oldPage.screenshot({ path: oldFullPath, fullPage: true, animations: 'disabled' })
-          await newPage.screenshot({ path: newFullPath, fullPage: true, animations: 'disabled' })
+          let fullCompare
+          if (legacylessStatusExpected) {
+            await newPage.screenshot({ path: newFullPath, fullPage: false, animations: 'disabled' })
+            fullCompare = {
+              mismatchedPixels: Number.MAX_SAFE_INTEGER,
+              mismatchRatio: 1,
+              width: 0,
+              height: 0,
+              dimensionMismatch: true,
+            }
+          } else {
+            await oldPage.screenshot({ path: oldFullPath, fullPage: true, animations: 'disabled' })
+            await newPage.screenshot({ path: newFullPath, fullPage: true, animations: 'disabled' })
+            fullCompare = comparePngs(oldFullPath, newFullPath, diffFullPath)
+          }
 
-          const fullCompare = comparePngs(oldFullPath, newFullPath, diffFullPath)
           const fullPass = fullCompare.mismatchRatio <= config.thresholds.fullPageMismatchRatio
 
-          const areaSelectors = [
-            ...keyAreas,
-            { name: 'hero', selector: pageConfig.heroSelector },
-            { name: 'content', selector: pageConfig.contentSelector },
-          ]
-
           const keyAreaResults = []
-          for (const area of areaSelectors) {
-            const oldAreaPath = path.join(runDir, 'old', `${relativeDir}__${area.name}.png`)
-            const newAreaPath = path.join(runDir, 'new', `${relativeDir}__${area.name}.png`)
-            const diffAreaPath = path.join(runDir, 'diff', `${relativeDir}__${area.name}.png`)
-            const oldExists = await takeKeyAreaScreenshot(oldPage, area.selector, oldAreaPath)
-            const newExists = await takeKeyAreaScreenshot(newPage, area.selector, newAreaPath)
+          if (!expected) {
+            const areaSelectors = [
+              ...keyAreas,
+              { name: 'hero', selector: pageConfig.heroSelector },
+              { name: 'content', selector: pageConfig.contentSelector },
+            ]
 
-            if (!oldExists && !newExists) {
+            for (const area of areaSelectors) {
+              const oldAreaPath = path.join(runDir, 'old', `${relativeDir}__${area.name}.png`)
+              const newAreaPath = path.join(runDir, 'new', `${relativeDir}__${area.name}.png`)
+              const diffAreaPath = path.join(runDir, 'diff', `${relativeDir}__${area.name}.png`)
+              const oldExists = await takeKeyAreaScreenshot(oldPage, area.selector, oldAreaPath)
+              const newExists = await takeKeyAreaScreenshot(newPage, area.selector, newAreaPath)
+
+              if (!oldExists && !newExists) {
+                keyAreaResults.push({
+                  name: area.name,
+                  selector: area.selector,
+                  exists: false,
+                  symmetricMissing: true,
+                  skipped: true,
+                  mismatchRatio: 0,
+                  pass: true,
+                })
+                continue
+              }
+
+              if (!oldExists || !newExists) {
+                keyAreaResults.push({
+                  name: area.name,
+                  selector: area.selector,
+                  exists: false,
+                  symmetricMissing: false,
+                  skipped: false,
+                  mismatchRatio: 1,
+                  pass: false,
+                })
+                continue
+              }
+
+              ensureDir(path.dirname(diffAreaPath))
+              const compareResult = comparePngs(oldAreaPath, newAreaPath, diffAreaPath)
               keyAreaResults.push({
                 name: area.name,
                 selector: area.selector,
-                exists: false,
-                symmetricMissing: true,
-                skipped: true,
-                mismatchRatio: 0,
-                pass: true,
-              })
-              continue
-            }
-
-            if (!oldExists || !newExists) {
-              keyAreaResults.push({
-                name: area.name,
-                selector: area.selector,
-                exists: false,
+                exists: true,
                 symmetricMissing: false,
                 skipped: false,
-                mismatchRatio: 1,
-                pass: false,
+                mismatchRatio: compareResult.mismatchRatio,
+                pass: compareResult.mismatchRatio <= config.thresholds.keyAreaMismatchRatio,
               })
-              continue
             }
-
-            ensureDir(path.dirname(diffAreaPath))
-            const compareResult = comparePngs(oldAreaPath, newAreaPath, diffAreaPath)
-            keyAreaResults.push({
-              name: area.name,
-              selector: area.selector,
-              exists: true,
-              symmetricMissing: false,
-              skipped: false,
-              mismatchRatio: compareResult.mismatchRatio,
-              pass: compareResult.mismatchRatio <= config.thresholds.keyAreaMismatchRatio,
-            })
           }
 
           const casePass = fullPass && keyAreaResults.every((item) => item.pass)
-          const expectedReason = !casePass ? expectedDiffMap[caseId] : null
-          const expected = Boolean(expectedReason)
           results.push({
             caseId,
             page: pageConfig.name,

@@ -13,6 +13,7 @@ import {
   type StatusPublicPagePayload,
   fetchStatusPublicPage,
 } from '~/lib/statusPublicApi'
+import { useDocumentMetadata, useUiLocale, type UiLocale } from '~/lib/uiLocale'
 
 type StatusPageState =
   | { status: 'loading' }
@@ -26,112 +27,142 @@ const DEFAULT_OVERALL_CONTEXT: StatusOverallContext = {
     'The header status light reflects system health only. This page is broader: it also considers public surface availability, content freshness, and visitor-facing issues.',
 }
 
-function formatDateTime(value: string | null): string {
+function localizeStatusErrorMessage(message: string, locale: UiLocale): string {
+  const normalized = message.trim()
+  if (!normalized) {
+    return locale === 'zh-CN' ? '公开摘要暂不可用。' : 'The public summary is temporarily unavailable.'
+  }
+
+  if (locale === 'en') {
+    return normalized
+  }
+
+  if (normalized === 'The public summary is temporarily unavailable.') return '公开摘要暂不可用。'
+  if (normalized === 'Status summary request timed out.') return '状态摘要请求超时。'
+  if (normalized === 'Unknown status summary request error.') return '状态摘要请求发生未知错误。'
+  if (normalized === 'Status summary payload is invalid.') return '状态摘要响应不符合协议。'
+  return normalized
+}
+
+function formatDateTime(value: string | null, locale: UiLocale): string {
   if (!value) {
-    return 'Update time unavailable'
+    return locale === 'zh-CN' ? '更新时间未知' : 'Update time unavailable'
   }
 
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {
-    return 'Update time unavailable'
+    return locale === 'zh-CN' ? '更新时间未知' : 'Update time unavailable'
   }
 
-  return parsed.toLocaleString('en-US', {
+  return parsed.toLocaleString(locale === 'zh-CN' ? 'zh-CN' : 'en-US', {
     year: 'numeric',
-    month: 'short',
+    month: locale === 'zh-CN' ? '2-digit' : 'short',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    timeZoneName: 'short',
+    timeZoneName: locale === 'zh-CN' ? undefined : 'short',
+    hour12: false,
   })
 }
 
-function getToneLabel(tone: PublicStatusTone): string {
+function getToneLabel(tone: PublicStatusTone, locale: UiLocale): string {
   if (tone === 'red') {
-    return 'Needs attention'
+    return locale === 'zh-CN' ? '需关注' : 'Needs attention'
   }
   if (tone === 'yellow') {
-    return 'Limited'
+    return locale === 'zh-CN' ? '受限' : 'Limited'
   }
-  return 'Healthy'
+  return locale === 'zh-CN' ? '健康' : 'Healthy'
 }
 
-function getSurfaceHealthLabel(health: PublicSurfaceHealth): string {
+function getSurfaceHealthLabel(health: PublicSurfaceHealth, locale: UiLocale): string {
   if (health === 'degraded') {
-    return 'Degraded'
+    return locale === 'zh-CN' ? '降级' : 'Degraded'
   }
   if (health === 'down') {
-    return 'Down'
+    return locale === 'zh-CN' ? '不可用' : 'Down'
   }
   if (health === 'unknown') {
-    return 'Unknown'
+    return locale === 'zh-CN' ? '未知' : 'Unknown'
   }
-  return 'Up'
+  return locale === 'zh-CN' ? '可用' : 'Up'
 }
 
-function getFreshnessLabel(freshness: ContentFreshnessLevel): string {
+function getFreshnessLabel(freshness: ContentFreshnessLevel, locale: UiLocale): string {
   if (freshness === 'aging') {
-    return 'Aging'
+    return locale === 'zh-CN' ? '趋旧' : 'Aging'
   }
   if (freshness === 'stale') {
-    return 'Stale'
+    return locale === 'zh-CN' ? '过旧' : 'Stale'
   }
   if (freshness === 'unknown') {
-    return 'Unknown'
+    return locale === 'zh-CN' ? '未知' : 'Unknown'
   }
-  return 'Fresh'
+  return locale === 'zh-CN' ? '新鲜' : 'Fresh'
 }
 
-function getIssueLevelLabel(level: KnownIssueLevel): string {
-  return level === 'warn' ? 'Known limitation' : 'Note'
+function getIssueLevelLabel(level: KnownIssueLevel, locale: UiLocale): string {
+  return level === 'warn'
+    ? locale === 'zh-CN'
+      ? '已知限制'
+      : 'Known limitation'
+    : locale === 'zh-CN'
+      ? '说明'
+      : 'Note'
 }
 
-function getIssueStatusLabel(status: KnownIssueStatus): string {
+function getIssueStatusLabel(status: KnownIssueStatus, locale: UiLocale): string {
   if (status === 'active') {
-    return 'Active'
+    return locale === 'zh-CN' ? '处理中' : 'Active'
   }
   if (status === 'resolved') {
-    return 'Resolved'
+    return locale === 'zh-CN' ? '已恢复' : 'Resolved'
   }
-  return 'Monitoring'
+  return locale === 'zh-CN' ? '观察中' : 'Monitoring'
 }
 
-function getIssueCountLabel(issueCount: number): string {
+function getIssueCountLabel(issueCount: number, locale: UiLocale): string {
   if (issueCount <= 0) {
-    return 'No public issues'
+    return locale === 'zh-CN' ? '暂无公开问题' : 'No public issues'
   }
   if (issueCount === 1) {
-    return '1 public issue'
+    return locale === 'zh-CN' ? '1 个公开问题' : '1 public issue'
   }
-  return `${issueCount} public issues`
+  return locale === 'zh-CN' ? `${issueCount} 个公开问题` : `${issueCount} public issues`
 }
 
-function getIssueSectionSummary(issues: StatusKnownIssue[]): string {
+function getIssueSectionSummary(issues: StatusKnownIssue[], locale: UiLocale): string {
   if (issues.length === 0) {
-    return 'No visitor-facing limitations are listed right now.'
+    return locale === 'zh-CN'
+      ? '当前没有列出任何面向访客的限制。'
+      : 'No visitor-facing limitations are listed right now.'
   }
 
   if (issues.length === 1) {
-    return '1 visitor-facing issue is currently listed with structured impact, status, and update detail.'
+    return locale === 'zh-CN'
+      ? '当前列出 1 个面向访客的问题，包含影响范围、状态与更新时间。'
+      : '1 visitor-facing issue is currently listed with structured impact, status, and update detail.'
   }
 
-  return `${issues.length} visitor-facing issues are currently listed with structured impact, status, and update detail.`
+  return locale === 'zh-CN'
+    ? `当前列出 ${issues.length} 个面向访客的问题，包含影响范围、状态与更新时间。`
+    : `${issues.length} visitor-facing issues are currently listed with structured impact, status, and update detail.`
 }
 
-function formatSurfaceLabel(surface: string): string {
+function formatSurfaceLabel(surface: string, locale: UiLocale): string {
   const normalized = surface.trim().toLowerCase()
 
   if (normalized === 'home') {
-    return 'Home'
+    return locale === 'zh-CN' ? '首页' : 'Home'
   }
   if (normalized === 'projects') {
-    return 'Projects'
+    return locale === 'zh-CN' ? '项目目录' : 'Projects'
   }
   if (normalized === 'journal') {
-    return 'Journal'
+    return locale === 'zh-CN' ? '日志' : 'Journal'
   }
   if (normalized === 'status') {
-    return 'Status page'
+    return locale === 'zh-CN' ? '状态页' : 'Status page'
   }
 
   return surface
@@ -139,6 +170,62 @@ function formatSurfaceLabel(surface: string): string {
     .filter(Boolean)
     .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
     .join(' ')
+}
+
+function localizeKnownLabel(label: string, locale: UiLocale): string {
+  const normalized = label.trim().toLowerCase()
+  if (!normalized) {
+    return label
+  }
+
+  if (normalized === 'public trust summary') {
+    return locale === 'zh-CN' ? '公开信任摘要' : 'Public trust summary'
+  }
+  if (normalized === 'home') {
+    return locale === 'zh-CN' ? '首页' : 'Home'
+  }
+  if (normalized === 'projects') {
+    return locale === 'zh-CN' ? '项目目录' : 'Projects'
+  }
+  if (normalized === 'journal') {
+    return locale === 'zh-CN' ? '日志' : 'Journal'
+  }
+  if (normalized === 'status page') {
+    return locale === 'zh-CN' ? '状态页' : 'Status page'
+  }
+
+  return label
+}
+
+function buildStatusMetadata(state: StatusPageState, locale: UiLocale) {
+  if (state.status === 'ready') {
+    return {
+      title: locale === 'zh-CN' ? '状态 | lambertlab' : 'Status | lambertlab',
+      description:
+        state.page.overall_status.summary ||
+        (locale === 'zh-CN'
+          ? '解释系统健康边界、公开可用性、内容新鲜度与访客可见问题的状态页。'
+          : 'Public trust page covering system health boundaries, public availability, content freshness, and visitor-facing issues.'),
+    }
+  }
+
+  if (state.status === 'error') {
+    return {
+      title: locale === 'zh-CN' ? '状态摘要暂不可用 | lambertlab' : 'Status Summary Unavailable | lambertlab',
+      description:
+        locale === 'zh-CN'
+          ? '当前无法加载状态摘要，可稍后重试。'
+          : 'The status summary is unavailable right now. Please retry later.',
+    }
+  }
+
+  return {
+    title: locale === 'zh-CN' ? '状态 | lambertlab' : 'Status | lambertlab',
+    description:
+      locale === 'zh-CN'
+        ? '解释系统健康边界、公开可用性、内容新鲜度与访客可见问题的状态页。'
+        : 'Public trust page for lambertlab explaining system health boundaries, public surface availability, content freshness, and visitor-facing issues.',
+  }
 }
 
 function StatusToken({
@@ -155,17 +242,17 @@ function StatusToken({
   )
 }
 
-function PublicSurfaceCard({ surface }: { surface: StatusKeySurface }) {
+function PublicSurfaceCard({ locale, surface }: { locale: UiLocale; surface: StatusKeySurface }) {
   return (
     <article className="status-detail-card">
       <div className="status-detail-head">
         <div>
-          <p className="status-detail-kicker">Key surface</p>
+          <p className="status-detail-kicker">{locale === 'zh-CN' ? '关键表面' : 'Key surface'}</p>
           <h3>
-            <a href={surface.path}>{surface.label}</a>
+            <a href={surface.path}>{localizeKnownLabel(surface.label, locale)}</a>
           </h3>
         </div>
-        <StatusToken tone={surface.health}>{getSurfaceHealthLabel(surface.health)}</StatusToken>
+        <StatusToken tone={surface.health}>{getSurfaceHealthLabel(surface.health, locale)}</StatusToken>
       </div>
       <p className="status-detail-note">{surface.note}</p>
       <p className="status-detail-path">{surface.path}</p>
@@ -173,57 +260,69 @@ function PublicSurfaceCard({ surface }: { surface: StatusKeySurface }) {
   )
 }
 
-function FreshnessCard({ area }: { area: StatusContentFreshnessArea }) {
+function FreshnessCard({ area, locale }: { area: StatusContentFreshnessArea; locale: UiLocale }) {
   return (
     <article className="status-detail-card">
       <div className="status-detail-head">
         <div>
-          <p className="status-detail-kicker">Content area</p>
-          <h3>{area.label}</h3>
+          <p className="status-detail-kicker">{locale === 'zh-CN' ? '内容区域' : 'Content area'}</p>
+          <h3>{localizeKnownLabel(area.label, locale)}</h3>
         </div>
-        <StatusToken tone={area.freshness}>{getFreshnessLabel(area.freshness)}</StatusToken>
+        <StatusToken tone={area.freshness}>{getFreshnessLabel(area.freshness, locale)}</StatusToken>
       </div>
       <p className="status-detail-note">{area.note}</p>
-      <p className="status-detail-meta">Updated {formatDateTime(area.updated_at)}</p>
+      <p className="status-detail-meta">
+        {locale === 'zh-CN' ? '更新于 ' : 'Updated '}
+        {formatDateTime(area.updated_at, locale)}
+      </p>
     </article>
   )
 }
 
-function KnownIssueCard({ issue }: { issue: StatusKnownIssue }) {
+function KnownIssueCard({ issue, locale }: { issue: StatusKnownIssue; locale: UiLocale }) {
   return (
     <article className="status-detail-card status-issue-card">
       <div className="status-detail-head">
         <div>
-          <p className="status-detail-kicker">{getIssueLevelLabel(issue.level)}</p>
+          <p className="status-detail-kicker">{getIssueLevelLabel(issue.level, locale)}</p>
           <h3>{issue.title}</h3>
         </div>
         <div className="status-token-stack">
-          <StatusToken tone={issue.level}>{getIssueLevelLabel(issue.level)}</StatusToken>
-          <StatusToken tone={issue.status}>{getIssueStatusLabel(issue.status)}</StatusToken>
+          <StatusToken tone={issue.level}>{getIssueLevelLabel(issue.level, locale)}</StatusToken>
+          <StatusToken tone={issue.status}>{getIssueStatusLabel(issue.status, locale)}</StatusToken>
         </div>
       </div>
       <p className="status-issue-summary">{issue.summary}</p>
-      <div className="status-chip-row" aria-label="Affected surfaces">
+      <div className="status-chip-row" aria-label={locale === 'zh-CN' ? '影响页面' : 'Affected surfaces'}>
         {issue.surfaces.length > 0 ? (
           issue.surfaces.map((surface) => (
             <span className="status-chip" key={`${issue.key}-${surface}`}>
-              {formatSurfaceLabel(surface)}
+              {formatSurfaceLabel(surface, locale)}
             </span>
           ))
         ) : (
-          <span className="status-chip status-chip-muted">Impact scope not listed</span>
+          <span className="status-chip status-chip-muted">
+            {locale === 'zh-CN' ? '未列出影响范围' : 'Impact scope not listed'}
+          </span>
         )}
       </div>
       <p className="status-detail-note">{issue.detail}</p>
-      <p className="status-detail-meta">Updated {formatDateTime(issue.updated_at)}</p>
+      <p className="status-detail-meta">
+        {locale === 'zh-CN' ? '更新于 ' : 'Updated '}
+        {formatDateTime(issue.updated_at, locale)}
+      </p>
     </article>
   )
 }
 
 export function StatusPage() {
+  const { locale } = useUiLocale()
   const [state, setState] = React.useState<StatusPageState>({ status: 'loading' })
+  const metadata = buildStatusMetadata(state, locale)
 
-  const loadPage = (signal?: AbortSignal) => {
+  useDocumentMetadata(metadata.title, metadata.description)
+
+  const loadPage = React.useEffectEvent((signal?: AbortSignal) => {
     setState({ status: 'loading' })
 
     fetchStatusPublicPage(signal)
@@ -241,16 +340,17 @@ export function StatusPage() {
           return
         }
 
+        const fallback = locale === 'zh-CN' ? '公开摘要暂不可用。' : 'The public summary is temporarily unavailable.'
         const message =
           error instanceof StatusPublicApiError && error.message.trim()
-            ? error.message.trim()
-            : 'The public summary is temporarily unavailable.'
+            ? localizeStatusErrorMessage(error.message, locale)
+            : fallback
 
         React.startTransition(() => {
           setState({ status: 'error', message })
         })
       })
-  }
+  })
 
   React.useEffect(() => {
     const controller = new AbortController()
@@ -259,29 +359,35 @@ export function StatusPage() {
     return () => {
       controller.abort()
     }
-  }, [])
+  }, [loadPage, locale])
 
   const overallContext = state.status === 'ready' ? state.page.overall_status.context : DEFAULT_OVERALL_CONTEXT
+  const overallContextLabel = localizeKnownLabel(overallContext.label, locale)
 
   return (
     <main className="status-page-shell" id="main-content">
       <section className="status-page-hero">
         <div className="status-page-copy">
-          <p className="status-page-eyebrow">Public trust page</p>
-          <h1>Status</h1>
+          <p className="status-page-eyebrow">{locale === 'zh-CN' ? '公开信任页' : 'Public trust page'}</p>
+          <h1>{locale === 'zh-CN' ? '状态' : 'Status'}</h1>
           <p className="status-page-intro">
-            This page shares a visitor-friendly snapshot of public availability and content activity across the site.
-            It summarizes what is healthy, what is limited, and where current attention is focused.
+            {locale === 'zh-CN'
+              ? '这个页面以访客友好的方式说明站点公开可用性与内容活动快照：什么是健康的，什么是受限的，以及当前关注点在哪里。'
+              : 'This page shares a visitor-friendly snapshot of public availability and content activity across the site. It summarizes what is healthy, what is limited, and where current attention is focused.'}
           </p>
-          <div className="status-semantic-grid" aria-label="Status semantics">
+          <div className="status-semantic-grid" aria-label={locale === 'zh-CN' ? '状态语义说明' : 'Status semantics'}>
             <article className="status-meaning-card">
-              <p className="status-detail-kicker">Header status light</p>
-              <h2>System health only</h2>
-              <p>It tracks whether core services are responding normally.</p>
+              <p className="status-detail-kicker">{locale === 'zh-CN' ? '头部状态灯' : 'Header status light'}</p>
+              <h2>{locale === 'zh-CN' ? '仅代表系统健康' : 'System health only'}</h2>
+              <p>
+                {locale === 'zh-CN'
+                  ? '它只跟踪核心服务是否正常响应。'
+                  : 'It tracks whether core services are responding normally.'}
+              </p>
             </article>
             <article className="status-meaning-card status-meaning-card-accent">
-              <p className="status-detail-kicker">{overallContext.label}</p>
-              <h2>Public trust summary</h2>
+              <p className="status-detail-kicker">{overallContextLabel}</p>
+              <h2>{locale === 'zh-CN' ? '公开信任摘要' : 'Public trust summary'}</h2>
               <p>{overallContext.note}</p>
             </article>
           </div>
@@ -290,37 +396,48 @@ export function StatusPage() {
         {state.status === 'ready' ? (
           <div className="status-hero-card" data-tone={state.page.overall_status.status}>
             <StatusToken tone={state.page.overall_status.status}>
-              {getToneLabel(state.page.overall_status.status)}
+              {getToneLabel(state.page.overall_status.status, locale)}
             </StatusToken>
             <h2>{state.page.overall_status.summary}</h2>
-            <p>Latest public update: {formatDateTime(state.page.overall_status.updated_at)}</p>
+            <p>
+              {locale === 'zh-CN' ? '最近一次公开更新时间：' : 'Latest public update: '}
+              {formatDateTime(state.page.overall_status.updated_at, locale)}
+            </p>
           </div>
         ) : (
           <div className="status-hero-card" data-tone="green">
-            <StatusToken tone="green">Public summary</StatusToken>
-            <h2>Status snapshot is loading.</h2>
-            <p>The page is preparing the latest public summary.</p>
+            <StatusToken tone="green">{locale === 'zh-CN' ? '公开摘要' : 'Public summary'}</StatusToken>
+            <h2>{locale === 'zh-CN' ? '状态快照加载中。' : 'Status snapshot is loading.'}</h2>
+            <p>{locale === 'zh-CN' ? '页面正在准备最新的公开摘要。' : 'The page is preparing the latest public summary.'}</p>
           </div>
         )}
       </section>
 
       {state.status === 'loading' ? (
         <section className="status-state-panel" aria-live="polite">
-          <p className="status-detail-kicker">Loading</p>
-          <h2>Preparing the public summary</h2>
-          <p>Fetching overall status, public surface availability, content freshness, and visitor-facing issues.</p>
+          <p className="status-detail-kicker">{locale === 'zh-CN' ? '加载中' : 'Loading'}</p>
+          <h2>{locale === 'zh-CN' ? '正在准备公开摘要' : 'Preparing the public summary'}</h2>
+          <p>
+            {locale === 'zh-CN'
+              ? '正在获取总体状态、公开表面可用性、内容新鲜度与访客可见问题。'
+              : 'Fetching overall status, public surface availability, content freshness, and visitor-facing issues.'}
+          </p>
         </section>
       ) : null}
 
       {state.status === 'error' ? (
         <section className="status-state-panel status-state-panel-error" aria-live="polite">
-          <p className="status-detail-kicker">Summary unavailable</p>
-          <h2>We could not load the current public status summary.</h2>
+          <p className="status-detail-kicker">{locale === 'zh-CN' ? '摘要暂不可用' : 'Summary unavailable'}</p>
+          <h2>
+            {locale === 'zh-CN'
+              ? '当前无法加载公开状态摘要。'
+              : 'We could not load the current public status summary.'}
+          </h2>
           <p>{state.message}</p>
-          <p>Please retry shortly for the next refreshed snapshot.</p>
+          <p>{locale === 'zh-CN' ? '请稍后重试，以获取下一次刷新后的快照。' : 'Please retry shortly for the next refreshed snapshot.'}</p>
           <div className="status-state-actions">
             <button className="status-button" onClick={() => loadPage()} type="button">
-              Retry
+              {locale === 'zh-CN' ? '重试' : 'Retry'}
             </button>
           </div>
         </section>
@@ -331,16 +448,19 @@ export function StatusPage() {
           <section className="status-section">
             <div className="status-section-head">
               <div>
-                <p className="status-detail-kicker">Module 1</p>
-                <h2>Overall Status</h2>
+                <p className="status-detail-kicker">{locale === 'zh-CN' ? '模块 1' : 'Module 1'}</p>
+                <h2>{locale === 'zh-CN' ? '总体状态' : 'Overall Status'}</h2>
               </div>
               <StatusToken tone={state.page.overall_status.status}>
-                {getToneLabel(state.page.overall_status.status)}
+                {getToneLabel(state.page.overall_status.status, locale)}
               </StatusToken>
             </div>
             <div className="status-summary-panel">
               <p className="status-summary-text">{state.page.overall_status.summary}</p>
-              <p className="status-summary-meta">Updated {formatDateTime(state.page.overall_status.updated_at)}</p>
+              <p className="status-summary-meta">
+                {locale === 'zh-CN' ? '更新于 ' : 'Updated '}
+                {formatDateTime(state.page.overall_status.updated_at, locale)}
+              </p>
               <p className="status-summary-meta">{state.page.overall_status.context.note}</p>
             </div>
           </section>
@@ -348,27 +468,35 @@ export function StatusPage() {
           <section className="status-section">
             <div className="status-section-head">
               <div>
-                <p className="status-detail-kicker">Module 2</p>
-                <h2>Public Surface Availability</h2>
+                <p className="status-detail-kicker">{locale === 'zh-CN' ? '模块 2' : 'Module 2'}</p>
+                <h2>{locale === 'zh-CN' ? '公开表面可用性' : 'Public Surface Availability'}</h2>
               </div>
               <StatusToken tone={state.page.public_surface.summary.status}>
-                {getToneLabel(state.page.public_surface.summary.status)}
+                {getToneLabel(state.page.public_surface.summary.status, locale)}
               </StatusToken>
             </div>
             <div className="status-summary-panel">
               <p className="status-summary-text">{state.page.public_surface.summary.label}</p>
-              <p className="status-summary-meta">Aggregated view of Home, Projects, and Journal.</p>
+              <p className="status-summary-meta">
+                {locale === 'zh-CN'
+                  ? '聚合查看首页、项目目录与日志。'
+                  : 'Aggregated view of Home, Projects, and Journal.'}
+              </p>
             </div>
             <div className="status-card-grid">
               {state.page.public_surface.key_surfaces.length > 0 ? (
                 state.page.public_surface.key_surfaces.map((surface) => (
-                  <PublicSurfaceCard key={`${surface.key}-${surface.path}`} surface={surface} />
+                  <PublicSurfaceCard key={`${surface.key}-${surface.path}`} locale={locale} surface={surface} />
                 ))
               ) : (
                 <article className="status-detail-card status-detail-card-empty">
-                  <p className="status-detail-kicker">Key surfaces</p>
-                  <h3>Surface detail is not available yet.</h3>
-                  <p className="status-detail-note">The current public summary did not return key surface detail.</p>
+                  <p className="status-detail-kicker">{locale === 'zh-CN' ? '关键表面' : 'Key surfaces'}</p>
+                  <h3>{locale === 'zh-CN' ? '尚未提供表面详情。' : 'Surface detail is not available yet.'}</h3>
+                  <p className="status-detail-note">
+                    {locale === 'zh-CN'
+                      ? '当前公开摘要没有返回关键表面详情。'
+                      : 'The current public summary did not return key surface detail.'}
+                  </p>
                 </article>
               )}
             </div>
@@ -377,28 +505,37 @@ export function StatusPage() {
           <section className="status-section">
             <div className="status-section-head">
               <div>
-                <p className="status-detail-kicker">Module 3</p>
-                <h2>Content Freshness</h2>
+                <p className="status-detail-kicker">{locale === 'zh-CN' ? '模块 3' : 'Module 3'}</p>
+                <h2>{locale === 'zh-CN' ? '内容新鲜度' : 'Content Freshness'}</h2>
               </div>
               <StatusToken tone={state.page.content_freshness.summary.status}>
-                {getToneLabel(state.page.content_freshness.summary.status)}
+                {getToneLabel(state.page.content_freshness.summary.status, locale)}
               </StatusToken>
             </div>
             <div className="status-summary-panel">
               <p className="status-summary-text">{state.page.content_freshness.summary.label}</p>
               <p className="status-summary-meta">
-                Active focus:{' '}
-                <strong>{state.page.content_freshness.active_focus || 'Current focus is not listed in this summary.'}</strong>
+                {locale === 'zh-CN' ? '当前重点：' : 'Active focus: '}
+                <strong>
+                  {state.page.content_freshness.active_focus ||
+                    (locale === 'zh-CN' ? '摘要中未列出当前重点。' : 'Current focus is not listed in this summary.')}
+                </strong>
               </p>
             </div>
             <div className="status-card-grid">
               {state.page.content_freshness.areas.length > 0 ? (
-                state.page.content_freshness.areas.map((area) => <FreshnessCard key={area.key} area={area} />)
+                state.page.content_freshness.areas.map((area) => (
+                  <FreshnessCard key={area.key} area={area} locale={locale} />
+                ))
               ) : (
                 <article className="status-detail-card status-detail-card-empty">
-                  <p className="status-detail-kicker">Freshness detail</p>
-                  <h3>Content freshness detail is not available yet.</h3>
-                  <p className="status-detail-note">The current public summary did not return content freshness areas.</p>
+                  <p className="status-detail-kicker">{locale === 'zh-CN' ? '新鲜度详情' : 'Freshness detail'}</p>
+                  <h3>{locale === 'zh-CN' ? '尚未提供内容新鲜度详情。' : 'Content freshness detail is not available yet.'}</h3>
+                  <p className="status-detail-note">
+                    {locale === 'zh-CN'
+                      ? '当前公开摘要没有返回内容新鲜度区域。'
+                      : 'The current public summary did not return content freshness areas.'}
+                  </p>
                 </article>
               )}
             </div>
@@ -407,32 +544,34 @@ export function StatusPage() {
           <section className="status-section">
             <div className="status-section-head">
               <div>
-                <p className="status-detail-kicker">Module 4</p>
-                <h2>Known Issues &amp; Notes</h2>
+                <p className="status-detail-kicker">{locale === 'zh-CN' ? '模块 4' : 'Module 4'}</p>
+                <h2>{locale === 'zh-CN' ? '已知问题与备注' : 'Known Issues & Notes'}</h2>
               </div>
               <StatusToken tone={state.page.known_issues.length > 0 ? 'warn' : 'info'}>
-                {getIssueCountLabel(state.page.known_issues.length)}
+                {getIssueCountLabel(state.page.known_issues.length, locale)}
               </StatusToken>
             </div>
             <div className="status-summary-panel">
-              <p className="status-summary-text">{getIssueSectionSummary(state.page.known_issues)}</p>
+              <p className="status-summary-text">{getIssueSectionSummary(state.page.known_issues, locale)}</p>
               <p className="status-summary-meta">
-                These cards list visitor-facing limitations only. Internal diagnostics and operator detail stay off this
-                page.
+                {locale === 'zh-CN'
+                  ? '这里只列出面向访客的限制，不展示内部诊断和运维细节。'
+                  : 'These cards list visitor-facing limitations only. Internal diagnostics and operator detail stay off this page.'}
               </p>
             </div>
             <div
               className={`status-card-grid status-card-grid-issues${state.page.known_issues.length === 1 ? ' status-card-grid-single' : ''}`}
             >
               {state.page.known_issues.length > 0 ? (
-                state.page.known_issues.map((issue) => <KnownIssueCard key={issue.key} issue={issue} />)
+                state.page.known_issues.map((issue) => <KnownIssueCard key={issue.key} issue={issue} locale={locale} />)
               ) : (
                 <article className="status-detail-card status-detail-card-empty">
-                  <p className="status-detail-kicker">Current summary</p>
-                  <h3>No public issues are listed right now.</h3>
+                  <p className="status-detail-kicker">{locale === 'zh-CN' ? '当前摘要' : 'Current summary'}</p>
+                  <h3>{locale === 'zh-CN' ? '当前没有列出公开问题。' : 'No public issues are listed right now.'}</h3>
                   <p className="status-detail-note">
-                    When visitor-facing limitations appear, they will be listed here with impact scope, status, update
-                    time, and a plain-language explanation.
+                    {locale === 'zh-CN'
+                      ? '当出现面向访客的限制时，会在这里列出影响范围、状态、更新时间和通俗说明。'
+                      : 'When visitor-facing limitations appear, they will be listed here with impact scope, status, update time, and a plain-language explanation.'}
                   </p>
                 </article>
               )}

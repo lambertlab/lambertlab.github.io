@@ -1,13 +1,17 @@
-export function buildStatusPageHead() {
+import type { UiLocale } from '~/lib/uiLocale'
+
+export function buildStatusPageHead(locale: UiLocale = 'zh-CN') {
   return {
     meta: [
       {
-        title: 'Status | lambertlab',
+        title: locale === 'zh-CN' ? '状态 | lambertlab' : 'Status | lambertlab',
       },
       {
         name: 'description',
         content:
-          'Public trust page for lambertlab explaining system health boundaries, public surface availability, content freshness, and visitor-facing issues.',
+          locale === 'zh-CN'
+            ? '解释系统健康边界、公开可用性、内容新鲜度与访客可见问题的状态页。'
+            : 'Public trust page for lambertlab explaining system health boundaries, public surface availability, content freshness, and visitor-facing issues.',
       },
     ],
     links: [

@@ -1,12 +1,17 @@
-export function buildProjectDetailHead() {
+import type { UiLocale } from '~/lib/uiLocale'
+
+export function buildProjectDetailHead(locale: UiLocale = 'zh-CN') {
   return {
     meta: [
       {
-        title: 'Project Detail | lambertlab',
+        title: locale === 'zh-CN' ? '项目详情 | lambertlab' : 'Project Detail | lambertlab',
       },
       {
         name: 'description',
-        content: 'LambertLab Projects detail skeleton powered by the unified project contract.',
+        content:
+          locale === 'zh-CN'
+            ? '基于统一 Projects 合同的项目详情页骨架。'
+            : 'LambertLab project detail skeleton powered by the unified project contract.',
       },
     ],
     links: [

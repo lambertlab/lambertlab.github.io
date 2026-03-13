@@ -289,6 +289,90 @@ body {
   color: #2563eb;
 }
 
+.ll-locale-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid rgba(206, 214, 226, 0.94);
+  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.94);
+  padding: 0;
+  height: 36px;
+  min-height: 36px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 8px 18px -16px rgba(15, 23, 42, 0.32);
+  --ll-locale-index: 0;
+  flex-shrink: 0;
+}
+
+.ll-locale-segmented {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  min-width: 78px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 3px;
+  isolation: isolate;
+}
+
+.ll-locale-glider {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 2);
+  height: calc(100% - 6px);
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 10px 20px -14px rgba(37, 99, 235, 0.82);
+  transform: translateX(calc(var(--ll-locale-index, 0) * 100%));
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease, box-shadow 220ms ease;
+  z-index: 0;
+}
+
+.ll-locale-option {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  cursor: pointer;
+  line-height: 1;
+  font-family: var(--ll-font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.ll-locale-option:hover {
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.ll-locale-option:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.34);
+  outline-offset: 2px;
+}
+
+:root[data-ui-locale="zh-CN"] .ll-locale-switch [data-ui-locale-option="zh-CN"],
+:root[data-ui-locale="en"] .ll-locale-switch [data-ui-locale-option="en"] {
+  color: #f8fbff;
+}
+
+:root[data-ui-locale="en"] .ll-locale-switch {
+  --ll-locale-index: 1;
+}
+
 .ll-theme-switch {
   display: inline-flex;
   align-items: center;
@@ -442,6 +526,22 @@ body {
   .ll-theme-switch {
     height: 34px;
     min-height: 34px;
+  }
+
+  .ll-locale-switch {
+    height: 34px;
+    min-height: 34px;
+  }
+
+  .ll-locale-segmented {
+    min-width: 74px;
+    height: 32px;
+    padding: 2px;
+  }
+
+  .ll-locale-option {
+    padding: 0 10px;
+    font-size: 0.74rem;
   }
 
   .ll-theme-segmented {

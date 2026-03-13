@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import * as React from 'react'
 import type { LegacyPage } from '~/legacy/pages'
 import { useHomeSplitLayout } from '~/legacy/useHomeSplitLayout'
+import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
 
 interface LegacyPageViewProps {
   page: LegacyPage
@@ -103,10 +104,12 @@ function useRuntimeScripts(scriptSources: string[]) {
 
 export function LegacyPageView({ page }: LegacyPageViewProps) {
   const containerRef = React.useRef<HTMLDivElement>(null)
+  const { locale } = useUiLocale()
 
   useInternalAnchorNavigation(containerRef)
   useRuntimeScripts(page.runtimeScripts ?? [])
   useHomeSplitLayout(page.enableHomeSplit === true)
+  useDocumentMetadata(page.metadata.title[locale], page.metadata.description[locale])
 
   return (
     <>

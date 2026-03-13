@@ -7,6 +7,8 @@ import {
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
+import { rootMetadata, shellCopy } from '~/lib/siteCopy'
+import { getUiLocaleBootstrapScript, type UiLocale, UiLocaleProvider, useUiLocale } from '~/lib/uiLocale'
 
 const useIsomorphicLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect
 
@@ -21,11 +23,11 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'lambertlab | Building systems and tools',
+        title: rootMetadata.title['zh-CN'],
       },
       {
         name: 'description',
-        content: 'LambertLab - Technology 与 Life 并列的个人数字主站。',
+        content: rootMetadata.description['zh-CN'],
       },
     ],
     links: [
@@ -55,6 +57,9 @@ export const Route = createRootRoute({
     ],
     scripts: [
       {
+        children: getUiLocaleBootstrapScript(),
+      },
+      {
         children:
           "(function(){try{var mode='system';var raw=localStorage.getItem('ll-color-mode-v1');if(raw==='system'||raw==='light'||raw==='dark'){mode=raw;}else{var legacy=localStorage.getItem('theme');if(legacy==='light'||legacy==='dark'){mode=legacy;}}var isDark=false;if(mode==='dark'){isDark=true;}else if(mode==='system'&&window.matchMedia){isDark=window.matchMedia('(prefers-color-scheme: dark)').matches;}var resolved=isDark?'dark':'light';var root=document.documentElement;root.setAttribute('data-color-mode',mode);root.setAttribute('data-resolved-theme',resolved);if(isDark){root.classList.add('dark');}else{root.classList.remove('dark');}}catch(_){}})();",
       },
@@ -69,16 +74,16 @@ export const Route = createRootRoute({
   shellComponent: RootDocument,
 })
 
-function ThemeSwitchSkeleton() {
+function ThemeSwitchSkeleton({ locale }: { locale: UiLocale }) {
   return (
     <div className="ll-theme-switch ll-theme-static-sync" data-theme-mode-switch data-theme-mode="system">
-      <div className="ll-theme-segmented" role="group" aria-label="颜色模式">
+      <div className="ll-theme-segmented" role="group" aria-label={shellCopy.theme.label[locale]}>
         <span className="ll-theme-glider" aria-hidden="true"></span>
         <button
           type="button"
           className="ll-theme-option"
           data-theme-mode-option="system"
-          aria-label="跟随系统"
+          aria-label={shellCopy.theme.system[locale]}
           aria-pressed="false"
         >
           <svg className="ll-theme-option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -91,7 +96,7 @@ function ThemeSwitchSkeleton() {
           type="button"
           className="ll-theme-option"
           data-theme-mode-option="light"
-          aria-label="亮色"
+          aria-label={shellCopy.theme.light[locale]}
           aria-pressed="false"
         >
           <svg className="ll-theme-option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -110,7 +115,7 @@ function ThemeSwitchSkeleton() {
           type="button"
           className="ll-theme-option"
           data-theme-mode-option="dark"
-          aria-label="暗色"
+          aria-label={shellCopy.theme.dark[locale]}
           aria-pressed="false"
         >
           <svg className="ll-theme-option-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -119,6 +124,117 @@ function ThemeSwitchSkeleton() {
         </button>
       </div>
     </div>
+  )
+}
+
+function LocaleSwitch() {
+  const { locale, setLocale } = useUiLocale()
+
+  return (
+    <div className="ll-locale-switch" data-ui-locale-switch>
+      <div className="ll-locale-segmented" role="group" aria-label={shellCopy.localeSwitch.label[locale]}>
+        <span className="ll-locale-glider" aria-hidden="true"></span>
+        <button
+          type="button"
+          className="ll-locale-option"
+          data-ui-locale-option="zh-CN"
+          aria-pressed={locale === 'zh-CN'}
+          aria-label={shellCopy.localeSwitch.zh[locale]}
+          onClick={() => setLocale('zh-CN')}
+        >
+          {shellCopy.localeSwitch.zh[locale]}
+        </button>
+        <button
+          type="button"
+          className="ll-locale-option"
+          data-ui-locale-option="en"
+          aria-pressed={locale === 'en'}
+          aria-label={shellCopy.localeSwitch.en[locale]}
+          onClick={() => setLocale('en')}
+        >
+          {shellCopy.localeSwitch.en[locale]}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function RootShell({ children }: { children: React.ReactNode }) {
+  const { locale } = useUiLocale()
+  const statusTitle = shellCopy.systemStatus.loadingTitle[locale]
+  const statusDescription = shellCopy.systemStatus.loadingDescription[locale]
+  const statusSummary = locale === 'zh-CN' ? `${statusTitle}：${statusDescription}` : `${statusTitle}: ${statusDescription}`
+
+  return (
+    <>
+      <a className="skip-link" href="#main-content">
+        {shellCopy.skipLink[locale]}
+      </a>
+
+      <header className="ll-header">
+        <nav className="ll-header-inner">
+          <a className="ll-brand" href="/index.html">
+            <span className="ll-brand-mark">L</span>
+            <span className="ll-brand-text">lambertlab</span>
+          </a>
+          <div className="ll-nav">
+            <a className="ll-nav-link" href="/projects/">
+              {shellCopy.nav.projects[locale]}
+            </a>
+            <a className="ll-nav-link" href="/journal/index.html">
+              {shellCopy.nav.journal[locale]}
+            </a>
+            <a className="ll-nav-link" href="/about/index.html">
+              {shellCopy.nav.about[locale]}
+            </a>
+            <a className="ll-cta" href="/contact/index.html">
+              {shellCopy.nav.contact[locale]}
+            </a>
+            <a
+              className="system-health-nav"
+              data-system-status
+              data-status-state="loading"
+              href="/status/"
+              aria-live="polite"
+              aria-label={statusSummary}
+              title={statusSummary}
+            >
+              <span className="traffic-signal" aria-hidden="true">
+                <span className="traffic-lamp" data-light="red"></span>
+                <span className="traffic-lamp" data-light="yellow"></span>
+                <span className="traffic-lamp" data-light="green"></span>
+              </span>
+              <span className="ll-sr-only" data-system-status-title>
+                {statusTitle}
+              </span>
+              <span className="ll-sr-only" data-system-status-description>
+                {statusDescription}
+              </span>
+            </a>
+            <LocaleSwitch />
+            <ThemeSwitchSkeleton locale={locale} />
+          </div>
+        </nav>
+      </header>
+
+      {children}
+      <footer className="ll-site-footer">
+        <div className="ll-site-footer-inner">
+          <div className="ll-site-footer-copy">
+            <span>© 2026 lambertlab</span>
+            <span>{shellCopy.footer.copy[locale]}</span>
+          </div>
+          <div className="ll-site-footer-links">
+            <a className="ll-site-footer-link" href="/contact/index.html">
+              {shellCopy.footer.contact[locale]}
+            </a>
+            <a className="ll-site-footer-link" href="/status/">
+              {shellCopy.footer.status[locale]}
+            </a>
+          </div>
+        </div>
+      </footer>
+    </>
   )
 }
 
@@ -140,77 +256,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" data-ui-locale="zh-CN">
       <head>
         <HeadContent />
       </head>
       <body>
-        <a className="skip-link" href="#main-content">
-          跳到主要内容
-        </a>
-
-        <header className="ll-header">
-          <nav className="ll-header-inner">
-            <a className="ll-brand" href="/index.html">
-              <span className="ll-brand-mark">L</span>
-              <span className="ll-brand-text">lambertlab</span>
-            </a>
-            <div className="ll-nav">
-              <a className="ll-nav-link" href="/projects/">
-                Projects
-              </a>
-              <a className="ll-nav-link" href="/journal/index.html">
-                Journal
-              </a>
-              <a className="ll-nav-link" href="/about/index.html">
-                About
-              </a>
-              <a className="ll-cta" href="/contact/index.html">
-                Get in touch
-              </a>
-              <a
-                className="system-health-nav"
-                data-system-status
-                data-status-state="loading"
-                href="/status/"
-                aria-live="polite"
-                aria-label="功能可用性检查中：正在获取系统健康摘要，请稍候..."
-                title="功能可用性检查中：正在获取系统健康摘要，请稍候..."
-              >
-                <span className="traffic-signal" aria-hidden="true">
-                  <span className="traffic-lamp" data-light="red"></span>
-                  <span className="traffic-lamp" data-light="yellow"></span>
-                  <span className="traffic-lamp" data-light="green"></span>
-                </span>
-                <span className="ll-sr-only" data-system-status-title>
-                  功能可用性检查中
-                </span>
-                <span className="ll-sr-only" data-system-status-description>
-                  正在获取系统健康摘要，请稍候...
-                </span>
-              </a>
-              <ThemeSwitchSkeleton />
-            </div>
-          </nav>
-        </header>
-
-        {children}
-        <footer className="ll-site-footer">
-          <div className="ll-site-footer-inner">
-            <div className="ll-site-footer-copy">
-              <span>© 2026 lambertlab</span>
-              <span>Public entry points</span>
-            </div>
-            <div className="ll-site-footer-links">
-              <a className="ll-site-footer-link" href="/contact/index.html">
-                Contact
-              </a>
-              <a className="ll-site-footer-link" href="/status/">
-                Status
-              </a>
-            </div>
-          </div>
-        </footer>
+        <UiLocaleProvider>
+          <RootShell>{children}</RootShell>
+        </UiLocaleProvider>
         <script src="/js/config.js"></script>
         <Scripts />
       </body>

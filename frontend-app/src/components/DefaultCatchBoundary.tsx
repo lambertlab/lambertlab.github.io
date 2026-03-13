@@ -6,13 +6,18 @@ import {
   useRouter,
 } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
+import { errorBoundaryMetadata } from '~/lib/siteCopy'
+import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter()
+  const { locale } = useUiLocale()
   const isRoot = useMatch({
     strict: false,
     select: (state) => state.id === rootRouteId,
   })
+
+  useDocumentMetadata(errorBoundaryMetadata.title[locale], errorBoundaryMetadata.description[locale])
 
   console.error('DefaultCatchBoundary Error:', error)
 
@@ -43,11 +48,11 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
             cursor: 'pointer',
           }}
         >
-          Try Again
+          {locale === 'zh-CN' ? '重试' : 'Try again'}
         </button>
         {isRoot ? (
           <Link to="/index.html" style={{ color: '#2563eb' }}>
-            Home
+            {locale === 'zh-CN' ? '首页' : 'Home'}
           </Link>
         ) : (
           <Link
@@ -58,7 +63,7 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
               window.history.back()
             }}
           >
-            Go Back
+            {locale === 'zh-CN' ? '返回上页' : 'Go back'}
           </Link>
         )}
       </div>

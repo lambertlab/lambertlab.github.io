@@ -67,6 +67,101 @@
     data: true,
     library: true
   };
+  var currentUiLocale = readUiLocale();
+
+  function normalizeUiLocale(value) {
+    return value === "en" || value === "zh-CN" ? value : "zh-CN";
+  }
+
+  function readUiLocale() {
+    var htmlLocale = document.documentElement.getAttribute("data-ui-locale") || document.documentElement.getAttribute("lang");
+    if (htmlLocale === "en" || htmlLocale === "zh-CN") {
+      return htmlLocale;
+    }
+    if (window.__LL_UI_LOCALE__ === "en" || window.__LL_UI_LOCALE__ === "zh-CN") {
+      return window.__LL_UI_LOCALE__;
+    }
+    return "zh-CN";
+  }
+
+  function isEnglishUi() {
+    return currentUiLocale === "en";
+  }
+
+  function getUiText(zhText, enText) {
+    return isEnglishUi() ? enText : zhText;
+  }
+
+  function normalizeLabelValue(value) {
+    return toText(value).toLowerCase().replace(/[_\s]+/g, "-");
+  }
+
+  function translateStageLabel(stage) {
+    var normalized = normalizeLabelValue(stage);
+    if (!normalized) {
+      return getUiText("待补充", "Pending");
+    }
+    if (isEnglishUi()) {
+      if (normalized === "building") return "Building";
+      if (normalized === "active") return "Active";
+      if (normalized === "maintenance") return "Maintenance";
+      if (normalized === "research") return "Research";
+      if (normalized === "archived") return "Archived";
+      return stage;
+    }
+    if (normalized === "building") return "建设中";
+    if (normalized === "active") return "活跃";
+    if (normalized === "maintenance") return "维护中";
+    if (normalized === "research") return "研究中";
+    if (normalized === "archived") return "已归档";
+    return stage;
+  }
+
+  function translateSourceTypeLabel(sourceType) {
+    var normalized = normalizeLabelValue(sourceType);
+    if (!normalized) {
+      return getUiText("待补充", "Pending");
+    }
+    if (isEnglishUi()) {
+      if (normalized === "github") return "GitHub";
+      if (normalized === "local") return "Local";
+      if (normalized === "private") return "Private";
+      if (normalized === "hybrid") return "Hybrid";
+      return sourceType;
+    }
+    if (normalized === "github") return "GitHub";
+    if (normalized === "local") return "本地";
+    if (normalized === "private") return "私有";
+    if (normalized === "hybrid") return "混合";
+    return sourceType;
+  }
+
+  function translateProjectTypeLabel(projectType) {
+    var normalized = normalizeLabelValue(projectType);
+    if (!normalized) {
+      return getUiText("待补充", "Pending");
+    }
+    if (isEnglishUi()) {
+      if (normalized === "website") return "Website";
+      if (normalized === "backend") return "Backend";
+      if (normalized === "tooling") return "Tooling";
+      if (normalized === "infra") return "Infrastructure";
+      if (normalized === "research") return "Research";
+      if (normalized === "agent") return "Agent";
+      if (normalized === "data") return "Data";
+      if (normalized === "library") return "Library";
+      return projectType;
+    }
+    if (normalized === "website") return "站点";
+    if (normalized === "backend") return "后端";
+    if (normalized === "tooling") return "工具";
+    if (normalized === "infra") return "基础设施";
+    if (normalized === "research") return "研究";
+    if (normalized === "agent") return "智能体";
+    if (normalized === "data") return "数据";
+    if (normalized === "library") return "库";
+    return projectType;
+  }
 
   function resolveCanonicalCatalogPath(pathname) {
     var value = toText(pathname);
@@ -125,9 +220,9 @@
     if (Number.isNaN(parsed.getTime())) {
       return "--";
     }
-    return parsed.toLocaleString("zh-CN", {
+    return parsed.toLocaleString(isEnglishUi() ? "en-US" : "zh-CN", {
       year: "numeric",
-      month: "2-digit",
+      month: isEnglishUi() ? "short" : "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
@@ -144,7 +239,7 @@
     if (Number.isNaN(parsed.getTime())) {
       return "--";
     }
-    return parsed.toLocaleDateString("zh-CN", {
+    return parsed.toLocaleDateString(isEnglishUi() ? "en-US" : "zh-CN", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit"
@@ -153,7 +248,7 @@
 
   function formatNumber(value) {
     var normalized = typeof value === "number" ? value : toInteger(value);
-    return normalized.toLocaleString("en-US");
+    return normalized.toLocaleString(isEnglishUi() ? "en-US" : "zh-CN");
   }
 
   function normalizeTags(rawTags) {
@@ -492,33 +587,33 @@
 
     if (stage === "active") {
       badge.classList.add("stage-active");
-      badge.textContent = "Active";
+      badge.textContent = translateStageLabel(stage);
       return badge;
     }
     if (stage === "building") {
       badge.classList.add("stage-building");
-      badge.textContent = "Building";
+      badge.textContent = translateStageLabel(stage);
       return badge;
     }
     if (stage === "research") {
       badge.classList.add("stage-research");
-      badge.textContent = "Research";
+      badge.textContent = translateStageLabel(stage);
       return badge;
     }
     if (stage === "archived") {
       badge.classList.add("stage-archived");
-      badge.textContent = "Archived";
+      badge.textContent = translateStageLabel(stage);
       return badge;
     }
     if (stage === "maintenance") {
       badge.classList.add("stage-maintenance");
-      badge.textContent = "Maintenance";
+      badge.textContent = translateStageLabel(stage);
       return badge;
     }
 
     // fallback for unknown/inactive
     badge.classList.add("stage-maintenance");
-    badge.textContent = stage || "Unknown";
+    badge.textContent = stage ? translateStageLabel(stage) : getUiText("未知", "Unknown");
     return badge;
   }
 
@@ -535,6 +630,134 @@
     box.appendChild(createTextNodeWithClass("p", "stat-label", label));
     box.appendChild(createTextNodeWithClass("p", "stat-value", value));
     return box;
+  }
+
+  function setText(selector, text) {
+    var node = catalogRoot.querySelector(selector);
+    if (node) {
+      node.textContent = text;
+    }
+  }
+
+  function setOptionLabel(selectElement, value, text) {
+    if (!selectElement) {
+      return;
+    }
+    var option = selectElement.querySelector('option[value="' + value + '"]');
+    if (option) {
+      option.textContent = text;
+    }
+  }
+
+  function applyStaticCatalogCopy() {
+    var hero = catalogRoot.querySelector(".page-hero");
+    var heroMetrics = catalogRoot.querySelector(".hero-metrics");
+    var controlStrip = catalogRoot.querySelector(".control-strip");
+    var catalogLayout = catalogRoot.querySelector(".catalog-layout");
+    var filterPanel = catalogRoot.querySelector(".filter-panel");
+    var resultsHead = catalogRoot.querySelector(".results-head");
+    var viewToggle = catalogRoot.querySelector(".view-toggle");
+    var errorTitle = catalogRoot.querySelector(".catalog-state-title");
+    var listFooter = catalogRoot.querySelector(".list-footer");
+
+    if (hero) {
+      hero.setAttribute("aria-label", getUiText("项目目录简介", "Projects intro"));
+    }
+    if (heroMetrics) {
+      heroMetrics.setAttribute("aria-label", getUiText("目录指标", "Catalog metrics"));
+    }
+    if (controlStrip) {
+      controlStrip.setAttribute("aria-label", getUiText("项目控制项", "Project controls"));
+    }
+    if (catalogLayout) {
+      catalogLayout.setAttribute("aria-label", getUiText("项目目录", "Project catalog"));
+    }
+    if (filterPanel) {
+      filterPanel.setAttribute("aria-label", getUiText("目录筛选", "Catalog filters"));
+    }
+    if (viewToggle) {
+      viewToggle.setAttribute("aria-label", getUiText("视图模式", "View mode"));
+    }
+
+    setText(".hero-kicker", getUiText("项目目录", "Project Catalog"));
+    setText(".hero-title", getUiText("浏览项目目录", "Explore the Project Catalog"));
+    setText(".hero-desc", getUiText("浏览所有项目，按阶段、来源与类型快速筛选和发现。支持搜索、排序与 URL 分享。", "Browse every project and filter by stage, source, and type. Search, sort, and replay the current state from the URL."));
+    setText(".hero-chip-row .chip:nth-child(1)", getUiText("阶段筛选", "Stage Filter"));
+    setText(".hero-chip-row .chip:nth-child(2)", getUiText("来源类型", "Source Type"));
+    setText(".hero-chip-row .chip:nth-child(3)", getUiText("项目类型", "Project Type"));
+    setText(".hero-chip-row .chip:nth-child(4)", getUiText("URL 回放", "URL Replay"));
+    setText(".hero-metrics .metric:nth-child(1) .label", getUiText("项目数", "Projects"));
+    setText(".hero-metrics .metric:nth-child(1) .desc", getUiText("目录项目总数", "Total projects in the catalog"));
+    setText(".hero-metrics .metric:nth-child(2) .label", getUiText("活跃中", "Active"));
+    setText(".hero-metrics .metric:nth-child(2) .desc", getUiText("当前活跃项目数量", "Projects currently marked as active"));
+    setText(".hero-metrics .metric:nth-child(3) .label", getUiText("最近更新", "Last Updated"));
+    setText(".hero-metrics .metric:nth-child(3) .desc", getUiText("目录最近更新时间", "Latest catalog refresh time"));
+    setText(".hero-metrics .metric:nth-child(4) .label", getUiText("来源数", "Sources"));
+    setText(".hero-metrics .metric:nth-child(4) .desc", getUiText("项目来源类型数量", "Distinct project source types"));
+    setText('label[for="project-search"]', getUiText("搜索", "Search"));
+    setText('label[for="sort-by"]', getUiText("排序", "Sort"));
+    setText('label[for="stage-filter"]', getUiText("阶段", "Stage"));
+    setText('label[for="source-filter"]', getUiText("来源", "Source"));
+    setText('label[for="type-filter"]', getUiText("类型", "Type"));
+    setText("#clear-filters", getUiText("重置", "Clear"));
+    setText(".filter-group:nth-child(1) .filter-title", getUiText("精选", "Highlight"));
+    setText(".filter-group:nth-child(1) .check-item", getUiText("仅看精选", "Featured only"));
+    setText(".filter-group:nth-child(2) .filter-title", getUiText("标签", "Tags"));
+    setText(".filter-group:nth-child(3) .filter-title", getUiText("状态", "Status"));
+    setText(".results-title", getUiText("项目目录", "Project Directory"));
+    setText(".view-btn[data-view-mode=\"grid\"]", getUiText("网格", "Grid"));
+    setText(".view-btn[data-view-mode=\"list\"]", getUiText("列表", "List"));
+    setText("#retry-fetch", getUiText("重试", "Retry"));
+
+    if (searchInput) {
+      searchInput.placeholder = getUiText("按名称、摘要、标签、技术栈搜索", "Search by name, summary, tags, or stack");
+    }
+
+    setOptionLabel(sortSelect, "recent", getUiText("最近更新", "Most Recent"));
+    setOptionLabel(sortSelect, "stars", "Stars");
+    setOptionLabel(sortSelect, "name", getUiText("名称 (A-Z)", "Name (A-Z)"));
+    setOptionLabel(stageSelect, "all", getUiText("全部", "All"));
+    setOptionLabel(stageSelect, "building", getUiText("建设中", "Building"));
+    setOptionLabel(stageSelect, "active", getUiText("活跃", "Active"));
+    setOptionLabel(stageSelect, "maintenance", getUiText("维护中", "Maintenance"));
+    setOptionLabel(stageSelect, "research", getUiText("研究中", "Research"));
+    setOptionLabel(stageSelect, "archived", getUiText("已归档", "Archived"));
+    setOptionLabel(sourceSelect, "all", getUiText("全部", "All"));
+    setOptionLabel(sourceSelect, "github", "GitHub");
+    setOptionLabel(sourceSelect, "local", getUiText("本地", "Local"));
+    setOptionLabel(sourceSelect, "private", getUiText("私有", "Private"));
+    setOptionLabel(sourceSelect, "hybrid", getUiText("混合", "Hybrid"));
+    setOptionLabel(typeSelect, "all", getUiText("全部", "All"));
+    setOptionLabel(typeSelect, "website", getUiText("站点", "Website"));
+    setOptionLabel(typeSelect, "backend", getUiText("后端", "Backend"));
+    setOptionLabel(typeSelect, "tooling", getUiText("工具", "Tooling"));
+    setOptionLabel(typeSelect, "infra", getUiText("基础设施", "Infrastructure"));
+    setOptionLabel(typeSelect, "research", getUiText("研究", "Research"));
+    setOptionLabel(typeSelect, "agent", getUiText("智能体", "Agent"));
+    setOptionLabel(typeSelect, "data", getUiText("数据", "Data"));
+    setOptionLabel(typeSelect, "library", getUiText("库", "Library"));
+
+    if (errorTitle && errorState && !errorState.hidden) {
+      errorTitle.textContent = getUiText("目录加载失败", "Catalog load failed");
+    }
+    if (tagCloud && !allProjects.length && tagCloud.children.length === 1) {
+      var onlyTag = tagCloud.children[0];
+      if (onlyTag && onlyTag.textContent === "Waiting") {
+        onlyTag.textContent = getUiText("等待中", "Waiting");
+      }
+    }
+    if (loadingState && !loadingState.hidden) {
+      loadingState.textContent = getUiText("正在加载项目目录...", "Loading the project directory...");
+    }
+    if (listFooter) {
+      var footerItems = listFooter.querySelectorAll("span");
+      if (footerItems[0]) {
+        footerItems[0].textContent = getUiText("项目目录", "Project directory");
+      }
+      if (footerItems[1]) {
+        footerItems[1].textContent = getUiText("筛选状态自动同步到 URL，可刷新与分享回放。", "Filters stay synced to the URL so the current view can be refreshed or shared.");
+      }
+    }
   }
 
   function createProjectCard(record) {
@@ -560,7 +783,7 @@
     top.appendChild(createStageBadge(record.stage));
     article.appendChild(top);
 
-    var description = record.summary || "No description provided.";
+    var description = record.summary || getUiText("暂未提供摘要。", "No description provided.");
     article.appendChild(createTextNodeWithClass("p", "project-desc", description));
 
     var tagsWrap = document.createElement("div");
@@ -570,7 +793,7 @@
         tagsWrap.appendChild(createTextNodeWithClass("span", "project-tag", tag));
       });
     } else {
-      tagsWrap.appendChild(createTextNodeWithClass("span", "project-tag", "untagged"));
+      tagsWrap.appendChild(createTextNodeWithClass("span", "project-tag", getUiText("未标记", "untagged")));
     }
     if (record.stack.length) {
       record.stack.slice(0, 3).forEach(function (s) {
@@ -581,9 +804,9 @@
 
     var stats = document.createElement("div");
     stats.className = "project-stats";
-    stats.appendChild(createStatBox("Source", record.sourceType || "--"));
-    stats.appendChild(createStatBox("Type", record.projectType || "--"));
-    stats.appendChild(createStatBox("Updated", formatDate(record.updatedAt || record.pushedAt)));
+    stats.appendChild(createStatBox(getUiText("来源", "Source"), record.sourceType ? translateSourceTypeLabel(record.sourceType) : "--"));
+    stats.appendChild(createStatBox(getUiText("类型", "Type"), record.projectType ? translateProjectTypeLabel(record.projectType) : "--"));
+    stats.appendChild(createStatBox(getUiText("更新于", "Updated"), formatDate(record.updatedAt || record.pushedAt)));
     article.appendChild(stats);
 
     var actions = document.createElement("div");
@@ -594,14 +817,14 @@
       var mainButton = document.createElement("a");
       mainButton.className = "btn primary";
       mainButton.href = mainUrl;
-      mainButton.textContent = "Project Detail";
+      mainButton.textContent = getUiText("项目详情", "Project Detail");
       actions.appendChild(mainButton);
     } else {
       var disabledButton = document.createElement("a");
       disabledButton.className = "btn primary";
       disabledButton.href = "#";
       disabledButton.setAttribute("aria-disabled", "true");
-      disabledButton.textContent = "Detail Pending";
+      disabledButton.textContent = getUiText("详情待补充", "Detail Pending");
       actions.appendChild(disabledButton);
     }
 
@@ -613,7 +836,7 @@
         primaryLinkButton.target = "_blank";
         primaryLinkButton.rel = "noreferrer";
       }
-      primaryLinkButton.textContent = "Primary Link";
+      primaryLinkButton.textContent = getUiText("主入口", "Primary Link");
       actions.appendChild(primaryLinkButton);
     }
 
@@ -623,7 +846,7 @@
       repoButton.href = record.links.repo;
       repoButton.target = "_blank";
       repoButton.rel = "noreferrer";
-      repoButton.textContent = "Repository";
+      repoButton.textContent = getUiText("仓库", "Repository");
       actions.appendChild(repoButton);
     }
 
@@ -660,7 +883,7 @@
   function showLoading(message) {
     if (loadingState) {
       loadingState.hidden = false;
-      loadingState.textContent = message || "正在加载项目目录...";
+      loadingState.textContent = message || getUiText("正在加载项目目录...", "Loading the project directory...");
     }
     if (errorState) {
       errorState.hidden = true;
@@ -685,9 +908,13 @@
       emptyState.hidden = true;
     }
     grid.hidden = true;
-    setFetchStatus("目录读取失败，可点击 Retry 重试。");
+    setFetchStatus(getUiText("目录读取失败，可点击重试。", "Catalog loading failed. Click Retry to try again."));
     if (resultsMeta) {
-      resultsMeta.textContent = "Failed to load projects";
+      resultsMeta.textContent = getUiText("项目目录加载失败", "Failed to load projects");
+    }
+    var errorTitle = catalogRoot.querySelector(".catalog-state-title");
+    if (errorTitle) {
+      errorTitle.textContent = getUiText("目录加载失败", "Catalog load failed");
     }
   }
 
@@ -739,7 +966,7 @@
     }).slice(0, 12);
 
     if (!orderedTags.length) {
-      tagCloud.appendChild(createTextNodeWithClass("span", "tag", "No tags"));
+      tagCloud.appendChild(createTextNodeWithClass("span", "tag", getUiText("暂无标签", "No tags")));
       return;
     }
 
@@ -768,17 +995,19 @@
 
     if (resultsMeta) {
       var hasFilter = state.q || state.stage !== "all" || state.source !== "all" || state.type !== "all" || state.featured;
-      var filterLabel = hasFilter ? "Filters active" : "All filters";
-      var fetchedLabel = fetchedAtValue ? ("Fetched " + formatDateTime(fetchedAtValue)) : "Fetched --";
-      resultsMeta.textContent = "Showing " + visibleCount + " of " + totalCount + " entries · " + filterLabel + " · " + fetchedLabel;
+      var filterLabel = hasFilter ? getUiText("筛选已生效", "Filters active") : getUiText("全部筛选", "All filters");
+      var fetchedLabel = fetchedAtValue
+        ? (getUiText("抓取于 ", "Fetched ") + formatDateTime(fetchedAtValue))
+        : getUiText("抓取于 --", "Fetched --");
+      resultsMeta.textContent = getUiText("当前展示 ", "Showing ") + visibleCount + getUiText(" / ", " of ") + totalCount + getUiText(" 条 · ", " entries · ") + filterLabel + " · " + fetchedLabel;
     }
 
     if (totalItemsValue) {
-      totalItemsValue.textContent = totalCount + " Projects";
+      totalItemsValue.textContent = totalCount + " " + getUiText("个项目", "Projects");
     }
 
     if (liveItemsValue) {
-      liveItemsValue.textContent = activeCount + " Active";
+      liveItemsValue.textContent = activeCount + " " + getUiText("个活跃", "Active");
     }
 
     if (lastSyncValue) {
@@ -787,7 +1016,7 @@
 
     if (sourceCountValue) {
       var sourceTypeCount = countSourceTypes(allProjects);
-      sourceCountValue.textContent = sourceTypeCount > 0 ? sourceTypeCount + " Types" : "--";
+      sourceCountValue.textContent = sourceTypeCount > 0 ? sourceTypeCount + " " + getUiText("种", "Types") : "--";
     }
   }
 
@@ -803,19 +1032,19 @@
     updateSummary(state, sorted.length);
 
     if (allProjects.length === 0) {
-      showEmpty("后端返回空目录（count=0）。请先同步项目数据后重试。");
-      setFetchStatus("目录加载成功，但当前无项目数据。");
+      showEmpty(getUiText("后端返回空目录（count=0）。请先同步项目数据后重试。", "The backend returned an empty catalog (count=0). Sync project data first and retry."));
+      setFetchStatus(getUiText("目录加载成功，但当前无项目数据。", "Catalog loaded successfully, but no project data is available."));
       return;
     }
 
     if (sorted.length === 0) {
-      showEmpty("当前筛选条件无匹配项。可以放宽关键词或重置筛选。");
-      setFetchStatus("目录加载成功，筛选后无匹配项。");
+      showEmpty(getUiText("当前筛选条件无匹配项。可以放宽关键词或重置筛选。", "No projects match the current filters. Try loosening the query or clearing filters."));
+      setFetchStatus(getUiText("目录加载成功，筛选后无匹配项。", "Catalog loaded successfully, but no entries match the current filters."));
       return;
     }
 
     showGrid();
-    setFetchStatus("目录加载成功，共 " + fetchedCount + " 条；当前展示 " + sorted.length + " 条。");
+    setFetchStatus(getUiText("目录加载成功，共 ", "Catalog loaded successfully with ") + fetchedCount + getUiText(" 条；当前展示 ", " entries; showing ") + sorted.length + (isEnglishUi() ? "." : " 条。"));
   }
 
   function buildProjectsEndpoint() {
@@ -851,7 +1080,7 @@
 
   function parseResponsePayload(payload) {
     if (!payload || payload.ok !== true || !Array.isArray(payload.projects)) {
-      throw new Error("项目目录响应不符合协议（ok/projects）。");
+      throw new Error(getUiText("项目目录响应不符合协议（ok/projects）。", "The project catalog response does not satisfy the contract (ok/projects)."));
     }
 
     fetchedCount = toInteger(payload.count);
@@ -874,8 +1103,8 @@
     var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     var timeoutId = null;
 
-    showLoading("正在加载项目目录...");
-    setFetchStatus("正在读取目录数据...");
+    showLoading(getUiText("正在加载项目目录...", "Loading the project directory..."));
+    setFetchStatus(getUiText("正在读取目录数据...", "Fetching the latest catalog data..."));
 
     if (controller) {
       timeoutId = window.setTimeout(function () {
@@ -914,9 +1143,9 @@
         return;
       }
 
-      var message = "目录加载失败，请稍后重试。";
+      var message = getUiText("目录加载失败，请稍后重试。", "The project directory failed to load. Please retry later.");
       if (error && error.name === "AbortError") {
-        message = "目录请求超时，请检查后端状态后重试。";
+        message = getUiText("目录请求超时，请检查后端状态后重试。", "The project request timed out. Check backend availability and retry.");
       } else if (error && typeof error.message === "string" && error.message.trim()) {
         message = error.message.trim();
       }
@@ -1035,8 +1264,33 @@
       allowEmptyRender: true
     });
   });
+  window.addEventListener("ll-ui-locale-change", function () {
+    currentUiLocale = normalizeUiLocale(readUiLocale());
+    applyStaticCatalogCopy();
+
+    if (allProjects.length > 0) {
+      renderTagCloud(allProjects);
+      renderRecords(readStateFromControls());
+      return;
+    }
+
+    if (!errorState.hidden) {
+      showError(errorDetail ? toText(errorDetail.textContent) : getUiText("目录加载失败，请稍后重试。", "The project directory failed to load. Please retry later."));
+      return;
+    }
+
+    if (!emptyState.hidden) {
+      showEmpty(toText(emptyState.textContent) || getUiText("当前筛选条件无匹配项。可以放宽关键词或重置筛选。", "No projects match the current filters. Try loosening the query or clearing filters."));
+      return;
+    }
+
+    if (!loadingState.hidden) {
+      showLoading();
+    }
+  });
 
   var initialState = readStateFromUrl();
+  applyStaticCatalogCopy();
   writeStateToControls(initialState);
   writeStateToUrl(initialState);
   fetchProjects(initialState);
