@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
-import { buildLegacyHead, legacyPages } from '~/legacy/pages'
+import { AboutPage } from '~/components/content/AboutPage'
+import { buildContentPageHead } from '~/lib/contentPageHead'
+import { legacyPageMetadata } from '~/lib/siteCopy'
 
 export const Route = createFileRoute('/about/index.html')({
-  head: () => buildLegacyHead(legacyPages.about),
+  head: () => buildContentPageHead(legacyPageMetadata.about, ['/css/page-about.css']),
   component: AboutHtmlPage,
 })
 
 function AboutHtmlPage() {
-  return <LegacyPageView page={legacyPages.about} />
+  return <AboutPage />
 }
-

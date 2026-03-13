@@ -1,12 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
-import { buildLegacyHead, legacyPages } from '~/legacy/pages'
+import { JournalDetailTemplate } from '~/components/content/JournalDetailTemplate'
+import { journalDetailEntries } from '~/components/content/journalDetailEntries'
+import { buildContentPageHead } from '~/lib/contentPageHead'
+import { legacyPageMetadata } from '~/lib/siteCopy'
 
 export const Route = createFileRoute('/journal/model-first-engineering/')({
-  head: () => buildLegacyHead(legacyPages.journalModelFirstEngineering),
+  head: () => buildContentPageHead(legacyPageMetadata['journal-model-first-engineering'], ['/css/bento-pages.css']),
   component: JournalModelFirstEngineeringPage,
 })
 
 function JournalModelFirstEngineeringPage() {
-  return <LegacyPageView page={legacyPages.journalModelFirstEngineering} />
+  return <JournalDetailTemplate entry={journalDetailEntries['model-first-engineering']} />
 }
