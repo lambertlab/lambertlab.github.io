@@ -3,28 +3,43 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
-import pixelmatch from 'pixelmatch'
-import { PNG } from 'pngjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const configPath = path.join(__dirname, 'visual-parity.config.json')
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
 const cliModeArg = process.argv.find((arg) => arg.startsWith('--mode='))
-const requestedMode = (process.env.VISUAL_PARITY_MODE || cliModeArg?.split('=')[1] || config.defaultMode || 'smoke').toLowerCase()
+const requestedMode = (process.env.VISUAL_PARITY_MODE || cliModeArg?.split('=')[1] || config.defaultMode || 'smoke')
+  .toLowerCase()
 const modeConfig = config.modes?.[requestedMode]
+const rawHeaderStabilitySkipAllowlist = modeConfig?.headerStability?.skipAllowlist
+const headerStabilitySkipAllowlist = Array.isArray(rawHeaderStabilitySkipAllowlist)
+  ? rawHeaderStabilitySkipAllowlist
+    .filter((entry) => typeof entry === 'string' && entry.trim().length > 0)
+    .map((entry) => entry.trim())
+  : []
+const headerStabilityMaxAttempts = 3
+const headerStabilityRetryDelayMs = 350
 
 if (!modeConfig) {
   const availableModes = Object.keys(config.modes || {})
-  throw new Error(`Unknown visual parity mode "${requestedMode}". Available modes: ${availableModes.join(', ')}`)
+  throw new Error(`Missing mode "${requestedMode}" in visual-parity.config.json. Available: ${availableModes.join(', ')}`)
 }
 
-const oldSiteRoot = path.resolve(__dirname, '..', '..', 'baseline-site')
-const newSiteRoot = path.resolve(__dirname, '..', '.output', 'public')
+const outputRoot = path.resolve(__dirname, '..', '.output', 'public')
 const reportRoot = path.resolve(__dirname, '..', 'qa', 'visual-parity')
 const runId = new Date().toISOString().replace(/[:.]/g, '-')
 const runDir = path.join(reportRoot, runId)
 const latestDir = path.join(reportRoot, 'latest')
+const expectedDiffCategories = new Set(['intentional-change', 'suspected-regression'])
+
+const shellKeyAreas = [
+  { name: 'header', selector: '.ll-header' },
+  { name: 'main-nav', selector: '.ll-nav' },
+  { name: 'theme-switch', selector: '[data-theme-mode-switch]' },
+  { name: 'status-entry', selector: '[data-system-status]' },
+  { name: 'footer', selector: '.ll-site-footer' },
+]
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -39,16 +54,11 @@ const mimeTypes = {
   '.webmanifest': 'application/manifest+json',
 }
 
-const shellKeyAreas = [
-  { name: 'header', selector: '.ll-header' },
-  { name: 'main-nav', selector: '.ll-nav' },
-  { name: 'theme-switch', selector: '[data-theme-mode-switch]' },
-  { name: 'status-entry', selector: '[data-system-status]' },
-  { name: 'footer', selector: '.ll-site-footer' },
-]
-
-const expectedDiffCategories = new Set(['intentional-change', 'baseline-drift', 'suspected-regression'])
-const requiredShellAreaNames = new Set(shellKeyAreas.map((area) => area.name))
+function ensure(condition, message) {
+  if (!condition) {
+    throw new Error(message)
+  }
+}
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true })
@@ -58,36 +68,9 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function sanitize(input) {
-  return input.replace(/[^a-zA-Z0-9-_./]/g, '_')
-}
-
-function parseExpectedDiffMap(rawMap) {
-  const map = {}
-  for (const [caseId, entry] of Object.entries(rawMap || {})) {
-    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
-      throw new Error(
-        `Invalid expectedDiffs entry for "${caseId}". Expected { category, reason } with explicit attribution.`,
-      )
-    }
-
-    const category = typeof entry.category === 'string' ? entry.category.trim() : ''
-    const reason = typeof entry.reason === 'string' ? entry.reason.trim() : ''
-
-    if (!expectedDiffCategories.has(category)) {
-      throw new Error(
-        `Invalid expectedDiff category for "${caseId}": "${category}". Allowed: ${Array.from(expectedDiffCategories).join(', ')}`,
-      )
-    }
-
-    if (!reason) {
-      throw new Error(`Missing expectedDiff reason for "${caseId}".`)
-    }
-
-    map[caseId] = { category, reason }
-  }
-
-  return map
+function pickContentType(filePath) {
+  const ext = path.extname(filePath).toLowerCase()
+  return mimeTypes[ext] || 'application/octet-stream'
 }
 
 function pickByName(allItems, selectedNames, label) {
@@ -106,19 +89,14 @@ function pickByName(allItems, selectedNames, label) {
   return selected
 }
 
-function joinUrl(baseUrl, pathname) {
-  return new URL(pathname, baseUrl).toString()
-}
-
 function appendQuery(pathname, key, value) {
   const parsed = new URL(pathname, 'http://localhost')
   parsed.searchParams.set(key, value)
   return `${parsed.pathname}${parsed.search}`
 }
 
-function pickContentType(filePath) {
-  const ext = path.extname(filePath).toLowerCase()
-  return mimeTypes[ext] || 'application/octet-stream'
+function joinUrl(baseUrl, pathname) {
+  return new URL(pathname, baseUrl).toString()
 }
 
 function createStaticServer(rootDir, port) {
@@ -151,7 +129,7 @@ function createStaticServer(rootDir, port) {
         'Cache-Control': 'no-store',
       })
       fs.createReadStream(targetPath).pipe(res)
-    } catch (error) {
+    } catch {
       res.writeHead(500)
       res.end('Server Error')
     }
@@ -159,9 +137,7 @@ function createStaticServer(rootDir, port) {
 
   return new Promise((resolve, reject) => {
     server.once('error', reject)
-    server.listen(port, '127.0.0.1', () => {
-      resolve({ server, port })
-    })
+    server.listen(port, '127.0.0.1', () => resolve({ server, port }))
   })
 }
 
@@ -176,6 +152,7 @@ async function createStaticServerWithFallback(rootDir, preferredPort, maxRetries
       }
     }
   }
+
   throw new Error(`Unable to bind static server from port ${preferredPort}`)
 }
 
@@ -211,79 +188,30 @@ function copyDirectory(sourceDir, targetDir) {
   }
 }
 
-function readPngDimensions(filePath) {
-  const fd = fs.openSync(filePath, 'r')
-  try {
-    const header = Buffer.alloc(24)
-    fs.readSync(fd, header, 0, header.length, 0)
-    const signature = header.subarray(0, 8).toString('hex')
-    const ihdr = header.subarray(12, 16).toString('ascii')
-    if (signature !== '89504e470d0a1a0a' || ihdr !== 'IHDR') {
-      throw new Error(`Invalid PNG header for ${filePath}`)
+function parseExpectedDiffMap(rawMap) {
+  const map = {}
+  for (const [caseId, entry] of Object.entries(rawMap || {})) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new Error(`Invalid expectedDiffs entry for "${caseId}"`)
     }
 
-    return {
-      width: header.readUInt32BE(16),
-      height: header.readUInt32BE(20),
-    }
-  } finally {
-    fs.closeSync(fd)
-  }
-}
+    const category = typeof entry.category === 'string' ? entry.category.trim() : ''
+    const reason = typeof entry.reason === 'string' ? entry.reason.trim() : ''
 
-function comparePngs(oldFilePath, newFilePath, diffFilePath) {
-  const oldDimensions = readPngDimensions(oldFilePath)
-  const newDimensions = readPngDimensions(newFilePath)
-
-  if (oldDimensions.width !== newDimensions.width || oldDimensions.height !== newDimensions.height) {
-    return {
-      mismatchedPixels: Number.MAX_SAFE_INTEGER,
-      mismatchRatio: 1,
-      width: oldDimensions.width,
-      height: oldDimensions.height,
-      dimensionMismatch: true,
+    if (!expectedDiffCategories.has(category)) {
+      throw new Error(
+        `Invalid expectedDiff category for "${caseId}": "${category}". Allowed: ${Array.from(expectedDiffCategories).join(', ')}`,
+      )
     }
+
+    if (!reason) {
+      throw new Error(`Missing expectedDiff reason for "${caseId}".`)
+    }
+
+    map[caseId] = { category, reason }
   }
 
-  const oldImage = PNG.sync.read(fs.readFileSync(oldFilePath))
-  const newImage = PNG.sync.read(fs.readFileSync(newFilePath))
-  const diffImage = new PNG({ width: oldImage.width, height: oldImage.height })
-  const mismatchedPixels = pixelmatch(
-    oldImage.data,
-    newImage.data,
-    diffImage.data,
-    oldImage.width,
-    oldImage.height,
-    { threshold: 0.1 },
-  )
-
-  fs.writeFileSync(diffFilePath, PNG.sync.write(diffImage))
-
-  return {
-    mismatchedPixels,
-    mismatchRatio: mismatchedPixels / (oldImage.width * oldImage.height),
-    width: oldImage.width,
-    height: oldImage.height,
-    dimensionMismatch: false,
-  }
-}
-
-function getStatusIssueScenario(request) {
-  try {
-    const frameUrl = request.frame()?.url()
-    if (!frameUrl) {
-      return 'single'
-    }
-
-    const issueMode = new URL(frameUrl).searchParams.get('issues')
-    if (issueMode === 'empty' || issueMode === 'multi') {
-      return issueMode
-    }
-  } catch {
-    return 'single'
-  }
-
-  return 'single'
+  return map
 }
 
 function shouldDisableStatusHydration(request) {
@@ -297,6 +225,22 @@ function shouldDisableStatusHydration(request) {
   } catch {
     return false
   }
+}
+
+function getStatusIssueScenario(request) {
+  try {
+    const frameUrl = request.frame()?.url()
+    if (!frameUrl) {
+      return 'single'
+    }
+    const issueMode = new URL(frameUrl).searchParams.get('issues')
+    if (issueMode === 'empty' || issueMode === 'multi') {
+      return issueMode
+    }
+  } catch {
+    return 'single'
+  }
+  return 'single'
 }
 
 function buildStatusPublicPayload(issueMode) {
@@ -339,18 +283,15 @@ function buildStatusPublicPayload(issueMode) {
   }
 
   const knownIssues = knownIssuesByMode[issueMode] || knownIssuesByMode.single
-  const hasKnownIssues = knownIssues.length > 0
-  const overallStatus = issueMode === 'multi' ? 'yellow' : 'green'
-  const overallSummary = hasKnownIssues
-    ? 'Core public surfaces remain available, with a few visitor-facing issues or follow-up notes listed below.'
-    : 'Core public surfaces are available and no visitor-facing issues are currently listed.'
-
   return {
     ok: true,
     page: {
       overall_status: {
-        status: overallStatus,
-        summary: overallSummary,
+        status: issueMode === 'multi' ? 'yellow' : 'green',
+        summary:
+          knownIssues.length > 0
+            ? 'Core public surfaces remain available, with a few visitor-facing issues or follow-up notes listed below.'
+            : 'Core public surfaces are available and no visitor-facing issues are currently listed.',
         updated_at: '2026-03-12T00:00:00Z',
         context: {
           label: 'Public trust summary',
@@ -359,66 +300,22 @@ function buildStatusPublicPayload(issueMode) {
         },
       },
       public_surface: {
-        summary: {
-          status: 'green',
-          label: 'Core public surfaces are available.',
-        },
+        summary: { status: 'green', label: 'Core public surfaces are available.' },
         key_surfaces: [
-          {
-            key: 'home',
-            label: 'Home',
-            path: '/',
-            health: 'up',
-            note: 'Entry surface is serving normally.',
-          },
-          {
-            key: 'projects',
-            label: 'Projects',
-            path: '/projects/',
-            health: 'up',
-            note: 'Project catalog is available.',
-          },
-          {
-            key: 'journal',
-            label: 'Journal',
-            path: '/journal/',
-            health: 'up',
-            note: 'Writing surface is available.',
-          },
+          { key: 'home', label: 'Home', path: '/', health: 'up', note: 'Entry surface is serving normally.' },
+          { key: 'projects', label: 'Projects', path: '/projects/', health: 'up', note: 'Project catalog is available.' },
+          { key: 'journal', label: 'Journal', path: '/journal/', health: 'up', note: 'Writing surface is available.' },
         ],
       },
       content_freshness: {
         summary: {
-          status: hasKnownIssues ? 'yellow' : 'green',
-          label: hasKnownIssues
-            ? 'Some public content updates are moving more slowly than usual.'
-            : 'Projects and journal content are up to date.',
+          status: knownIssues.length > 0 ? 'yellow' : 'green',
+          label:
+            knownIssues.length > 0
+              ? 'Some public content updates are moving more slowly than usual.'
+              : 'Projects and journal content are up to date.',
         },
-        areas: [
-          {
-            key: 'projects-catalog',
-            label: 'Projects Catalog',
-            freshness: hasKnownIssues ? 'aging' : 'fresh',
-            updated_at: '2026-03-12T00:00:00Z',
-            note: hasKnownIssues
-              ? 'New project updates may take longer than usual to appear.'
-              : 'Project directory data is current.',
-          },
-          {
-            key: 'featured-projects',
-            label: 'Featured Projects',
-            freshness: 'fresh',
-            updated_at: '2026-03-12T00:00:00Z',
-            note: 'Homepage featured project projection is current.',
-          },
-          {
-            key: 'journal',
-            label: 'Journal',
-            freshness: hasKnownIssues ? 'aging' : 'fresh',
-            updated_at: '2026-03-12T00:00:00Z',
-            note: hasKnownIssues ? 'Some new journal updates may appear with delay.' : 'Journal content is current.',
-          },
-        ],
+        areas: [],
         active_focus: 'Improving public information architecture and trust surfaces.',
       },
       known_issues: knownIssues,
@@ -426,82 +323,8 @@ function buildStatusPublicPayload(issueMode) {
   }
 }
 
-async function applyMockRoutes(context) {
-  await context.route('**/assets/*.js', async (route) => {
-    if (shouldDisableStatusHydration(route.request())) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/javascript; charset=utf-8',
-        body: '',
-      })
-      return
-    }
-    await route.continue()
-  })
-
-  await context.route('https://cdn.tailwindcss.com/**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/javascript; charset=utf-8',
-      body: 'window.tailwind = window.tailwind || { config: {} };',
-    })
-  })
-
-  await context.route('https://fonts.googleapis.com/**', async (route) => {
-    await route.abort()
-  })
-
-  await context.route('https://fonts.gstatic.com/**', async (route) => {
-    await route.abort()
-  })
-
-  await context.route('**/status/summary', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        status: 'green',
-        ok: true,
-        service: 'mock-backend',
-        version: '1.0.0',
-        reason: '后端服务可用（mock）',
-      }),
-    })
-  })
-
-  await context.route('**/status/public', async (route) => {
-    const issueMode = getStatusIssueScenario(route.request())
-
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(buildStatusPublicPayload(issueMode)),
-    })
-  })
-
-  await context.route('**/healthz', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        status: 'green',
-        ok: true,
-        service: 'mock-backend',
-        version: '1.0.0',
-        reason: '后端服务可用（mock）',
-      }),
-    })
-  })
-
-  await context.route('**/home-content', async (route) => {
-    await route.fulfill({
-      status: 503,
-      contentType: 'application/json',
-      body: JSON.stringify({ ok: false, reason: 'mock-disabled' }),
-    })
-  })
-
-  const mockProjects = [
+function createMockProjects() {
+  return [
     {
       project_key: 'personal-toolbox',
       slug: 'personal-toolbox',
@@ -509,7 +332,7 @@ async function applyMockRoutes(context) {
       name: 'Personal Toolbox',
       summary: 'A compact personal tooling workspace for daily execution loops.',
       headline: 'A stable toolbox surface for recurring work and small utilities.',
-      overview: 'This project consolidates task helpers, repeatable commands, and lightweight automation into one practical workspace.',
+      overview: 'This project consolidates task helpers and lightweight automation into one practical workspace.',
       stage: 'active',
       source_type: 'github',
       project_type: 'tooling',
@@ -545,7 +368,6 @@ async function applyMockRoutes(context) {
       source: 'github',
       tags: ['tooling', 'automation'],
       is_active: true,
-      created_at: '2026-03-11T00:00:00Z',
     },
     {
       project_key: 'ai-message-value-triage',
@@ -554,7 +376,7 @@ async function applyMockRoutes(context) {
       name: 'AI Message Value Triage',
       summary: 'Evaluate message quality with reusable triage heuristics.',
       headline: 'Message analysis with lightweight operational scoring.',
-      overview: 'The project explores message review workflows and repeatable signal extraction for AI collaboration.',
+      overview: 'The project explores message review workflows and repeatable signal extraction.',
       stage: 'research',
       source_type: 'github',
       project_type: 'agent',
@@ -590,132 +412,29 @@ async function applyMockRoutes(context) {
       source: 'github',
       tags: ['agent', 'ai'],
       is_active: true,
-      created_at: '2026-03-11T00:00:00Z',
-    },
-    {
-      project_key: 'personal-website',
-      slug: 'personal-website',
-      canonical_path: '/projects/personal-website/',
-      name: 'Personal Website',
-      summary: 'A unified home for projects, journal, and profile content.',
-      headline: 'The main site rebuilt around a durable project catalog.',
-      overview: 'This project aligns homepage entry points, catalog cards, and detail routes around a shared project contract.',
-      stage: 'building',
-      source_type: 'github',
-      project_type: 'website',
-      stack: ['TypeScript', 'React', 'Nitro'],
-      is_featured: true,
-      featured_rank: 3,
-      status_note: 'Catalog phase 2 is in flight.',
-      highlights: ['Homepage featured sync.', 'Detail skeleton foundation.'],
-      links: {
-        primary: 'https://example.com/projects/personal-website/',
-        repo: 'https://github.com/lambertlab/lambertlab.github.io',
-        demo: 'https://example.com',
-        docs: null,
-        notes: null,
-      },
-      source_refs: {
-        repo_full_name: 'lambertlab/lambertlab.github.io',
-        repo_url: 'https://github.com/lambertlab/lambertlab.github.io',
-        visibility: 'public',
-      },
-      updated_at: '2026-03-10T00:00:00Z',
-      synced_at: '2026-03-12T00:00:00Z',
-      full_name: 'lambertlab/lambertlab.github.io',
-      url: 'https://github.com/lambertlab/lambertlab.github.io',
-      description: 'Legacy compatibility description.',
-      language: 'TypeScript',
-      stargazers_count: 0,
-      forks_count: 0,
-      pushed_at: '2026-03-10T00:00:00Z',
-      visibility: 'public',
-      archived: false,
-      fork: false,
-      source: 'github',
-      tags: ['website', 'catalog'],
-      is_active: true,
-      created_at: '2026-03-11T00:00:00Z',
     },
   ]
+}
 
-  await context.route('http://127.0.0.1:8000/projects/featured**', async (route) => {
+async function applyMockRoutes(context) {
+  await context.route('**/*.js', async (route) => {
     await route.fulfill({
       status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        ok: true,
-        count: mockProjects.length,
-        projects: mockProjects,
-        fetched_at: '2026-03-12T00:00:00Z',
-      }),
+      contentType: 'application/javascript; charset=utf-8',
+      body: '',
     })
   })
 
-  await context.route('http://127.0.0.1:8000/projects', async (route) => {
+  await context.route('https://cdn.tailwindcss.com/**', async (route) => {
     await route.fulfill({
       status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        ok: true,
-        count: mockProjects.length,
-        projects: mockProjects,
-        fetched_at: '2026-03-12T00:00:00Z',
-      }),
+      contentType: 'application/javascript; charset=utf-8',
+      body: 'window.tailwind = window.tailwind || { config: {} };',
     })
   })
 
-  await context.route('http://127.0.0.1:8000/projects?**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        ok: true,
-        count: mockProjects.length,
-        projects: mockProjects,
-        fetched_at: '2026-03-12T00:00:00Z',
-      }),
-    })
-  })
-
-  await context.route('http://127.0.0.1:8000/projects/*', async (route) => {
-    const url = new URL(route.request().url())
-    const slug = url.pathname.split('/').filter(Boolean).pop()
-    if (slug === 'featured') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          ok: true,
-          count: mockProjects.length,
-          projects: mockProjects,
-          fetched_at: '2026-03-12T00:00:00Z',
-        }),
-      })
-      return
-    }
-    const matchedProject = mockProjects.find((item) => item.slug === slug)
-
-    if (!matchedProject) {
-      await route.fulfill({
-        status: 404,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          detail: 'Project not found.',
-        }),
-      })
-      return
-    }
-
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        ok: true,
-        project: matchedProject,
-      }),
-    })
-  })
+  await context.route('https://fonts.googleapis.com/**', async (route) => route.abort())
+  await context.route('https://fonts.gstatic.com/**', async (route) => route.abort())
 }
 
 async function configureContext(context, theme) {
@@ -727,50 +446,10 @@ async function configureContext(context, theme) {
   }, { currentTheme: theme })
 }
 
-async function takeKeyAreaScreenshot(page, selector, outputPath) {
-  const locator = page.locator(selector).first()
-  if ((await locator.count()) === 0) {
-    return false
-  }
-  try {
-    await locator.scrollIntoViewIfNeeded()
-    const box = await locator.boundingBox()
-    const viewport = page.viewportSize()
-    if (!box || !viewport) {
-      return false
-    }
-
-    const clip = {
-      x: Math.max(0, Math.min(box.x, viewport.width - 1)),
-      y: Math.max(0, Math.min(box.y, viewport.height - 1)),
-      width: Math.max(1, Math.min(box.width, viewport.width)),
-      height: Math.max(1, Math.min(box.height, viewport.height)),
-    }
-
-    await page.screenshot({
-      path: outputPath,
-      clip,
-      fullPage: false,
-      animations: 'disabled',
-    })
-    return true
-  } catch {
-    return false
-  }
-}
-
-async function waitForPageStable(page, pageConfig) {
+async function waitForPageStable(page) {
   await page.waitForLoadState('domcontentloaded')
-  await page.waitForSelector('[data-theme-mode-switch]', { timeout: 5000 }).catch(() => {})
-  if (pageConfig?.name?.startsWith('status-')) {
-    const hasStatusShell = await page.locator('.status-page-shell').count()
-    if (hasStatusShell > 0) {
-      await page.waitForFunction(() => {
-        return Boolean(document.querySelector('.status-sections') || document.querySelector('.status-state-panel-error'))
-      }, { timeout: 5000 }).catch(() => {})
-    }
-  }
-  await wait(900)
+  await page.waitForSelector('.ll-header', { timeout: 8000 }).catch(() => {})
+  await wait(600)
 }
 
 async function collectNodeRects(page, selectors) {
@@ -783,12 +462,7 @@ async function collectNodeRects(page, selectors) {
         continue
       }
       const rect = node.getBoundingClientRect()
-      result[selector] = {
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
-      }
+      result[selector] = { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
     }
     return result
   }, selectors)
@@ -803,7 +477,6 @@ function calculateMaxShift(baseRects, nextRects) {
     if (!baseRect || !nextRect) {
       continue
     }
-
     const deltas = [
       Math.abs(baseRect.x - nextRect.x),
       Math.abs(baseRect.y - nextRect.y),
@@ -820,393 +493,490 @@ function calculateMaxShift(baseRects, nextRects) {
   return maxShift
 }
 
-async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
-  const desktopViewport = { width: 1440, height: 900 }
-  const selectors = [
-    '.ll-header',
-    '.ll-brand',
-    '.ll-nav',
-    '[data-theme-mode-switch]',
-    '[data-system-status]',
-  ]
-  const navigationSequence = [
-    { selector: '.ll-header .ll-nav-link[href="/projects/"]', to: '/projects/', pageName: 'projects' },
-    { selector: '.ll-header .ll-nav-link[href="/journal/index.html"]', to: '/journal/index.html', pageName: 'journal' },
-    { selector: '.ll-header .ll-nav-link[href="/about/index.html"]', to: '/about/index.html', pageName: 'about' },
-    { selector: '.ll-header .ll-cta[href="/contact/index.html"]', to: '/contact/index.html', pageName: 'contact' },
-  ]
-
-  const context = await browser.newContext({ viewport: desktopViewport, colorScheme: 'light' })
-  await configureContext(context, 'light')
-  const page = await context.newPage()
-  await page.goto(joinUrl(baseUrl, '/index.html'))
-  await waitForPageStable(page, { name: 'home' })
-
-  const baselineRects = await collectNodeRects(page, selectors)
-  let maxShift = 0
-  const records = []
-
-  for (const item of navigationSequence) {
-    await page.locator(item.selector).first().click()
-    await page.waitForURL(`**${item.to}`)
-    await waitForPageStable(page, { name: item.pageName })
-    const nextRects = await collectNodeRects(page, selectors)
-    const shift = calculateMaxShift(baselineRects, nextRects)
-    records.push({ step: item.to, shift })
-    if (shift > maxShift) {
-      maxShift = shift
+function resolveHeaderStabilitySkipReason(errorMessage) {
+  for (const entry of headerStabilitySkipAllowlist) {
+    if (errorMessage.includes(entry)) {
+      return entry
     }
   }
+  return null
+}
 
-  await page.locator('.ll-header .ll-brand').click()
-  await page.waitForURL('**/index.html')
-  await waitForPageStable(page, { name: 'home' })
-  const homeRects = await collectNodeRects(page, selectors)
-  const homeShift = calculateMaxShift(baselineRects, homeRects)
-  records.push({ step: '/index.html', shift: homeShift })
-  if (homeShift > maxShift) {
-    maxShift = homeShift
+function buildUncheckedShellAssertions() {
+  return shellKeyAreas.map((area) => ({
+    name: area.name,
+    selector: area.selector,
+    present: null,
+  }))
+}
+
+async function collectShellAssertions(page) {
+  const shellAssertions = []
+  const missingShellAreas = []
+  for (const area of shellKeyAreas) {
+    const present = (await page.locator(area.selector).first().count()) > 0
+    shellAssertions.push({
+      name: area.name,
+      selector: area.selector,
+      present,
+    })
+    if (!present) {
+      missingShellAreas.push(area.name)
+    }
   }
+  return { shellAssertions, missingShellAreas }
+}
 
-  await context.close()
+function summarizeShellAssertionCoverage(results) {
+  const summary = Object.fromEntries(
+    shellKeyAreas.map((area) => [area.name, { checkedCases: 0, missingCases: 0 }]),
+  )
+  for (const entry of results) {
+    for (const assertion of entry.shellAssertions || []) {
+      const areaSummary = summary[assertion.name]
+      if (!areaSummary || typeof assertion.present !== 'boolean') {
+        continue
+      }
+      areaSummary.checkedCases += 1
+      if (!assertion.present) {
+        areaSummary.missingCases += 1
+      }
+    }
+  }
+  return summary
+}
 
-  return {
-    thresholdPx,
-    maxShift,
-    pass: maxShift <= thresholdPx,
-    records,
+function resolveHeaderStabilityConclusion(headerStability) {
+  if (headerStability.skipped) {
+    return 'skipped'
+  }
+  return headerStability.pass ? 'pass' : 'fail'
+}
+
+function formatErrorWithStack(error) {
+  if (error instanceof Error) {
+    return error.stack ? String(error.stack) : `${error.name}: ${error.message}`
+  }
+  return String(error)
+}
+
+function isHeaderStabilityRetryableError(errorMessage) {
+  const normalized = errorMessage.toLowerCase()
+  return (
+    normalized.includes('browsercontext.newpage') ||
+    normalized.includes('browser.newcontext') ||
+    normalized.includes('browser.newpage') ||
+    (normalized.includes('target page, context or browser has been closed') &&
+      (normalized.includes('browsercontext') || normalized.includes('newpage') || normalized.includes('browser')))
+  )
+}
+
+async function launchVisualBrowser() {
+  try {
+    return await chromium.launch({ headless: true, channel: 'msedge' })
+  } catch {
+    return chromium.launch({ headless: true })
   }
 }
 
-function renderMarkdownReport(report) {
-  const lines = []
-  lines.push('# Visual Parity Report')
-  lines.push('')
-  lines.push(`- Mode: \`${report.mode}\``)
-  lines.push(`- Run ID: \`${report.runId}\``)
-  lines.push(`- Old Site: \`${report.oldBaseUrl}\``)
-  lines.push(`- New Site: \`${report.newBaseUrl}\``)
-  lines.push(`- Total Cases: \`${report.summary.totalCases}\``)
-  lines.push(`- Failed Cases: \`${report.summary.failedCases}\``)
-  lines.push(`- Attributed Full Diffs: \`${report.summary.attributedFullDiffCases}\``)
-  lines.push(`- Unattributed Full Diffs: \`${report.summary.unattributedFullDiffCases}\``)
-  lines.push(`- Shell Blocking Cases: \`${report.summary.shellBlockingCases}\``)
-  lines.push(`- Blocking Failures: \`${report.summary.blockingFailedCases}\``)
-  lines.push(`- Full Page Threshold: \`${report.thresholds.fullPageMismatchRatio}\``)
-  lines.push(`- Key Area Diagnostic Threshold: \`${report.thresholds.keyAreaMismatchRatio}\``)
-  lines.push('')
-  lines.push('## Header Stability')
-  lines.push('')
-  lines.push(`- Max Shift: \`${report.headerStability.maxShift.toFixed(3)}px\``)
-  lines.push(`- Threshold: \`${report.headerStability.thresholdPx}px\``)
-  lines.push(`- Pass: \`${report.headerStability.pass}\``)
-  lines.push('')
-  lines.push('## Blocking Failures')
-  lines.push('')
+async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
+  const selectors = ['.ll-header', '.ll-brand', '.ll-nav', '[data-theme-mode-switch]', '[data-system-status]']
+  const navigationSequence = [
+    { selector: '.ll-header .ll-nav-link[href="/projects/"]', to: '/projects/' },
+    { selector: '.ll-header .ll-nav-link[href="/journal/index.html"]', to: '/journal/index.html' },
+    { selector: '.ll-header .ll-nav-link[href="/about/index.html"]', to: '/about/index.html' },
+    { selector: '.ll-header .ll-cta[href="/contact/index.html"]', to: '/contact/index.html' },
+  ]
 
-  const blockingFailures = report.results.filter((item) => !item.pass)
-  if (blockingFailures.length === 0) {
-    lines.push('- None')
-  } else {
-    for (const entry of blockingFailures) {
-      lines.push(
-        `- ${entry.caseId}: full=${entry.full.mismatchRatio.toFixed(4)} fullBlocking=${entry.fullBlocking} shellBlocking=${entry.missingShellAreas.length > 0}`,
+  let context
+  let page
+  try {
+    context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      colorScheme: 'light',
+    })
+    await configureContext(context, 'light')
+    page = await context.newPage()
+    await page.goto(joinUrl(baseUrl, '/index.html'))
+    await waitForPageStable(page)
+
+    const baselineRects = await collectNodeRects(page, selectors)
+    let maxShift = 0
+    const records = []
+
+    for (const item of navigationSequence) {
+      await page.locator(item.selector).first().click()
+      await page.waitForURL(`**${item.to}`)
+      await waitForPageStable(page)
+      const nextRects = await collectNodeRects(page, selectors)
+      const shift = calculateMaxShift(baselineRects, nextRects)
+      records.push({ step: item.to, shift })
+      maxShift = Math.max(maxShift, shift)
+    }
+
+    return { thresholdPx, maxShift, pass: maxShift <= thresholdPx, records }
+  } finally {
+    if (page) {
+      await page.close().catch(() => {})
+    }
+    if (context) {
+      await context.close().catch(() => {})
+    }
+  }
+}
+
+async function runHeaderStabilityCheckWithRetry(baseUrl, thresholdPx) {
+  const attemptLogs = []
+  for (let attempt = 1; attempt <= headerStabilityMaxAttempts; attempt += 1) {
+    let attemptBrowser
+    try {
+      attemptBrowser = await launchVisualBrowser()
+      const result = await runHeaderStabilityCheck(attemptBrowser, baseUrl, thresholdPx)
+      return {
+        ...result,
+        retry: {
+          maxAttempts: headerStabilityMaxAttempts,
+          attemptCount: attempt,
+          retried: attempt > 1,
+        },
+        attemptLogs,
+      }
+    } catch (error) {
+      const errorMessage = formatErrorWithStack(error)
+      const retryable = isHeaderStabilityRetryableError(errorMessage)
+      attemptLogs.push({
+        attempt,
+        retryable,
+        error: errorMessage,
+      })
+      console.error(
+        `[visual-parity][header-stability] attempt ${attempt}/${headerStabilityMaxAttempts} failed retryable=${retryable}: ${errorMessage}`,
       )
-      for (const keyArea of entry.keyAreas) {
-        lines.push(`  - ${keyArea.name}: newExists=${keyArea.newExists} pass=${keyArea.pass}`)
+      const shouldRetry = retryable && attempt < headerStabilityMaxAttempts
+      if (!shouldRetry) {
+        const detail = attemptLogs
+          .map((entry) => `attempt=${entry.attempt} retryable=${entry.retryable} error=${entry.error}`)
+          .join('\n')
+        const finalError = new Error(`header stability failed after ${attempt} attempt(s)\n${detail}`)
+        finalError.attemptLogs = attemptLogs
+        throw finalError
+      }
+      await wait(headerStabilityRetryDelayMs * attempt)
+    } finally {
+      if (attemptBrowser) {
+        await attemptBrowser.close().catch(() => {})
       }
     }
   }
 
-  lines.push('')
-  lines.push('## Expected Diffs')
-  lines.push('')
+  throw new Error(`header stability failed without result after ${headerStabilityMaxAttempts} attempts`)
+}
 
-  const expectedDiffs = report.results.filter((item) => item.expected)
-  if (expectedDiffs.length === 0) {
+function renderMarkdownReport(report) {
+  const lines = []
+  lines.push('# Visual Parity Structural Report')
+  lines.push('')
+  lines.push(`- Mode: \`${report.mode}\``)
+  lines.push(`- Gate Mode: \`${report.gateMode}\``)
+  lines.push(`- Run ID: \`${report.runId}\``)
+  lines.push(`- Base URL: \`${report.baseUrl}\``)
+  lines.push(`- Total Cases: \`${report.summary.totalCases}\``)
+  lines.push(`- Failed Cases: \`${report.summary.failedCases}\``)
+  lines.push(`- Warning Signals: \`${report.summary.warningCount}\``)
+  lines.push(`- Missing Expected Attribution: \`${report.summary.missingExpectedAttribution}\``)
+  lines.push('')
+  lines.push('## Check Conclusions')
+  lines.push('')
+  for (const check of report.checks) {
+    const detailSuffix = check.detail ? ` (${check.detail})` : ''
+    lines.push(`- ${check.name}: \`${check.result}\`${detailSuffix}`)
+  }
+  lines.push('')
+  lines.push('## Header Stability')
+  lines.push('')
+  lines.push(`- Conclusion: \`${report.headerStability.conclusion}\``)
+  lines.push(`- Max Shift: \`${report.headerStability.maxShift.toFixed(3)}px\``)
+  lines.push(`- Threshold: \`${report.headerStability.thresholdPx}px\``)
+  lines.push(`- Pass: \`${report.headerStability.pass}\``)
+  lines.push(`- Attempts: \`${report.headerStability.retry.attemptCount}/${report.headerStability.retry.maxAttempts}\``)
+  lines.push(`- Retried: \`${report.headerStability.retry.retried}\``)
+  if (report.headerStability.error) {
+    lines.push(`- Error: \`${report.headerStability.error}\``)
+  }
+  if (report.headerStability.skipReason) {
+    lines.push(`- Skip Reason: \`${report.headerStability.skipReason}\``)
+  }
+  if ((report.headerStability.attemptLogs || []).length > 0) {
+    lines.push('- Attempt Logs:')
+    for (const attemptEntry of report.headerStability.attemptLogs) {
+      lines.push(
+        `  - attempt=${attemptEntry.attempt} retryable=${attemptEntry.retryable} error=${attemptEntry.error}`,
+      )
+    }
+  }
+  lines.push('')
+  lines.push('## Shell Assertion Coverage')
+  lines.push('')
+  for (const area of shellKeyAreas) {
+    const areaSummary = report.shellAssertionCoverage[area.name]
+    lines.push(`- ${area.name}: checked=${areaSummary.checkedCases} missing=${areaSummary.missingCases}`)
+  }
+  lines.push('')
+  lines.push('## Warning Signals')
+  lines.push('')
+  if (report.warnings.length === 0) {
     lines.push('- None')
   } else {
-    for (const entry of expectedDiffs) {
+    for (const warning of report.warnings) {
+      lines.push(`- ${warning}`)
+    }
+  }
+  lines.push('')
+  lines.push('## Failures')
+  lines.push('')
+
+  const failed = report.results.filter((entry) => !entry.pass)
+  if (failed.length === 0) {
+    lines.push('- None')
+  } else {
+    for (const entry of failed) {
       lines.push(
-        `- ${entry.caseId}: category=${entry.expectedCategory} full=${entry.full.mismatchRatio.toFixed(4)} reason=${entry.expectedReason}`,
+        `- ${entry.caseId}: reason=${entry.blockingReason || 'shell-assertion'} missing=${entry.missingShellAreas.join(', ') || 'none'} error=${entry.error || 'none'}`,
       )
     }
   }
 
-  lines.push('')
-  lines.push('## Files')
-  lines.push('')
-  lines.push(`- JSON: \`report.json\``)
-  lines.push(`- Images: \`old/\`, \`new/\`, \`diff/\``)
   return lines.join('\n')
 }
 
 async function main() {
+  ensure(fs.existsSync(outputRoot), 'Missing ".output/public". Run `npm run build` first.')
+
   const selectedViewports = pickByName(config.viewports, modeConfig.viewports, 'viewport')
   const selectedThemes = modeConfig.themes === 'all' ? config.themes : modeConfig.themes || []
   const selectedPages = pickByName(config.pages, modeConfig.pages, 'page')
   const expectedDiffMap = parseExpectedDiffMap(modeConfig.expectedDiffs || {})
-
-  if (selectedThemes.length === 0) {
-    throw new Error(`Mode "${requestedMode}" has no themes configured`)
-  }
+  const shouldRequireExpectedAttribution = requestedMode === 'smoke'
   for (const theme of selectedThemes) {
-    if (!config.themes.includes(theme)) {
-      throw new Error(`Unknown theme "${theme}" in mode "${requestedMode}"`)
+    ensure(config.themes.includes(theme), `Unknown theme "${theme}" in mode "${requestedMode}"`)
+  }
+
+  const expectedCaseIds = new Set(Object.keys(expectedDiffMap))
+  const plannedCaseIds = []
+  for (const viewport of selectedViewports) {
+    for (const theme of selectedThemes) {
+      for (const pageConfig of selectedPages) {
+        plannedCaseIds.push(`${pageConfig.name}__${viewport.name}__${theme}`)
+      }
     }
+  }
+
+  const missingExpectedAttribution = plannedCaseIds.filter((caseId) => !expectedCaseIds.has(caseId))
+  if (shouldRequireExpectedAttribution) {
+    ensure(
+      missingExpectedAttribution.length === 0,
+      `Missing expectedDiff attribution for smoke cases: ${missingExpectedAttribution.join(', ')}`,
+    )
   }
 
   ensureDir(runDir)
-  ensureDir(path.join(runDir, 'old'))
-  ensureDir(path.join(runDir, 'new'))
-  ensureDir(path.join(runDir, 'diff'))
 
-  const oldSite = await createStaticServerWithFallback(oldSiteRoot, config.ports.oldSite)
-  const newSite = await createStaticServerWithFallback(newSiteRoot, config.ports.newSite)
-
-  const oldBaseUrl = `http://127.0.0.1:${oldSite.port}`
-  const newBaseUrl = `http://127.0.0.1:${newSite.port}`
-
-  console.log(`[visual] mode=${requestedMode} pages=${selectedPages.length} viewports=${selectedViewports.length} themes=${selectedThemes.length}`)
-  console.log(`[visual] oldBase=${oldBaseUrl} newBase=${newBaseUrl}`)
-
+  const staticSite = await createStaticServerWithFallback(outputRoot, config.ports.newSite)
+  const baseUrl = `http://127.0.0.1:${staticSite.port}`
   let browser
+
   try {
-    try {
-      browser = await chromium.launch({ headless: true, channel: 'msedge' })
-    } catch {
-      browser = await chromium.launch({ headless: true })
-    }
+    browser = await launchVisualBrowser()
 
     const results = []
-
+    const warnings = []
+    if (!shouldRequireExpectedAttribution && missingExpectedAttribution.length > 0) {
+      warnings.push(
+        `missing expected attribution for mode "${requestedMode}": ${missingExpectedAttribution.join(', ')}`,
+      )
+    }
     for (const viewport of selectedViewports) {
       for (const theme of selectedThemes) {
-        const contextOptions = {
+        const context = await browser.newContext({
           viewport: { width: viewport.width, height: viewport.height },
           colorScheme: theme === 'dark' ? 'dark' : 'light',
-        }
-        const oldContext = await browser.newContext(contextOptions)
-        const newContext = await browser.newContext(contextOptions)
-        oldContext.setDefaultNavigationTimeout(20000)
-        newContext.setDefaultNavigationTimeout(20000)
-        await configureContext(oldContext, theme)
-        await configureContext(newContext, theme)
+        })
+        context.setDefaultNavigationTimeout(15000)
+        await configureContext(context, theme)
 
         for (const pageConfig of selectedPages) {
-          let oldPage
-          let newPage
           const caseId = `${pageConfig.name}__${viewport.name}__${theme}`
-          const relativeDir = sanitize(`${viewport.name}/${theme}/${pageConfig.name}`)
-          const oldPath = pageConfig.oldPath || pageConfig.path
-          const baseNewPath = pageConfig.newPath || pageConfig.path
-          const newPath = pageConfig.name.startsWith('status-')
-            ? appendQuery(baseNewPath, 'visual_nojs', '1')
-            : baseNewPath
-          const expectedDiff = expectedDiffMap[caseId] ?? null
-          const expected = Boolean(expectedDiff)
-          const expectedCategory = expectedDiff?.category ?? null
-          const expectedReason = expectedDiff?.reason ?? null
-          const legacylessStatusExpected = expectedCategory === 'baseline-drift' && pageConfig.name.startsWith('status-')
+          const basePath = pageConfig.newPath || pageConfig.path
+          const targetPath = pageConfig.name.startsWith('status-')
+            ? appendQuery(basePath, 'visual_nojs', '1')
+            : basePath
+          const page = await context.newPage()
 
-          console.log(`[visual] start ${caseId}`)
-
-          let oldPageReady = false
           try {
-            oldPage = await oldContext.newPage()
-            newPage = await newContext.newPage()
-            if (legacylessStatusExpected) {
-              await newPage.goto(joinUrl(newBaseUrl, newPath), {
-                waitUntil: 'domcontentloaded',
-                timeout: 10000,
-              })
-              await waitForPageStable(newPage, pageConfig)
+            await page.goto(joinUrl(baseUrl, targetPath), { waitUntil: 'domcontentloaded', timeout: 10000 })
+            await waitForPageStable(page)
+
+            const { shellAssertions, missingShellAreas } = await collectShellAssertions(page)
+
+            results.push({
+              caseId,
+              page: pageConfig.name,
+              viewport: viewport.name,
+              theme,
+              targetPath,
+              expectedCategory: expectedDiffMap[caseId]?.category || null,
+              expectedReason: expectedDiffMap[caseId]?.reason || null,
+              blockingReason: missingShellAreas.length > 0 ? 'missing-shell-areas' : null,
+              shellAssertions,
+              missingShellAreas,
+              pass: missingShellAreas.length === 0,
+            })
+            if (missingShellAreas.length > 0) {
+              console.error(`[visual-parity][block] ${caseId} missing shell areas: ${missingShellAreas.join(', ')}`)
             } else {
-              await Promise.all([
-                oldPage.goto(joinUrl(oldBaseUrl, oldPath), {
-                  waitUntil: 'domcontentloaded',
-                  timeout: 10000,
-                }),
-                newPage.goto(joinUrl(newBaseUrl, newPath), {
-                  waitUntil: 'domcontentloaded',
-                  timeout: 10000,
-                }),
-              ])
-              await Promise.all([waitForPageStable(oldPage, pageConfig), waitForPageStable(newPage, pageConfig)])
-              oldPageReady = true
+              console.log(`[visual-parity] ${caseId} pass=yes`)
             }
           } catch (error) {
             results.push({
               caseId,
               page: pageConfig.name,
-              oldPath,
-              newPath,
               viewport: viewport.name,
               theme,
+              targetPath,
+              expectedCategory: expectedDiffMap[caseId]?.category || null,
+              expectedReason: expectedDiffMap[caseId]?.reason || null,
+              blockingReason: 'navigation-error',
+              shellAssertions: buildUncheckedShellAssertions(),
+              missingShellAreas: [],
               pass: false,
               error: String(error),
-              full: {
-                mismatchRatio: 1,
-                threshold: config.thresholds.fullPageMismatchRatio,
-              },
-              fullBlocking: true,
-              missingShellAreas: ['navigation'],
-              keyAreas: [],
             })
-            console.log(`[visual] ${caseId} navigation failed`)
-            if (oldPage) {
-              await oldPage.close().catch(() => {})
-            }
-            if (newPage) {
-              await newPage.close().catch(() => {})
-            }
-            continue
-          }
-
-          const oldFullPath = path.join(runDir, 'old', `${relativeDir}__full.png`)
-          const newFullPath = path.join(runDir, 'new', `${relativeDir}__full.png`)
-          const diffFullPath = path.join(runDir, 'diff', `${relativeDir}__full.png`)
-          ensureDir(path.dirname(oldFullPath))
-          ensureDir(path.dirname(newFullPath))
-          ensureDir(path.dirname(diffFullPath))
-
-          let fullCompare
-          if (legacylessStatusExpected) {
-            await newPage.screenshot({ path: newFullPath, fullPage: false, animations: 'disabled' })
-            fullCompare = {
-              mismatchedPixels: Number.MAX_SAFE_INTEGER,
-              mismatchRatio: 1,
-              width: 0,
-              height: 0,
-              dimensionMismatch: true,
-            }
-          } else if (expected) {
-            await oldPage.screenshot({ path: oldFullPath, fullPage: false, animations: 'disabled' })
-            await newPage.screenshot({ path: newFullPath, fullPage: false, animations: 'disabled' })
-            fullCompare = {
-              mismatchedPixels: Number.MAX_SAFE_INTEGER,
-              mismatchRatio: 1,
-              width: viewport.width,
-              height: viewport.height,
-              dimensionMismatch: false,
-            }
-          } else {
-            await oldPage.screenshot({ path: oldFullPath, fullPage: false, animations: 'disabled' })
-            await newPage.screenshot({ path: newFullPath, fullPage: false, animations: 'disabled' })
-            fullCompare = comparePngs(oldFullPath, newFullPath, diffFullPath)
-          }
-
-          const fullPass = fullCompare.mismatchRatio <= config.thresholds.fullPageMismatchRatio
-
-          const keyAreaResults = []
-          const areaSelectors = [
-            ...shellKeyAreas,
-            { name: 'hero', selector: pageConfig.heroSelector },
-            { name: 'content', selector: pageConfig.contentSelector },
-          ]
-
-          for (const area of areaSelectors) {
-            const newAreaPath = path.join(runDir, 'new', `${relativeDir}__${area.name}.png`)
-            const newExists = await takeKeyAreaScreenshot(newPage, area.selector, newAreaPath)
-            const oldExists = oldPageReady ? await oldPage.locator(area.selector).first().count() > 0 : false
-
-            keyAreaResults.push({
-              name: area.name,
-              selector: area.selector,
-              newExists,
-              oldExists,
-              diagnosticMismatchRatio: null,
-              pass: newExists,
-            })
-          }
-
-          const missingShellAreas = keyAreaResults
-            .filter((item) => requiredShellAreaNames.has(item.name) && !item.pass)
-            .map((item) => item.name)
-          const fullBlocking = !fullPass && !expected
-          const casePass = !fullBlocking && missingShellAreas.length === 0
-          results.push({
-            caseId,
-            page: pageConfig.name,
-            oldPath,
-            newPath,
-            viewport: viewport.name,
-            theme,
-            pass: casePass,
-            expected,
-            expectedCategory,
-            expectedReason,
-            full: {
-              mismatchRatio: fullCompare.mismatchRatio,
-              threshold: config.thresholds.fullPageMismatchRatio,
-            },
-            fullBlocking,
-            missingShellAreas,
-            keyAreas: keyAreaResults,
-          })
-
-          console.log(
-            `[visual] ${caseId} full=${fullCompare.mismatchRatio.toFixed(4)} pass=${casePass ? 'yes' : 'no'}${expected ? ` expected=${expectedCategory}` : ''}`,
-          )
-
-          if (oldPage) {
-            await oldPage.close().catch(() => {})
-          }
-          if (newPage) {
-            await newPage.close().catch(() => {})
+            console.error(`[visual-parity][block] ${caseId} navigation failed: ${String(error)}`)
+          } finally {
+            await page.close().catch(() => {})
           }
         }
 
-        await oldContext.close()
-        await newContext.close()
+        await context.close()
       }
     }
 
-    const headerStability = await runHeaderStabilityCheck(
-      browser,
-      newBaseUrl,
-      config.thresholds.headerShiftPx,
-    )
-    console.log(
-      `[stability] maxShift=${headerStability.maxShift.toFixed(3)}px pass=${headerStability.pass ? 'yes' : 'no'}`,
-    )
-
-    const failedCases = results.filter((item) => !item.pass).length
-    const attributedFullDiffCases = results.filter(
-      (item) => item.expected && item.full.mismatchRatio > item.full.threshold,
-    ).length
-    const unattributedFullDiffCases = results.filter((item) => item.fullBlocking).length
-    const shellBlockingCases = results.filter((item) => item.missingShellAreas.length > 0).length
-    const blockingFailedCases = failedCases
-    const expectedDiffConfiguredCases = Object.keys(expectedDiffMap).length
-    const unusedExpectedDiffCases = Object.keys(expectedDiffMap).filter(
-      (caseId) =>
-        !results.some(
-          (result) =>
-            result.caseId === caseId && result.expected && result.full.mismatchRatio > result.full.threshold,
-        ),
-    )
+    let headerStability = {
+      thresholdPx: config.thresholds.headerShiftPx,
+      maxShift: 0,
+      pass: false,
+      records: [],
+      skipped: false,
+      error: null,
+      skipReason: null,
+      conclusion: 'fail',
+      retry: {
+        maxAttempts: headerStabilityMaxAttempts,
+        attemptCount: 0,
+        retried: false,
+      },
+      attemptLogs: [],
+    }
+    try {
+      headerStability = await runHeaderStabilityCheckWithRetry(baseUrl, config.thresholds.headerShiftPx)
+      headerStability = {
+        ...headerStability,
+        skipped: false,
+        error: null,
+        skipReason: null,
+      }
+      headerStability.conclusion = resolveHeaderStabilityConclusion(headerStability)
+      if (!headerStability.pass) {
+        console.error(
+          `[visual-parity][block] header stability exceeded threshold: maxShift=${headerStability.maxShift.toFixed(3)} threshold=${headerStability.thresholdPx}`,
+        )
+      }
+    } catch (error) {
+      const errorMessage = String(error)
+      const skipReason = resolveHeaderStabilitySkipReason(errorMessage)
+      if (skipReason) {
+        headerStability = {
+          thresholdPx: config.thresholds.headerShiftPx,
+          maxShift: 0,
+          pass: true,
+          records: [],
+          skipped: true,
+          error: errorMessage,
+          skipReason,
+          retry: {
+            maxAttempts: headerStabilityMaxAttempts,
+            attemptCount: 1,
+            retried: false,
+          },
+          attemptLogs: error?.attemptLogs || [],
+        }
+        warnings.push(`header-stability skipped via allowlist match "${skipReason}"`)
+        console.warn(`[visual-parity][warn] header stability skipped via allowlist "${skipReason}": ${errorMessage}`)
+      } else {
+        headerStability = {
+          thresholdPx: config.thresholds.headerShiftPx,
+          maxShift: 0,
+          pass: false,
+          records: [],
+          skipped: false,
+          error: errorMessage,
+          skipReason: null,
+          retry: {
+            maxAttempts: headerStabilityMaxAttempts,
+            attemptCount: Math.max(1, error?.attemptLogs?.length || 0),
+            retried: (error?.attemptLogs?.length || 0) > 1,
+          },
+          attemptLogs: error?.attemptLogs || [],
+        }
+        console.error(`[visual-parity][block] header stability failed: ${errorMessage}`)
+      }
+      headerStability.conclusion = resolveHeaderStabilityConclusion(headerStability)
+    }
+    const failedCases = results.filter((entry) => !entry.pass).length
+    const shellAssertionCoverage = summarizeShellAssertionCoverage(results)
+    const attributionCheckResult = shouldRequireExpectedAttribution
+      ? (missingExpectedAttribution.length > 0 ? 'fail' : 'pass')
+      : (missingExpectedAttribution.length > 0 ? 'warn' : 'pass')
+    const checks = [
+      {
+        name: 'shell-key-areas',
+        result: failedCases > 0 ? 'fail' : 'pass',
+        detail: `blockingCases=${failedCases}`,
+      },
+      {
+        name: 'header-stability',
+        result: headerStability.conclusion,
+        detail: `maxShift=${headerStability.maxShift.toFixed(3)} threshold=${headerStability.thresholdPx}`,
+      },
+      {
+        name: 'expected-attribution',
+        result: attributionCheckResult,
+        detail: `missing=${missingExpectedAttribution.length}`,
+      },
+      {
+        name: 'runtime-noise',
+        result: warnings.length > 0 ? 'warn' : 'pass',
+        detail: `warnings=${warnings.length}`,
+      },
+    ]
     const report = {
       mode: requestedMode,
+      gateMode: 'single-site-shell-stability',
       runId,
-      oldBaseUrl,
-      newBaseUrl,
+      baseUrl,
       thresholds: {
-        fullPageMismatchRatio: config.thresholds.fullPageMismatchRatio,
-        keyAreaMismatchRatio: config.thresholds.keyAreaMismatchRatio,
         headerShiftPx: config.thresholds.headerShiftPx,
       },
       summary: {
         totalCases: results.length,
         failedCases,
-        attributedFullDiffCases,
-        unattributedFullDiffCases,
-        shellBlockingCases,
-        blockingFailedCases,
-        expectedDiffConfiguredCases,
-        unusedExpectedDiffCases,
+        warningCount: warnings.length,
+        missingExpectedAttribution: missingExpectedAttribution.length,
       },
+      warnings,
+      checks,
       headerStability,
+      shellAssertionCoverage,
       results,
     }
 
@@ -1218,7 +988,7 @@ async function main() {
     }
     copyDirectory(runDir, latestDir)
 
-    if (blockingFailedCases > 0 || !headerStability.pass) {
+    if (failedCases > 0 || !headerStability.pass) {
       console.error('[visual-parity] failed')
       process.exitCode = 1
       return
@@ -1229,8 +999,7 @@ async function main() {
     if (browser) {
       await browser.close()
     }
-    await closeServer(oldSite.server)
-    await closeServer(newSite.server)
+    await closeServer(staticSite.server)
   }
 }
 

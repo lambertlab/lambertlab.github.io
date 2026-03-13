@@ -27,7 +27,7 @@ const reportRoot = path.resolve(__dirname, '..', 'qa', 'visual-parity')
 const runId = new Date().toISOString().replace(/[:.]/g, '-')
 const runDir = path.join(reportRoot, runId)
 const latestDir = path.join(reportRoot, 'latest')
-const expectedDiffCategories = new Set(['intentional-change', 'baseline-drift', 'suspected-regression'])
+const expectedDiffCategories = new Set(['intentional-change', 'suspected-regression'])
 
 const shellKeyAreas = [
   { name: 'header', selector: '.ll-header' },

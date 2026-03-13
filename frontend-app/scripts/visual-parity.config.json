@@ -18,12 +18,12 @@
           "reason": "Homepage Technology panel now renders Featured Projects from the unified projects contract."
         },
         "projects__desktop__light": {
-          "category": "baseline-drift",
-          "reason": "Projects page is API-first redesigned and the legacy baseline screenshot has not been refreshed."
+          "category": "intentional-change",
+          "reason": "Projects shell and catalog now follow the API-first structure gate contract."
         },
         "projects__desktop__dark": {
-          "category": "baseline-drift",
-          "reason": "Projects page is API-first redesigned and the legacy baseline screenshot has not been refreshed."
+          "category": "intentional-change",
+          "reason": "Projects shell and catalog now follow the API-first structure gate contract."
         },
         "journal__desktop__light": {
           "category": "intentional-change",
@@ -50,28 +50,28 @@
           "reason": "Contact now inherits the unified public footer and clickable Status entry shell."
         },
         "status-empty__desktop__light": {
-          "category": "baseline-drift",
-          "reason": "Status page has no legacy baseline snapshot and now includes public trust semantics."
+          "category": "intentional-change",
+          "reason": "Status empty scenario is validated by current public trust shell semantics."
         },
         "status-empty__desktop__dark": {
-          "category": "baseline-drift",
-          "reason": "Status page has no legacy baseline snapshot and now includes public trust semantics."
+          "category": "intentional-change",
+          "reason": "Status empty scenario is validated by current public trust shell semantics."
         },
         "status-single__desktop__light": {
-          "category": "baseline-drift",
-          "reason": "Status page has no legacy baseline snapshot and now includes structured public issue cards."
+          "category": "intentional-change",
+          "reason": "Status single-issue scenario is validated by current public trust issue-card semantics."
         },
         "status-single__desktop__dark": {
-          "category": "baseline-drift",
-          "reason": "Status page has no legacy baseline snapshot and now includes structured public issue cards."
+          "category": "intentional-change",
+          "reason": "Status single-issue scenario is validated by current public trust issue-card semantics."
         },
         "status-multi__desktop__light": {
-          "category": "baseline-drift",
-          "reason": "Status page has no legacy baseline snapshot and now includes multi-issue public trust coverage."
+          "category": "intentional-change",
+          "reason": "Status multi-issue scenario is validated by current public trust multi-issue semantics."
         },
         "status-multi__desktop__dark": {
-          "category": "baseline-drift",
-          "reason": "Status page has no legacy baseline snapshot and now includes multi-issue public trust coverage."
+          "category": "intentional-change",
+          "reason": "Status multi-issue scenario is validated by current public trust multi-issue semantics."
         }
       }
     },
@@ -82,7 +82,6 @@
     }
   },
   "ports": {
-    "oldSite": 4101,
     "newSite": 4102
   },
   "thresholds": {
@@ -106,14 +105,12 @@
     {
       "name": "projects",
       "path": "/projects/",
-      "oldPath": "/projects/index.html",
       "heroSelector": ".page-hero",
       "contentSelector": "[data-project-grid]"
     },
     {
       "name": "journal",
       "path": "/journal/index.html",
-      "oldPath": "/insights/index.html",
       "heroSelector": ".hero",
       "contentSelector": ".journal-grid"
     },
@@ -132,21 +129,18 @@
     {
       "name": "status-empty",
       "path": "/status/?issues=empty",
-      "oldPath": "/status/index.html?issues=empty",
       "heroSelector": ".status-page-hero",
       "contentSelector": ".status-sections"
     },
     {
       "name": "status-single",
       "path": "/status/?issues=single",
-      "oldPath": "/status/index.html?issues=single",
       "heroSelector": ".status-page-hero",
       "contentSelector": ".status-sections"
     },
     {
       "name": "status-multi",
       "path": "/status/?issues=multi",
-      "oldPath": "/status/index.html?issues=multi",
       "heroSelector": ".status-page-hero",
       "contentSelector": ".status-sections"
     },

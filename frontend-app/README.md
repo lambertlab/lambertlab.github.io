@@ -21,4 +21,4 @@ npm run visual:parity:smoke
 - `docs/legacy-html-exit-checklist-p1-entry.md`
 
 ## baseline-site 定位
-`baseline-site` 已降级为迁移期历史参照。整页像素对比仅用于诊断，不再单独决定放行。
+`baseline-site` 已完成退场，不再作为门禁输入。`visual:parity:smoke` 统一采用单站壳层结构稳定门禁（关键节点断言 + header stability）。
