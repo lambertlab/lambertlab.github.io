@@ -1,12 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { LegacyPageView } from '~/components/LegacyPageView'
-import { buildLegacyHead, legacyPages } from '~/legacy/pages'
+import { JournalDetailTemplate } from '~/components/content/JournalDetailTemplate'
+import { journalDetailEntries } from '~/components/content/journalDetailEntries'
+import { buildContentPageHead } from '~/lib/contentPageHead'
+import { legacyPageMetadata } from '~/lib/siteCopy'
 
 export const Route = createFileRoute('/journal/operational-habits-that-stick/')({
-  head: () => buildLegacyHead(legacyPages.journalOperationalHabitsThatStick),
+  head: () =>
+    buildContentPageHead(legacyPageMetadata['journal-operational-habits-that-stick'], ['/css/bento-pages.css']),
   component: JournalOperationalHabitsThatStickPage,
 })
 
 function JournalOperationalHabitsThatStickPage() {
-  return <LegacyPageView page={legacyPages.journalOperationalHabitsThatStick} />
+  return <JournalDetailTemplate entry={journalDetailEntries['operational-habits-that-stick']} />
 }

@@ -1,9 +1,6 @@
 import type { JSX } from 'react'
 import aboutHtmlRaw from '~/legacy-html/about/index.html?raw'
 import indexHtmlRaw from '~/legacy-html/index.html?raw'
-import journalAiCollabRaw from '~/legacy-html/journal/ai-collaboration-checklist.html?raw'
-import journalModelFirstRaw from '~/legacy-html/journal/model-first-engineering.html?raw'
-import journalHabitsRaw from '~/legacy-html/journal/operational-habits-that-stick.html?raw'
 import projectsIndexHtmlRaw from '~/legacy-html/projects/index.html?raw'
 import projectAIMsgRaw from '~/legacy-html/projects/ai-message-value-triage/index.html?raw'
 import projectToolboxRaw from '~/legacy-html/projects/personal-toolbox/index.html?raw'
@@ -51,13 +48,6 @@ function buildLegacyPage(
   }
 }
 
-function toJournalDetailSource(source: string): string {
-  return source
-    .replace(/href="\.\.\/index\.html"/g, 'href="__LL_HOME_INDEX__"')
-    .replace(/href="\.\/*index\.html"/g, 'href="../index.html"')
-    .replace(/href="__LL_HOME_INDEX__"/g, 'href="../../index.html"')
-}
-
 function toProjectsDetailSource(source: string): string {
   return source.replace(/href="\.\.\/index\.html"/g, 'href="../"')
 }
@@ -89,30 +79,6 @@ export const legacyPages = {
     ['/css/bento-pages.css'],
     {
       metadata: legacyPageMetadata['project-ai-message-value-triage'],
-    },
-  ),
-  journalModelFirstEngineering: buildLegacyPage(
-    'journal-model-first-engineering',
-    toJournalDetailSource(journalModelFirstRaw),
-    ['/css/bento-pages.css'],
-    {
-      metadata: legacyPageMetadata['journal-model-first-engineering'],
-    },
-  ),
-  journalAiCollaborationChecklist: buildLegacyPage(
-    'journal-ai-collaboration-checklist',
-    toJournalDetailSource(journalAiCollabRaw),
-    ['/css/bento-pages.css'],
-    {
-      metadata: legacyPageMetadata['journal-ai-collaboration-checklist'],
-    },
-  ),
-  journalOperationalHabitsThatStick: buildLegacyPage(
-    'journal-operational-habits-that-stick',
-    toJournalDetailSource(journalHabitsRaw),
-    ['/css/bento-pages.css'],
-    {
-      metadata: legacyPageMetadata['journal-operational-habits-that-stick'],
     },
   ),
 }
