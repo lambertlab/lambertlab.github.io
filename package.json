@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && tsc --noEmit",
-    "build:verify": "npm run build && node scripts/verify-prerender-parity.mjs && node scripts/verify-dynamic-contracts.mjs",
+    "build:verify": "npm run build && node scripts/verify-prerender-parity.mjs && node scripts/verify-dynamic-contracts.mjs && node scripts/verify-editorial-workflow.mjs",
     "gate:l1": "npm run build && node scripts/verify-prerender-parity.mjs",
     "gate:l2": "npm run visual:parity:smoke",
     "gate:l3": "npm run build && node scripts/verify-dynamic-contracts.mjs",
     "gate:all": "npm run gate:l1 && npm run gate:l3 && npm run gate:l2",
+    "verify:editorial-workflow": "node scripts/verify-editorial-workflow.mjs",
     "visual:parity": "npm run visual:parity:smoke",
     "visual:parity:smoke": "npm run build && node scripts/visual-shell-smoke.mjs",
     "visual:parity:full": "npm run build && cmd /c \"set VISUAL_PARITY_MODE=full&& node scripts/visual-parity.mjs\"",

@@ -1,0 +1,11 @@
+[
+  {
+    "ruleId": "WL-P5.2-L2-HEADER-RUNTIME-CLOSED-001",
+    "scope": "visual-shell.header-stability.runtime",
+    "contains": "Target page, context or browser has been closed",
+    "evidence": "qa/visual-parity/2026-03-13T06-03-40-697Z/report.json",
+    "invalidatesWhen": "Header stability check passes 7 consecutive smoke runs without browser context close errors.",
+    "expiresOn": "2026-04-30",
+    "downgradeTo": "observing"
+  }
+]

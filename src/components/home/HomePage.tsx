@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useHomeSplitLayout } from '~/legacy/useHomeSplitLayout'
+import { useHomeSplitLayout } from '~/components/home/hooks/useHomeSplitLayout'
 import { rootMetadata } from '~/lib/siteCopy'
 import { useRuntimeScripts } from '~/lib/useRuntimeScripts'
 import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
