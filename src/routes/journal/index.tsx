@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { JournalIndexPage } from '~/components/content/JournalIndexPage'
+import { journalIndexContentModel, toContentPageMetadata } from '~/content/contentModels'
 import { buildContentPageHead } from '~/lib/contentPageHead'
-import { legacyPageMetadata } from '~/lib/siteCopy'
 
 export const Route = createFileRoute('/journal/')({
-  head: () => buildContentPageHead(legacyPageMetadata.journal, ['/css/page-journal.css']),
+  head: () => buildContentPageHead(toContentPageMetadata(journalIndexContentModel), ['/css/page-journal.css']),
   component: JournalRoutePage,
 })
 
 function JournalRoutePage() {
-  return <JournalIndexPage />
+  return <JournalIndexPage content={journalIndexContentModel} />
 }

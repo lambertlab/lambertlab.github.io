@@ -1,43 +1,35 @@
-export interface JournalDetailAction {
-  href: string
-  label: string
-  tone?: 'primary'
-}
-
-export interface JournalDetailEntry {
-  kicker: string
-  title: string
-  summary: string
-  articleHeading: string
-  paragraphs: string[]
-  actions: JournalDetailAction[]
-}
+import type { JournalDetailContentModel } from '~/content/contentModels'
+import { pickLocalizedText, useUiLocale } from '~/lib/uiLocale'
 
 interface JournalDetailTemplateProps {
-  entry: JournalDetailEntry
+  content: JournalDetailContentModel
 }
 
-export function JournalDetailTemplate({ entry }: JournalDetailTemplateProps) {
+export function JournalDetailTemplate({ content }: JournalDetailTemplateProps) {
+  const { locale } = useUiLocale()
+
   return (
     <div className="wrap">
       <main id="main-content">
         <section className="hero">
-          <p className="kicker">{entry.kicker}</p>
-          <h1>{entry.title}</h1>
-          <p>{entry.summary}</p>
+          <p className="kicker">{pickLocalizedText(content.page.kicker, locale)}</p>
+          <h1>{pickLocalizedText(content.page.title, locale)}</h1>
+          <p>{pickLocalizedText(content.page.summary, locale)}</p>
         </section>
 
         <article className="article">
-          <h2>{entry.articleHeading}</h2>
-          {entry.paragraphs.map((paragraph, index) => (
-            <p key={`${index}-${paragraph.slice(0, 12)}`}>{paragraph}</p>
+          <h2>{pickLocalizedText(content.article.heading, locale)}</h2>
+          {content.article.paragraphs.map((paragraph, index) => (
+            <p key={`${index}-${paragraph.en.slice(0, 12)}`}>{pickLocalizedText(paragraph, locale)}</p>
           ))}
           <div className="actions">
-            {entry.actions.map((action) => (
+            {content.cta.actions
+              .filter((action) => action.visible)
+              .map((action) => (
               <a key={action.href} className={action.tone === 'primary' ? 'btn primary' : 'btn'} href={action.href}>
-                {action.label}
+                {pickLocalizedText(action.label, locale)}
               </a>
-            ))}
+              ))}
           </div>
         </article>
       </main>
