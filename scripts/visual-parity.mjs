@@ -3,11 +3,14 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+import { createGateCollector, loadNoiseWhitelist, matchWhitelistRule } from './gate-layering.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const configPath = path.join(__dirname, 'visual-parity.config.json')
+const noiseWhitelistPath = path.join(__dirname, 'gate-noise-whitelist.json')
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+const noiseWhitelistRules = loadNoiseWhitelist(noiseWhitelistPath)
 const cliModeArg = process.argv.find((arg) => arg.startsWith('--mode='))
 const requestedMode = (process.env.VISUAL_PARITY_MODE || cliModeArg?.split('=')[1] || config.defaultMode || 'smoke')
   .toLowerCase()
@@ -731,6 +734,22 @@ function renderMarkdownReport(report) {
       lines.push(`- ${warning}`)
     }
   }
+
+  lines.push('')
+  lines.push('## Layered Summary')
+  lines.push('')
+  lines.push(`- blocking: \`${report.layeredSignals.blocking.length}\``)
+  lines.push(`- observing: \`${report.layeredSignals.observing.length}\``)
+  lines.push(`- info: \`${report.layeredSignals.info.length}\``)
+
+  lines.push('')
+  lines.push('## Whitelist Traceability')
+  lines.push('')
+  lines.push(`- Active Rules: \`${report.whitelist.rules.length}\``)
+  lines.push(`- Applied Rules: \`${report.whitelist.appliedRuleIds.length}\``)
+  for (const appliedRuleId of report.whitelist.appliedRuleIds) {
+    lines.push(`- Applied Rule ID: \`${appliedRuleId}\``)
+  }
   lines.push('')
   lines.push('## Failures')
   lines.push('')
@@ -756,6 +775,8 @@ async function main() {
   const selectedThemes = modeConfig.themes === 'all' ? config.themes : modeConfig.themes || []
   const selectedPages = pickByName(config.pages, modeConfig.pages, 'page')
   const expectedDiffMap = parseExpectedDiffMap(modeConfig.expectedDiffs || {})
+  const gate = createGateCollector('visual-parity')
+  const appliedWhitelistRuleIds = new Set()
   const shouldRequireExpectedAttribution = requestedMode === 'smoke'
   for (const theme of selectedThemes) {
     ensure(config.themes.includes(theme), `Unknown theme "${theme}" in mode "${requestedMode}"`)
@@ -893,8 +914,9 @@ async function main() {
       }
     } catch (error) {
       const errorMessage = String(error)
+      const whitelistRule = matchWhitelistRule(noiseWhitelistRules, 'visual-shell.header-stability.runtime', errorMessage)
       const skipReason = resolveHeaderStabilitySkipReason(errorMessage)
-      if (skipReason) {
+      if (whitelistRule || skipReason) {
         headerStability = {
           thresholdPx: config.thresholds.headerShiftPx,
           maxShift: 0,
@@ -902,7 +924,7 @@ async function main() {
           records: [],
           skipped: true,
           error: errorMessage,
-          skipReason,
+          skipReason: whitelistRule?.ruleId || skipReason,
           retry: {
             maxAttempts: headerStabilityMaxAttempts,
             attemptCount: 1,
@@ -910,8 +932,14 @@ async function main() {
           },
           attemptLogs: error?.attemptLogs || [],
         }
-        warnings.push(`header-stability skipped via allowlist match "${skipReason}"`)
-        console.warn(`[visual-parity][warn] header stability skipped via allowlist "${skipReason}": ${errorMessage}`)
+        if (whitelistRule) {
+          appliedWhitelistRuleIds.add(whitelistRule.ruleId)
+          warnings.push(`header-stability downgraded via whitelist rule "${whitelistRule.ruleId}"`)
+          console.warn(`[visual-parity][warn] header stability downgraded by whitelist "${whitelistRule.ruleId}": ${errorMessage}`)
+        } else {
+          warnings.push(`header-stability skipped via allowlist match "${skipReason}"`)
+          console.warn(`[visual-parity][warn] header stability skipped via allowlist "${skipReason}": ${errorMessage}`)
+        }
       } else {
         headerStability = {
           thresholdPx: config.thresholds.headerShiftPx,
@@ -959,6 +987,46 @@ async function main() {
         detail: `warnings=${warnings.length}`,
       },
     ]
+    for (const result of results) {
+      if (result.pass) {
+        gate.addInfo({
+          code: 'visual-parity.case-pass',
+          message: 'Shell assertion passed.',
+          location: result.caseId,
+        })
+      } else {
+        gate.addBlocking({
+          code: `visual-parity.${result.blockingReason || 'assertion-failed'}`,
+          message: result.error || 'Shell assertion failed.',
+          location: result.caseId,
+        })
+      }
+    }
+    if (!headerStability.pass) {
+      gate.addBlocking({
+        code: 'visual-parity.header-stability',
+        message: headerStability.error || `Header stability failed. maxShift=${headerStability.maxShift.toFixed(3)}`,
+        location: 'header-stability',
+      })
+    } else if (headerStability.skipped && headerStability.skipReason) {
+      gate.addObserving({
+        code: 'visual-parity.header-stability-skipped',
+        message: `Header stability downgraded by allowlist/whitelist match "${headerStability.skipReason}".`,
+        location: 'header-stability',
+        ruleId: headerStability.skipReason.startsWith('WL-') ? headerStability.skipReason : undefined,
+      })
+    }
+    for (const warning of warnings) {
+      gate.addObserving({
+        code: 'visual-parity.warning',
+        message: warning,
+      })
+    }
+    gate.addInfo({
+      code: 'visual-parity.summary',
+      message: `Executed ${results.length} visual parity cases in mode "${requestedMode}".`,
+    })
+    gate.printSummary()
     const report = {
       mode: requestedMode,
       gateMode: 'single-site-shell-stability',
@@ -974,9 +1042,14 @@ async function main() {
         missingExpectedAttribution: missingExpectedAttribution.length,
       },
       warnings,
+      whitelist: {
+        rules: noiseWhitelistRules,
+        appliedRuleIds: Array.from(appliedWhitelistRuleIds),
+      },
       checks,
       headerStability,
       shellAssertionCoverage,
+      layeredSignals: gate.toJSON(),
       results,
     }
 

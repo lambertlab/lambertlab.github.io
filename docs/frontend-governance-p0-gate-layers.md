@@ -45,3 +45,6 @@
 1. `build:verify`：`build + L1 + L3`，用于结构与动态合同门禁。
 2. `visual:parity:smoke`：执行 L2，聚焦壳层关键区域与稳定性；整页差异仅做归因诊断。
 3. 任一层失败均阻断，不得以其他层通过替代。
+
+## 6. P5.2 补充
+1. P5.2 分层信号与白名单追踪细则见：`docs/frontend-governance-p5.2-gate-layering-and-whitelist.md`。

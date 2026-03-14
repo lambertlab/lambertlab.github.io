@@ -3,11 +3,14 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+import { createGateCollector, loadNoiseWhitelist, matchWhitelistRule } from './gate-layering.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const configPath = path.join(__dirname, 'visual-parity.config.json')
+const noiseWhitelistPath = path.join(__dirname, 'gate-noise-whitelist.json')
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+const noiseWhitelistRules = loadNoiseWhitelist(noiseWhitelistPath)
 const modeConfig = config.modes?.smoke
 const rawHeaderStabilitySkipAllowlist = modeConfig?.headerStability?.skipAllowlist
 const headerStabilitySkipAllowlist = Array.isArray(rawHeaderStabilitySkipAllowlist)
@@ -726,6 +729,22 @@ function renderMarkdownReport(report) {
       lines.push(`- ${warning}`)
     }
   }
+
+  lines.push('')
+  lines.push('## Layered Summary')
+  lines.push('')
+  lines.push(`- blocking: \`${report.layeredSignals.blocking.length}\``)
+  lines.push(`- observing: \`${report.layeredSignals.observing.length}\``)
+  lines.push(`- info: \`${report.layeredSignals.info.length}\``)
+
+  lines.push('')
+  lines.push('## Whitelist Traceability')
+  lines.push('')
+  lines.push(`- Active Rules: \`${report.whitelist.rules.length}\``)
+  lines.push(`- Applied Rules: \`${report.whitelist.appliedRuleIds.length}\``)
+  for (const appliedRuleId of report.whitelist.appliedRuleIds) {
+    lines.push(`- Applied Rule ID: \`${appliedRuleId}\``)
+  }
   lines.push('')
   lines.push('## Failures')
   lines.push('')
@@ -751,6 +770,8 @@ async function main() {
   const selectedThemes = modeConfig.themes === 'all' ? config.themes : modeConfig.themes || []
   const selectedPages = pickByName(config.pages, modeConfig.pages, 'page')
   const expectedDiffMap = parseExpectedDiffMap(modeConfig.expectedDiffs || {})
+  const gate = createGateCollector('visual-shell-smoke')
+  const appliedWhitelistRuleIds = new Set()
 
   const expectedCaseIds = new Set(Object.keys(expectedDiffMap))
   const plannedCaseIds = []
@@ -817,8 +838,18 @@ async function main() {
             })
             if (missingShellAreas.length > 0) {
               console.error(`[visual-shell][block] ${caseId} missing shell areas: ${missingShellAreas.join(', ')}`)
+              gate.addBlocking({
+                code: 'visual-shell.missing-shell-areas',
+                message: `Missing shell areas: ${missingShellAreas.join(', ')}`,
+                location: caseId,
+              })
             } else {
               console.log(`[visual-shell] ${caseId} pass=yes`)
+              gate.addInfo({
+                code: 'visual-shell.case-pass',
+                message: 'Shell assertion passed.',
+                location: caseId,
+              })
             }
           } catch (error) {
             results.push({
@@ -836,6 +867,11 @@ async function main() {
               error: String(error),
             })
             console.error(`[visual-shell][block] ${caseId} navigation failed: ${String(error)}`)
+            gate.addBlocking({
+              code: 'visual-shell.navigation-error',
+              message: String(error),
+              location: caseId,
+            })
           } finally {
             await page.close().catch(() => {})
           }
@@ -874,11 +910,17 @@ async function main() {
         console.error(
           `[visual-shell][block] header stability exceeded threshold: maxShift=${headerStability.maxShift.toFixed(3)} threshold=${headerStability.thresholdPx}`,
         )
+        gate.addBlocking({
+          code: 'visual-shell.header-stability-threshold',
+          message: `Header shift ${headerStability.maxShift.toFixed(3)} exceeded threshold ${headerStability.thresholdPx}`,
+          location: 'header-stability',
+        })
       }
     } catch (error) {
       const errorMessage = String(error)
+      const whitelistRule = matchWhitelistRule(noiseWhitelistRules, 'visual-shell.header-stability.runtime', errorMessage)
       const skipReason = resolveHeaderStabilitySkipReason(errorMessage)
-      if (skipReason) {
+      if (whitelistRule || skipReason) {
         headerStability = {
           thresholdPx: config.thresholds.headerShiftPx,
           maxShift: 0,
@@ -886,7 +928,7 @@ async function main() {
           records: [],
           skipped: true,
           error: errorMessage,
-          skipReason,
+          skipReason: whitelistRule?.ruleId || skipReason,
           retry: {
             maxAttempts: headerStabilityMaxAttempts,
             attemptCount: 1,
@@ -894,8 +936,25 @@ async function main() {
           },
           attemptLogs: error?.attemptLogs || [],
         }
-        warnings.push(`header-stability skipped via allowlist match "${skipReason}"`)
-        console.warn(`[visual-shell][warn] header stability skipped via allowlist "${skipReason}": ${errorMessage}`)
+        if (whitelistRule) {
+          appliedWhitelistRuleIds.add(whitelistRule.ruleId)
+          warnings.push(`header-stability downgraded via whitelist rule "${whitelistRule.ruleId}"`)
+          gate.addObserving({
+            code: 'visual-shell.whitelist-downgrade',
+            message: `Header stability runtime noise downgraded by whitelist. evidence=${whitelistRule.evidence}; invalidatesWhen=${whitelistRule.invalidatesWhen}; expiresOn=${whitelistRule.expiresOn}`,
+            location: 'header-stability',
+            ruleId: whitelistRule.ruleId,
+          })
+          console.warn(`[visual-shell][warn] header stability downgraded by whitelist "${whitelistRule.ruleId}": ${errorMessage}`)
+        } else {
+          warnings.push(`header-stability skipped via allowlist match "${skipReason}"`)
+          gate.addObserving({
+            code: 'visual-shell.allowlist-downgrade',
+            message: `Header stability runtime noise downgraded by legacy allowlist match "${skipReason}".`,
+            location: 'header-stability',
+          })
+          console.warn(`[visual-shell][warn] header stability skipped via allowlist "${skipReason}": ${errorMessage}`)
+        }
       } else {
         headerStability = {
           thresholdPx: config.thresholds.headerShiftPx,
@@ -913,6 +972,11 @@ async function main() {
           attemptLogs: error?.attemptLogs || [],
         }
         console.error(`[visual-shell][block] header stability failed: ${errorMessage}`)
+        gate.addBlocking({
+          code: 'visual-shell.header-stability-runtime-error',
+          message: errorMessage,
+          location: 'header-stability',
+        })
       }
       headerStability.conclusion = resolveHeaderStabilityConclusion(headerStability)
     }
@@ -935,6 +999,17 @@ async function main() {
         detail: `warnings=${warnings.length}`,
       },
     ]
+    gate.addInfo({
+      code: 'visual-shell.summary',
+      message: `Executed ${results.length} shell parity cases.`,
+    })
+    for (const warning of warnings) {
+      gate.addObserving({
+        code: 'visual-shell.warning',
+        message: warning,
+      })
+    }
+    gate.printSummary()
     const report = {
       mode: 'smoke-shell',
       runId,
@@ -949,9 +1024,14 @@ async function main() {
         missingExpectedAttribution: missingExpectedAttribution.length,
       },
       warnings,
+      whitelist: {
+        rules: noiseWhitelistRules,
+        appliedRuleIds: Array.from(appliedWhitelistRuleIds),
+      },
       checks,
       headerStability,
       shellAssertionCoverage,
+      layeredSignals: gate.toJSON(),
       results,
     }
 

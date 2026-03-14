@@ -2,6 +2,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { chromium } from 'playwright'
+import { createGateCollector } from './gate-layering.mjs'
 
 const outputRoot = path.resolve('.output/public')
 const preferredPort = 4202
@@ -651,6 +652,7 @@ async function main() {
     throw new Error('Missing ".output/public". Run `npm run build` first.')
   }
 
+  const gate = createGateCollector('verify-dynamic-contracts')
   const serverInfo = await createStaticServerWithFallback(outputRoot, preferredPort)
   const baseUrl = `http://127.0.0.1:${serverInfo.port}`
 
@@ -675,10 +677,20 @@ async function main() {
       try {
         await check.run()
         console.log(`[l3] pass ${check.name}`)
+        gate.addInfo({
+          code: 'dynamic.check-pass',
+          message: `Check passed: ${check.name}`,
+          location: check.name,
+        })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         failures.push({ name: check.name, message })
         console.error(`[l3] fail ${check.name}: ${message}`)
+        gate.addBlocking({
+          code: 'dynamic.check-failed',
+          message,
+          location: check.name,
+        })
       }
     }
   } finally {
@@ -687,6 +699,12 @@ async function main() {
     }
     await closeServer(serverInfo.server)
   }
+
+  gate.addInfo({
+    code: 'dynamic.check-summary',
+    message: `Executed ${checks.length} dynamic contract checks.`,
+  })
+  gate.printSummary()
 
   if (failures.length > 0) {
     console.error('[verify-dynamic-contracts] failed')

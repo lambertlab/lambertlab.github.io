@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { createGateCollector } from './gate-layering.mjs'
 
 const outputRoot = path.resolve('.output/public')
 const pagesToCheck = [
@@ -68,48 +69,69 @@ const pageSpecificForbiddenFragments = {
   'projects/ai-message-value-triage/index.html': ['href="../index.html"', 'href="/projects/ai-message-value-triage/index.html"'],
 }
 
-let failed = false
+const gate = createGateCollector('verify-prerender-parity')
 
 for (const relativePagePath of pagesToCheck) {
   const fullPath = path.join(outputRoot, relativePagePath)
   if (!fs.existsSync(fullPath)) {
-    console.error(`[missing] ${relativePagePath}`)
-    failed = true
+    gate.addBlocking({
+      code: 'prerender.missing-page',
+      message: 'Required prerender output is missing.',
+      location: relativePagePath,
+    })
     continue
   }
 
   const html = fs.readFileSync(fullPath, 'utf8')
   for (const fragment of shellRequiredFragments) {
     if (!html.includes(fragment)) {
-      console.error(`[contract] ${relativePagePath} missing "${fragment}"`)
-      failed = true
+      gate.addBlocking({
+        code: 'prerender.missing-shell-fragment',
+        message: `Missing required fragment "${fragment}".`,
+        location: relativePagePath,
+      })
     }
   }
 
   for (const fragment of pageSpecificRequiredFragments[relativePagePath] ?? []) {
     if (!html.includes(fragment)) {
-      console.error(`[contract] ${relativePagePath} missing page-specific fragment "${fragment}"`)
-      failed = true
+      gate.addBlocking({
+        code: 'prerender.missing-page-fragment',
+        message: `Missing page-specific fragment "${fragment}".`,
+        location: relativePagePath,
+      })
     }
   }
 
   for (const fragment of forbiddenFragments) {
     if (html.includes(fragment)) {
-      console.error(`[contract] ${relativePagePath} should not contain "${fragment}"`)
-      failed = true
+      gate.addBlocking({
+        code: 'prerender.forbidden-fragment',
+        message: `Found forbidden fragment "${fragment}".`,
+        location: relativePagePath,
+      })
     }
   }
 
   const pageSpecificFragments = pageSpecificForbiddenFragments[relativePagePath] ?? []
   for (const fragment of pageSpecificFragments) {
     if (html.includes(fragment)) {
-      console.error(`[contract] ${relativePagePath} should not contain "${fragment}"`)
-      failed = true
+      gate.addBlocking({
+        code: 'prerender.forbidden-page-fragment',
+        message: `Found forbidden page-specific fragment "${fragment}".`,
+        location: relativePagePath,
+      })
     }
   }
 }
 
-if (failed) {
+gate.addInfo({
+  code: 'prerender.scan-finished',
+  message: `Scanned ${pagesToCheck.length} prerender pages.`,
+})
+gate.printSummary()
+
+if (gate.hasBlocking()) {
   process.exit(1)
 }
 
