@@ -1,4 +1,4 @@
-﻿:root {
+:root {
       --bg-start: #edf3ff;
       --bg-end: #f8fbff;
       --text-main: #1e293b;
@@ -357,33 +357,6 @@
       color: var(--text-muted);
     }
 
-    .view-toggle {
-      display: inline-flex;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 3px;
-      background: #fff;
-      gap: 4px;
-    }
-
-    .view-btn {
-      border: 0;
-      border-radius: 999px;
-      padding: 6px 10px;
-      background: transparent;
-      color: #64748b;
-      font-family: var(--ll-font-mono);
-      font-size: 0.64rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      cursor: pointer;
-    }
-
-    .view-btn.active {
-      background: var(--chip);
-      color: #1e40af;
-    }
-
     .catalog-state {
       border: 1px dashed var(--line-strong);
       border-radius: 14px;
@@ -423,10 +396,6 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
-    }
-
-    .projects-grid[data-view="list"] {
-      grid-template-columns: 1fr;
     }
 
     .project-card {
@@ -733,3 +702,187 @@
       }
     }
 
+
+/* Projects flat-card mode override (2026-03-15) */
+:root {
+  --projects-header-offset: 64px;
+  --projects-sticky-gap: 10px;
+  --projects-sticky-top: calc(var(--projects-header-offset) + var(--projects-sticky-gap));
+  --projects-control-strip-height: 90px;
+}
+
+.control-strip {
+  position: sticky;
+  top: var(--projects-sticky-top);
+  z-index: 38;
+  grid-template-columns: minmax(260px, 1fr) auto auto auto auto auto;
+}
+
+.control-strip-meta {
+  grid-column: 1 / -1;
+  border-top: 1px dashed var(--line-strong);
+  margin-top: 2px;
+  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.control-tag-cloud {
+  margin-top: 0;
+  flex: 1;
+  min-width: 180px;
+}
+
+.control-status {
+  margin: 0;
+  min-width: 220px;
+}
+
+.featured-only-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.field-custom-select {
+  position: relative;
+}
+
+.field-native-select {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+}
+
+.field-select-trigger {
+  height: 40px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #0f172a;
+  padding: 0 34px 0 12px;
+  font-family: var(--ll-font-sans);
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+
+.field-select-trigger::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 1.6px solid #64748b;
+  border-bottom: 1.6px solid #64748b;
+  transform: translateY(-66%) rotate(45deg);
+  transition: transform 140ms ease;
+}
+
+.field-custom-select.is-open .field-select-trigger::after {
+  transform: translateY(-34%) rotate(-135deg);
+}
+
+.field-select-listbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 56;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 30px -18px rgba(15, 23, 42, 0.45);
+  padding: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.field-select-option {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #334155;
+  text-align: left;
+  padding: 8px 10px;
+  font-family: var(--ll-font-sans);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.field-select-option:hover,
+.field-select-option:focus-visible {
+  background: #f3f7ff;
+  outline: none;
+}
+
+.field-select-option.is-selected {
+  background: #eaf2ff;
+  color: #1e40af;
+}
+
+.field-input,
+.field-select,
+.field-select-trigger,
+.field-select-listbox,
+.field-input:focus,
+.field-select:focus,
+.field-select-trigger:focus,
+.field-input:focus-visible,
+.field-select:focus-visible,
+.field-select-trigger:focus-visible {
+  border-radius: 12px;
+}
+
+.field-input:focus-visible,
+.field-select:focus-visible,
+.field-select-trigger:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 1px;
+}
+
+.catalog-layout {
+  display: block;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 900px) {
+  .control-strip-meta {
+    align-items: flex-start;
+  }
+
+  .control-status {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-hero,
+  .catalog-layout {
+    border-radius: 18px;
+  }
+
+  .control-strip {
+    position: static;
+    grid-template-columns: 1fr;
+  }
+
+  .control-strip-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .control-tag-cloud,
+  .control-status {
+    width: 100%;
+  }
+}

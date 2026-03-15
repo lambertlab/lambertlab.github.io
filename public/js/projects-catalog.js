@@ -19,7 +19,6 @@
   var retryButton = document.getElementById("retry-fetch");
   var grid = catalogRoot.querySelector("[data-project-grid]");
   var projectsRuntime = window.__LL_PROJECTS_RUNTIME__ || null;
-  var resultsMeta = catalogRoot.querySelector("[data-results-meta]");
   var fetchStatus = catalogRoot.querySelector("[data-fetch-status]");
   var tagCloud = catalogRoot.querySelector("[data-tag-cloud]");
   var emptyState = catalogRoot.querySelector("[data-empty-state]");
@@ -30,7 +29,8 @@
   var liveItemsValue = catalogRoot.querySelector("[data-live-items]");
   var lastSyncValue = catalogRoot.querySelector("[data-last-sync]");
   var sourceCountValue = catalogRoot.querySelector("[data-source-count]");
-  var viewButtons = Array.prototype.slice.call(catalogRoot.querySelectorAll("[data-view-mode]"));
+  var customSelectControls = [];
+  var customSelectDismissBound = false;
 
   if (!searchInput || !sortSelect || !stageSelect || !sourceSelect || !typeSelect || !featuredOnlyInput || !clearButton || !retryButton || !grid) {
     return;
@@ -367,8 +367,7 @@
     stage: "all",
     source: "all",
     type: "all",
-    featured: false,
-    view: "grid"
+    featured: false
   };
 
   var allProjects = [];
@@ -377,30 +376,7 @@
   var latestRequestId = 0;
   var lastFetchKey = "";
 
-  function getActiveView() {
-    var active = viewButtons.find(function (button) {
-      return button.classList.contains("active");
-    });
 
-    if (!active) {
-      return "grid";
-    }
-
-    var view = (active.getAttribute("data-view-mode") || "").trim().toLowerCase();
-    return view === "list" ? "list" : "grid";
-  }
-
-  function setView(view) {
-    var normalized = view === "list" ? "list" : "grid";
-
-    viewButtons.forEach(function (button) {
-      var isActive = (button.getAttribute("data-view-mode") || "") === normalized;
-      button.classList.toggle("active", isActive);
-      button.setAttribute("aria-pressed", isActive ? "true" : "false");
-    });
-
-    grid.setAttribute("data-view", normalized);
-  }
 
   function readStateFromUrl() {
     var params = new URLSearchParams(window.location.search);
@@ -408,7 +384,6 @@
     var q = (params.get("q") || "").trim();
     var sort = (params.get("sort") || defaultState.sort).trim().toLowerCase();
     var featured = toBoolean(params.get("featured"));
-    var view = (params.get("view") || defaultState.view).trim().toLowerCase();
 
     // Read new three-dimensional filters
     var stage = (params.get("stage") || "").trim().toLowerCase();
@@ -437,9 +412,6 @@
     if (!type || !Object.prototype.hasOwnProperty.call(validType, type)) {
       type = defaultState.type;
     }
-    if (view !== "list") {
-      view = "grid";
-    }
 
     return {
       q: q,
@@ -447,8 +419,7 @@
       stage: stage,
       source: source,
       type: type,
-      featured: featured,
-      view: view
+      featured: featured
     };
   }
 
@@ -459,7 +430,7 @@
     sourceSelect.value = state.source;
     typeSelect.value = state.type;
     featuredOnlyInput.checked = state.featured === true;
-    setView(state.view);
+    refreshCustomSelectControls();
   }
 
   function readStateFromControls() {
@@ -469,7 +440,6 @@
     var source = (sourceSelect.value || "").trim().toLowerCase();
     var type = (typeSelect.value || "").trim().toLowerCase();
     var featured = featuredOnlyInput.checked === true;
-    var view = getActiveView();
 
     if (!Object.prototype.hasOwnProperty.call(validSort, sort)) {
       sort = defaultState.sort;
@@ -490,8 +460,7 @@
       stage: stage,
       source: source,
       type: type,
-      featured: featured,
-      view: view
+      featured: featured
     };
   }
 
@@ -522,9 +491,6 @@
       params.set("featured", "1");
     }
 
-    if (state.view !== defaultState.view) {
-      params.set("view", state.view);
-    }
 
     var canonicalPath = resolveCanonicalCatalogPath(window.location.pathname);
     var next = params.toString();
@@ -653,16 +619,227 @@
     }
   }
 
+
+  function closeCustomSelect(control, focusTrigger) {
+    if (!control) {
+      return;
+    }
+    control.root.classList.remove("is-open");
+    control.listbox.hidden = true;
+    control.trigger.setAttribute("aria-expanded", "false");
+    if (focusTrigger) {
+      control.trigger.focus();
+    }
+  }
+
+  function closeAllCustomSelects(exceptControl) {
+    customSelectControls.forEach(function (control) {
+      if (exceptControl && control === exceptControl) {
+        return;
+      }
+      closeCustomSelect(control, false);
+    });
+  }
+
+  function buildCustomSelectOptions(control) {
+    control.listbox.innerHTML = "";
+    Array.prototype.forEach.call(control.select.options, function (option, index) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.className = "field-select-option";
+      button.setAttribute("role", "option");
+      button.setAttribute("data-value", option.value);
+      button.setAttribute("aria-selected", "false");
+      button.tabIndex = -1;
+      button.textContent = option.textContent || option.value;
+      button.id = control.select.id + "-option-" + index;
+      control.listbox.appendChild(button);
+    });
+  }
+
+  function syncCustomSelectValue(control) {
+    var selectedIndex = control.select.selectedIndex >= 0 ? control.select.selectedIndex : 0;
+    var selectedOption = control.select.options[selectedIndex] || null;
+    control.trigger.textContent = selectedOption ? (selectedOption.textContent || selectedOption.value) : "";
+
+    var buttons = control.listbox.querySelectorAll(".field-select-option");
+    buttons.forEach(function (button) {
+      var isSelected = selectedOption && button.getAttribute("data-value") === selectedOption.value;
+      button.classList.toggle("is-selected", !!isSelected);
+      button.setAttribute("aria-selected", isSelected ? "true" : "false");
+    });
+  }
+
+  function refreshCustomSelectControls() {
+    customSelectControls.forEach(function (control) {
+      buildCustomSelectOptions(control);
+      syncCustomSelectValue(control);
+    });
+  }
+
+  function focusCustomSelectOption(control, nextIndex) {
+    var buttons = Array.prototype.slice.call(control.listbox.querySelectorAll(".field-select-option"));
+    if (!buttons.length) {
+      return;
+    }
+    var normalizedIndex = nextIndex;
+    if (normalizedIndex < 0) {
+      normalizedIndex = 0;
+    }
+    if (normalizedIndex >= buttons.length) {
+      normalizedIndex = buttons.length - 1;
+    }
+    buttons[normalizedIndex].focus();
+  }
+
+  function openCustomSelect(control) {
+    closeAllCustomSelects(control);
+    control.root.classList.add("is-open");
+    control.listbox.hidden = false;
+    control.trigger.setAttribute("aria-expanded", "true");
+
+    var selected = control.listbox.querySelector(".field-select-option.is-selected");
+    if (selected) {
+      selected.focus();
+      return;
+    }
+    focusCustomSelectOption(control, 0);
+  }
+
+  function selectCustomSelectOption(control, value) {
+    if (!value) {
+      return;
+    }
+    var changed = control.select.value !== value;
+    control.select.value = value;
+    syncCustomSelectValue(control);
+    closeCustomSelect(control, true);
+
+    if (changed) {
+      control.select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  }
+
+  function initCustomSelectControls() {
+    var roots = catalogRoot.querySelectorAll("[data-custom-select]");
+    customSelectControls = [];
+
+    roots.forEach(function (root) {
+      var select = root.querySelector(".field-native-select");
+      var trigger = root.querySelector("[data-custom-select-trigger]");
+      var listbox = root.querySelector("[data-custom-select-listbox]");
+      if (!select || !trigger || !listbox) {
+        return;
+      }
+
+      var control = {
+        root: root,
+        select: select,
+        trigger: trigger,
+        listbox: listbox
+      };
+
+      customSelectControls.push(control);
+      buildCustomSelectOptions(control);
+      syncCustomSelectValue(control);
+
+      trigger.addEventListener("click", function () {
+        if (root.classList.contains("is-open")) {
+          closeCustomSelect(control, false);
+          return;
+        }
+        openCustomSelect(control);
+      });
+
+      trigger.addEventListener("keydown", function (event) {
+        if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openCustomSelect(control);
+          return;
+        }
+        if (event.key === "Escape") {
+          closeCustomSelect(control, false);
+        }
+      });
+
+      listbox.addEventListener("click", function (event) {
+        var button = event.target.closest(".field-select-option");
+        if (!button) {
+          return;
+        }
+        selectCustomSelectOption(control, button.getAttribute("data-value"));
+      });
+
+      listbox.addEventListener("keydown", function (event) {
+        var buttons = Array.prototype.slice.call(listbox.querySelectorAll(".field-select-option"));
+        if (!buttons.length) {
+          return;
+        }
+
+        var currentIndex = buttons.indexOf(document.activeElement);
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          focusCustomSelectOption(control, currentIndex < 0 ? 0 : currentIndex + 1);
+          return;
+        }
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          focusCustomSelectOption(control, currentIndex < 0 ? 0 : currentIndex - 1);
+          return;
+        }
+        if (event.key === "Home") {
+          event.preventDefault();
+          focusCustomSelectOption(control, 0);
+          return;
+        }
+        if (event.key === "End") {
+          event.preventDefault();
+          focusCustomSelectOption(control, buttons.length - 1);
+          return;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          var active = currentIndex >= 0 ? buttons[currentIndex] : null;
+          if (active) {
+            selectCustomSelectOption(control, active.getAttribute("data-value"));
+          }
+          return;
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeCustomSelect(control, true);
+        }
+      });
+
+      select.addEventListener("change", function () {
+        syncCustomSelectValue(control);
+      });
+    });
+
+    if (!customSelectDismissBound) {
+      document.addEventListener("click", function (event) {
+        if (!event.target.closest("[data-custom-select]")) {
+          closeAllCustomSelects(null);
+        }
+      });
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          closeAllCustomSelects(null);
+        }
+      });
+
+      customSelectDismissBound = true;
+    }
+  }
+
   function applyStaticCatalogCopy() {
     var hero = catalogRoot.querySelector(".page-hero");
     var heroMetrics = catalogRoot.querySelector(".hero-metrics");
     var controlStrip = catalogRoot.querySelector(".control-strip");
     var catalogLayout = catalogRoot.querySelector(".catalog-layout");
-    var filterPanel = catalogRoot.querySelector(".filter-panel");
-    var resultsHead = catalogRoot.querySelector(".results-head");
-    var viewToggle = catalogRoot.querySelector(".view-toggle");
+    var controlStripMeta = catalogRoot.querySelector(".control-strip-meta");
     var errorTitle = catalogRoot.querySelector(".catalog-state-title");
-    var listFooter = catalogRoot.querySelector(".list-footer");
 
     if (hero) {
       hero.setAttribute("aria-label", getUiText("项目目录简介", "Projects intro"));
@@ -676,11 +853,8 @@
     if (catalogLayout) {
       catalogLayout.setAttribute("aria-label", getUiText("项目目录", "Project catalog"));
     }
-    if (filterPanel) {
-      filterPanel.setAttribute("aria-label", getUiText("目录筛选", "Catalog filters"));
-    }
-    if (viewToggle) {
-      viewToggle.setAttribute("aria-label", getUiText("视图模式", "View mode"));
+    if (controlStripMeta) {
+      controlStripMeta.setAttribute("aria-label", getUiText("目录筛选", "Catalog filters"));
     }
 
     setText(".hero-kicker", getUiText("项目目录", "Project Catalog"));
@@ -704,8 +878,7 @@
     setText('label[for="source-filter"]', getUiText("来源", "Source"));
     setText('label[for="type-filter"]', getUiText("类型", "Type"));
     setText("#clear-filters", getUiText("重置", "Clear"));
-    setText(".filter-group:nth-child(1) .filter-title", getUiText("精选", "Highlight"));
-    var featuredOnlyLabel = catalogRoot.querySelector(".filter-group:nth-child(1) .check-item");
+    var featuredOnlyLabel = catalogRoot.querySelector(".featured-only-label");
     if (featuredOnlyLabel) {
       var featuredOnlyCheckbox = featuredOnlyLabel.querySelector("input");
       featuredOnlyLabel.textContent = "";
@@ -714,11 +887,6 @@
       }
       featuredOnlyLabel.appendChild(document.createTextNode(" " + getUiText("仅看精选", "Featured only")));
     }
-    setText(".filter-group:nth-child(2) .filter-title", getUiText("标签", "Tags"));
-    setText(".filter-group:nth-child(3) .filter-title", getUiText("状态", "Status"));
-    setText(".results-title", getUiText("项目目录", "Project Directory"));
-    setText(".view-btn[data-view-mode=\"grid\"]", getUiText("网格", "Grid"));
-    setText(".view-btn[data-view-mode=\"list\"]", getUiText("列表", "List"));
     setText("#retry-fetch", getUiText("重试", "Retry"));
 
     if (searchInput) {
@@ -748,6 +916,7 @@
     setOptionLabel(typeSelect, "agent", getUiText("智能体", "Agent"));
     setOptionLabel(typeSelect, "data", getUiText("数据", "Data"));
     setOptionLabel(typeSelect, "library", getUiText("库", "Library"));
+    refreshCustomSelectControls();
 
     if (errorTitle && errorState && !errorState.hidden) {
       errorTitle.textContent = getUiText("目录加载失败", "Catalog load failed");
@@ -759,16 +928,7 @@
       }
     }
     if (loadingState && !loadingState.hidden) {
-      loadingState.textContent = getUiText("正在加载项目目录...", "Loading the project directory...");
-    }
-    if (listFooter) {
-      var footerItems = listFooter.querySelectorAll("span");
-      if (footerItems[0]) {
-        footerItems[0].textContent = getUiText("项目目录", "Project directory");
-      }
-      if (footerItems[1]) {
-        footerItems[1].textContent = getUiText("筛选状态自动同步到 URL，可刷新与分享回放。", "Filters stay synced to the URL so the current view can be refreshed or shared.");
-      }
+      loadingState.textContent = getUiText("正在加载项目目录...", "Loading catalog data...");
     }
   }
 
@@ -895,7 +1055,7 @@
   function showLoading(message) {
     if (loadingState) {
       loadingState.hidden = false;
-      loadingState.textContent = message || getUiText("正在加载项目目录...", "Loading the project directory...");
+      loadingState.textContent = message || getUiText("正在加载项目目录...", "Loading catalog data...");
     }
     if (errorState) {
       errorState.hidden = true;
@@ -921,9 +1081,6 @@
     }
     grid.hidden = true;
     setFetchStatus(getUiText("目录读取失败，可点击重试。", "Catalog loading failed. Click Retry to try again."));
-    if (resultsMeta) {
-      resultsMeta.textContent = getUiText("项目目录加载失败", "Failed to load projects");
-    }
     var errorTitle = catalogRoot.querySelector(".catalog-state-title");
     if (errorTitle) {
       errorTitle.textContent = getUiText("目录加载失败", "Catalog load failed");
@@ -1005,14 +1162,6 @@
       return project.stage === "active" || project.status === "active";
     }).length;
 
-    if (resultsMeta) {
-      var hasFilter = state.q || state.stage !== "all" || state.source !== "all" || state.type !== "all" || state.featured;
-      var filterLabel = hasFilter ? getUiText("筛选已生效", "Filters active") : getUiText("全部筛选", "All filters");
-      var fetchedLabel = fetchedAtValue
-        ? (getUiText("抓取于 ", "Fetched ") + formatDateTime(fetchedAtValue))
-        : getUiText("抓取于 --", "Fetched --");
-      resultsMeta.textContent = getUiText("当前展示 ", "Showing ") + visibleCount + getUiText(" / ", " of ") + totalCount + getUiText(" 条 · ", " entries · ") + filterLabel + " · " + fetchedLabel;
-    }
 
     if (totalItemsValue) {
       totalItemsValue.textContent = totalCount + " " + getUiText("个项目", "Projects");
@@ -1056,7 +1205,7 @@
     }
 
     showGrid();
-    setFetchStatus(getUiText("目录加载成功，共 ", "Catalog loaded successfully with ") + fetchedCount + getUiText(" 条；当前展示 ", " entries; showing ") + sorted.length + (isEnglishUi() ? "." : " 条。"));
+    setFetchStatus(getUiText("\u76ee\u5f55\u52a0\u8f7d\u6210\u529f\u3002", "Catalog loaded successfully."));
   }
 
   function buildProjectsEndpoint() {
@@ -1115,7 +1264,7 @@
     var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     var timeoutId = null;
 
-    showLoading(getUiText("正在加载项目目录...", "Loading the project directory..."));
+    showLoading(getUiText("正在加载项目目录...", "Loading catalog data..."));
     setFetchStatus(getUiText("正在读取目录数据...", "Fetching the latest catalog data..."));
 
     if (controller) {
@@ -1155,7 +1304,7 @@
         return;
       }
 
-      var message = getUiText("目录加载失败，请稍后重试。", "The project directory failed to load. Please retry later.");
+      var message = getUiText("目录加载失败，请稍后重试。", "Catalog data failed to load. Please retry later.");
       if (error && error.name === "AbortError") {
         message = getUiText("目录请求超时，请检查后端状态后重试。", "The project request timed out. Check backend availability and retry.");
       } else if (error && typeof error.message === "string" && error.message.trim()) {
@@ -1173,7 +1322,6 @@
   function applyFromControls(options) {
     var nextOptions = options || {};
     var state = readStateFromControls();
-    setView(state.view);
 
     if (nextOptions.syncUrl) {
       writeStateToUrl(state);
@@ -1198,6 +1346,8 @@
       refetch: true
     });
   }
+
+  initCustomSelectControls();
 
   searchInput.addEventListener("input", function () {
     applyFromControls({
@@ -1250,16 +1400,7 @@
     });
   });
 
-  viewButtons.forEach(function (button) {
-    button.setAttribute("aria-pressed", button.classList.contains("active") ? "true" : "false");
-    button.addEventListener("click", function () {
-      setView(button.getAttribute("data-view-mode") || "grid");
-      applyFromControls({
-        syncUrl: true,
-        refetch: false
-      });
-    });
-  });
+
 
   window.addEventListener("popstate", function () {
     var nextState = readStateFromUrl();
@@ -1287,7 +1428,7 @@
     }
 
     if (!errorState.hidden) {
-      showError(errorDetail ? toText(errorDetail.textContent) : getUiText("目录加载失败，请稍后重试。", "The project directory failed to load. Please retry later."));
+      showError(errorDetail ? toText(errorDetail.textContent) : getUiText("目录加载失败，请稍后重试。", "Catalog data failed to load. Please retry later."));
       return;
     }
 
@@ -1307,3 +1448,6 @@
   writeStateToUrl(initialState);
   fetchProjects(initialState);
 })();
+
+
+

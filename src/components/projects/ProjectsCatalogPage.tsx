@@ -60,134 +60,158 @@ export function ProjectsCatalogPage() {
 
       <section className="control-strip" aria-label="Project controls">
         <div className="field">
-          <label className="field-label" htmlFor="project-search">
+          <label className="field-label sr-only" htmlFor="project-search" id="project-search-label">
             Search
           </label>
           <input className="field-input" id="project-search" type="search" placeholder="Search by name, summary, tags, stack" />
         </div>
+
         <div className="field">
-          <label className="field-label" htmlFor="sort-by">
+          <label className="field-label sr-only" htmlFor="sort-by" id="sort-by-label">
             Sort
           </label>
-          <select className="field-select" id="sort-by">
-            <option value="recent">Most Recent</option>
-            <option value="stars">Stars</option>
-            <option value="name">Name (A-Z)</option>
-          </select>
+          <div className="field-custom-select" data-custom-select>
+            <button
+              className="field-select-trigger"
+              id="sort-by-trigger"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-labelledby="sort-by-label"
+              data-custom-select-trigger
+            >
+              Most Recent
+            </button>
+            <div className="field-select-listbox" id="sort-by-listbox" role="listbox" aria-labelledby="sort-by-label" hidden data-custom-select-listbox></div>
+            <select className="field-select field-native-select" id="sort-by" aria-label="Sort" tabIndex={-1}>
+              <option value="recent">Most Recent</option>
+              <option value="stars">Stars</option>
+              <option value="name">Name (A-Z)</option>
+            </select>
+          </div>
         </div>
+
         <div className="field">
-          <label className="field-label" htmlFor="stage-filter">
+          <label className="field-label sr-only" htmlFor="stage-filter" id="stage-filter-label">
             Stage
           </label>
-          <select className="field-select" id="stage-filter">
-            <option value="all">All</option>
-            <option value="building">Building</option>
-            <option value="active">Active</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="research">Research</option>
-            <option value="archived">Archived</option>
-          </select>
+          <div className="field-custom-select" data-custom-select>
+            <button
+              className="field-select-trigger"
+              id="stage-filter-trigger"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-labelledby="stage-filter-label"
+              data-custom-select-trigger
+            >
+              All
+            </button>
+            <div className="field-select-listbox" id="stage-filter-listbox" role="listbox" aria-labelledby="stage-filter-label" hidden data-custom-select-listbox></div>
+            <select className="field-select field-native-select" id="stage-filter" aria-label="Stage" tabIndex={-1}>
+              <option value="all">All</option>
+              <option value="building">Building</option>
+              <option value="active">Active</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="research">Research</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
         </div>
+
         <div className="field">
-          <label className="field-label" htmlFor="source-filter">
+          <label className="field-label sr-only" htmlFor="source-filter" id="source-filter-label">
             Source
           </label>
-          <select className="field-select" id="source-filter">
-            <option value="all">All</option>
-            <option value="github">GitHub</option>
-            <option value="local">Local</option>
-            <option value="private">Private</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
+          <div className="field-custom-select" data-custom-select>
+            <button
+              className="field-select-trigger"
+              id="source-filter-trigger"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-labelledby="source-filter-label"
+              data-custom-select-trigger
+            >
+              All
+            </button>
+            <div className="field-select-listbox" id="source-filter-listbox" role="listbox" aria-labelledby="source-filter-label" hidden data-custom-select-listbox></div>
+            <select className="field-select field-native-select" id="source-filter" aria-label="Source" tabIndex={-1}>
+              <option value="all">All</option>
+              <option value="github">GitHub</option>
+              <option value="local">Local</option>
+              <option value="private">Private</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </div>
         </div>
+
         <div className="field">
-          <label className="field-label" htmlFor="type-filter">
+          <label className="field-label sr-only" htmlFor="type-filter" id="type-filter-label">
             Type
           </label>
-          <select className="field-select" id="type-filter">
-            <option value="all">All</option>
-            <option value="website">Website</option>
-            <option value="backend">Backend</option>
-            <option value="tooling">Tooling</option>
-            <option value="infra">Infra</option>
-            <option value="research">Research</option>
-            <option value="agent">Agent</option>
-            <option value="data">Data</option>
-            <option value="library">Library</option>
-          </select>
+          <div className="field-custom-select" data-custom-select>
+            <button
+              className="field-select-trigger"
+              id="type-filter-trigger"
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-labelledby="type-filter-label"
+              data-custom-select-trigger
+            >
+              All
+            </button>
+            <div className="field-select-listbox" id="type-filter-listbox" role="listbox" aria-labelledby="type-filter-label" hidden data-custom-select-listbox></div>
+            <select className="field-select field-native-select" id="type-filter" aria-label="Type" tabIndex={-1}>
+              <option value="all">All</option>
+              <option value="website">Website</option>
+              <option value="backend">Backend</option>
+              <option value="tooling">Tooling</option>
+              <option value="infra">Infra</option>
+              <option value="research">Research</option>
+              <option value="agent">Agent</option>
+              <option value="data">Data</option>
+              <option value="library">Library</option>
+            </select>
+          </div>
         </div>
+
         <button className="ghost-btn" type="button" id="clear-filters">
           Clear
         </button>
+
+        <div className="control-strip-meta" aria-label="Catalog filters">
+          <label className="check-item featured-only-label">
+            <input type="checkbox" id="featured-only" /> Featured only
+          </label>
+          <div className="tag-cloud control-tag-cloud" data-tag-cloud>
+            <span className="tag">Waiting</span>
+          </div>
+          <p className="catalog-note control-status" data-fetch-status>
+            准备加载目录数据。
+          </p>
+        </div>
       </section>
 
       <section className="catalog-layout" aria-label="Project catalog">
-        <aside className="filter-panel" aria-label="Catalog filters">
-          <section className="filter-group">
-            <h2 className="filter-title">Highlight</h2>
-            <div className="check-list">
-              <label className="check-item">
-                <input type="checkbox" id="featured-only" /> Featured only
-              </label>
-            </div>
-          </section>
-
-          <section className="filter-group">
-            <h2 className="filter-title">Tags</h2>
-            <div className="tag-cloud" data-tag-cloud>
-              <span className="tag">Waiting</span>
-            </div>
-          </section>
-
-          <section className="filter-group">
-            <h2 className="filter-title">Status</h2>
-            <p className="catalog-note" data-fetch-status>
-              准备加载目录数据。
-            </p>
-          </section>
-        </aside>
-
-        <div className="results-panel">
-          <div className="results-head">
-            <div>
-              <h2 className="results-title">Project Directory</h2>
-              <p className="results-meta" data-results-meta>
-                Loading projects...
-              </p>
-            </div>
-            <div className="view-toggle" role="group" aria-label="View mode">
-              <button className="view-btn active" data-view-mode="grid" type="button">
-                Grid
-              </button>
-              <button className="view-btn" data-view-mode="list" type="button">
-                List
-              </button>
-            </div>
-          </div>
-
-          <div className="catalog-state" data-loading-state role="status" aria-live="polite">
-            正在加载项目目录...
-          </div>
-          <div className="catalog-state catalog-state-error" data-error-state hidden>
-            <p className="catalog-state-title">目录加载失败</p>
-            <p className="catalog-state-detail" data-error-detail>
-              请求失败，请检查后端连接状态。
-            </p>
-            <button className="ghost-btn" type="button" id="retry-fetch">
-              Retry
-            </button>
-          </div>
-
-          <div className="projects-grid" data-project-grid data-view="grid" hidden></div>
-          <p className="empty-state" data-empty-state hidden>
-            未找到符合条件的项目。可以放宽关键词，或重置筛选后再试。
-          </p>
-
-          <div className="list-footer">
-            <span>项目目录</span>
-            <span>筛选状态自动同步到 URL，可刷新与分享回放。</span>
-          </div>
+        <div className="catalog-state" data-loading-state role="status" aria-live="polite">
+          正在加载项目目录...
         </div>
+        <div className="catalog-state catalog-state-error" data-error-state hidden>
+          <p className="catalog-state-title">目录加载失败</p>
+          <p className="catalog-state-detail" data-error-detail>
+            请求失败，请检查后端连接状态。
+          </p>
+          <button className="ghost-btn" type="button" id="retry-fetch">
+            Retry
+          </button>
+        </div>
+
+        <div className="projects-grid" data-project-grid hidden></div>
+        <p className="empty-state" data-empty-state hidden>
+          未找到符合条件的项目。可以放宽关键词，或重置筛选后再试。
+        </p>
       </section>
 
       <footer className="footer">
