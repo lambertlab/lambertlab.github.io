@@ -262,7 +262,12 @@
     var seen = {};
     var tags = [];
     rawTags.forEach(function (item) {
-      var tag = toText(item).toLowerCase();
+      var tag = toText(item);
+      if (!tag && item && typeof item === "object") {
+        tag = toText(item.name) || toText(item.label) || toText(item.tag) || toText(item.slug) || toText(item.value);
+      }
+
+      tag = tag.toLowerCase();
       if (!tag || seen[tag]) {
         return;
       }
@@ -1208,33 +1213,29 @@
     setFetchStatus(getUiText("\u76ee\u5f55\u52a0\u8f7d\u6210\u529f\u3002", "Catalog loaded successfully."));
   }
 
-  function buildProjectsEndpoint() {
+  function buildProjectsEndpoint(pathname) {
     var runtimeConfig = window.__APP_CONFIG__ || {};
     var configuredBase = typeof runtimeConfig.API_BASE === "string" ? runtimeConfig.API_BASE.trim() : "";
     var origin = (window.location && window.location.origin) || "";
+    var normalizedPathname = pathname || "/projects";
 
     if (!configuredBase) {
-      return origin + "/projects";
+      return origin + normalizedPathname;
     }
     if (/^https?:\/\//i.test(configuredBase)) {
-      return configuredBase.replace(/\/+$/, "") + "/projects";
+      return configuredBase.replace(/\/+$/, "") + normalizedPathname;
     }
     if (configuredBase.charAt(0) === "/") {
-      return origin + configuredBase.replace(/\/+$/, "") + "/projects";
+      return origin + configuredBase.replace(/\/+$/, "") + normalizedPathname;
     }
-    return origin + "/projects";
+    return origin + normalizedPathname;
   }
 
   function buildRequestUrl(state) {
-    var endpoint = buildProjectsEndpoint();
+    var pathname = state.featured ? "/projects/featured" : "/projects";
+    var endpoint = buildProjectsEndpoint(pathname);
     var params = new URLSearchParams();
     params.set("limit", "200");
-    params.set("include_inactive", "true");
-    params.set("include_archived", "true");
-
-    if (state.featured) {
-      params.set("featured_only", "true");
-    }
 
     return endpoint + "?" + params.toString();
   }
@@ -1448,6 +1449,7 @@
   writeStateToUrl(initialState);
   fetchProjects(initialState);
 })();
+
 
 
 

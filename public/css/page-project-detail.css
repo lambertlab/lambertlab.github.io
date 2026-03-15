@@ -225,6 +225,36 @@
   color: #334155;
   line-height: 1.7;
 }
+.project-detail-repository-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.project-detail-repository-list li {
+  color: #334155;
+  line-height: 1.6;
+}
+
+.project-detail-repository-list a {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+.project-detail-repository-list a:hover {
+  text-decoration: underline;
+}
+
+.project-detail-repository-meta {
+  display: inline-block;
+  margin-left: 8px;
+  color: #64748b;
+  font-family: var(--ll-font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
 .project-detail-loading,
 .project-detail-message {
@@ -282,3 +312,4 @@
     width: 100%;
   }
 }
+
