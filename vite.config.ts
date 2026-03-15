@@ -1,4 +1,4 @@
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+﻿import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import { defineConfig } from 'vite'
 import tsConfigPaths from 'vite-tsconfig-paths'
 import viteReact from '@vitejs/plugin-react'
@@ -11,6 +11,10 @@ const prerenderPages = [
   '/about/index.html',
   '/contact/',
   '/contact/index.html',
+  '/admin/',
+  '/admin/index.html',
+  '/admin/projects/',
+  '/admin/projects/index.html',
   '/projects/',
   '/projects/index.html',
   '/projects/personal-toolbox/',
@@ -52,3 +56,4 @@ export default defineConfig({
     nitro(),
   ],
 })
+
