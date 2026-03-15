@@ -1,14 +1,14 @@
 ﻿import { createFileRoute } from '@tanstack/react-router'
-import { AdminOverviewConsolePage } from '~/components/admin/projects/AdminOverviewConsolePage'
+import { AdminSyncConsolePage } from '~/components/admin/projects/AdminSyncConsolePage'
 import { buildAdminProjectsHead } from '~/components/admin/projects/adminProjectsHead'
 import { useAdminCompatPathNormalization } from '~/lib/adminCompatPathNormalization'
 
-export const Route = createFileRoute('/admin/index.html')({
+export const Route = createFileRoute('/admin/sync/index.html')({
   head: () => buildAdminProjectsHead(),
-  component: AdminEntryHtmlRoutePage,
+  component: AdminSyncHtmlRoutePage,
 })
 
-function AdminEntryHtmlRoutePage() {
+function AdminSyncHtmlRoutePage() {
   useAdminCompatPathNormalization()
-  return <AdminOverviewConsolePage />
+  return <AdminSyncConsolePage />
 }

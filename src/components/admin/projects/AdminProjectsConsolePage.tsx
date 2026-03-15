@@ -145,6 +145,7 @@ function errorMessage(error: unknown): { code: AdminProjectErrorCode; message: s
     if (error.code === 'invalid_visibility') return { code: error.code, message: 'visibility 不合法，请按协议填写。' }
     if (error.code === 'repository_conflict') return { code: error.code, message: '仓库绑定冲突，请检查后重试。' }
     if (error.code === 'sync_failed') return { code: error.code, message: '同步失败，请稍后重试。' }
+    if (error.code === 'sync_rate_limited') return { code: error.code, message: 'GitHub 配额限流，请稍后再试。' }
     if (error.code === 'invalid_link_type') return { code: error.code, message: '链接类型不合法，请检查后重试。' }
     if (toText(error.message)) return { code: error.code, message: toText(error.message) }
   }
@@ -438,13 +439,16 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     <main className="admin-projects-shell" id="main-content">
       <section className="admin-projects-hero">
         <div>
-          <p className="admin-projects-kicker">Control Center · Phase 1</p>
-          <h1>{t('Projects 后台管理 MVP', 'Projects Admin MVP')}</h1>
-          <p>{t('覆盖 token 门禁、列表筛选分页、编辑与同步。', 'Token gate, list filters, edit and sync.')}</p>
+          <p className="admin-projects-kicker">Control Center · Phase 2</p>
+          <h1>{t('Projects 后台管理', 'Projects Admin')}</h1>
+          <p>{t('覆盖 token 门禁、列表筛选分页、编辑与同步，并联动二期模块导航。', 'Token gate, list filters, edit and sync with phase-2 module navigation.')}</p>
         </div>
         <nav className="admin-projects-tabs" aria-label="admin nav">
-          <Link to="/admin" className={mode === 'overview' ? 'is-active' : ''}>/admin</Link>
+          <Link to="/admin/overview" className={mode === 'overview' ? 'is-active' : ''}>/admin/overview</Link>
           <Link to="/admin/projects" search={DEFAULT_ADMIN_PROJECTS_SEARCH_STATE} className={mode === 'projects' ? 'is-active' : ''}>/admin/projects</Link>
+          <Link to="/admin/sync">/admin/sync</Link>
+          <Link to="/admin/logs">/admin/logs</Link>
+          <Link to="/admin/status">/admin/status</Link>
         </nav>
       </section>
 
@@ -587,5 +591,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     </main>
   )
 }
+
+
 
 

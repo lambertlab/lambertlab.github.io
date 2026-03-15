@@ -1,5 +1,5 @@
 ﻿import { createFileRoute } from '@tanstack/react-router'
-import { AdminProjectsConsolePage } from '~/components/admin/projects/AdminProjectsConsolePage'
+import { AdminOverviewConsolePage } from '~/components/admin/projects/AdminOverviewConsolePage'
 import { buildAdminProjectsHead } from '~/components/admin/projects/adminProjectsHead'
 
 export const Route = createFileRoute('/admin/')({
@@ -8,5 +8,5 @@ export const Route = createFileRoute('/admin/')({
 })
 
 function AdminEntryRoutePage() {
-  return <AdminProjectsConsolePage mode="overview" />
+  return <AdminOverviewConsolePage />
 }

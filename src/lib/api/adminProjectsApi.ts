@@ -1,5 +1,6 @@
 ﻿export type AdminProjectErrorCode =
   | 'unauthorized'
+  | 'validation_failed'
   | 'project_not_found'
   | 'project_slug_conflict'
   | 'invalid_stage'
@@ -7,7 +8,11 @@
   | 'invalid_visibility'
   | 'invalid_link_type'
   | 'repository_conflict'
+  | 'sync_job_not_found'
+  | 'sync_job_state_invalid'
+  | 'sync_rate_limited'
   | 'sync_failed'
+  | 'internal_error'
   | 'unknown'
 
 export interface AdminProjectRecord {
@@ -60,6 +65,108 @@ export interface AdminProjectUpdateInput {
   accent?: string | null
 }
 
+export interface AdminOverviewFailure {
+  job_id: string
+  project_id: string | null
+  project_name: string
+  reason: string
+  failed_at: string | null
+}
+
+export interface AdminOverviewSummary {
+  projects_total: number
+  projects_public: number
+  projects_draft: number
+  sync_recent_success: number
+  sync_recent_failed: number
+  latest_failures: AdminOverviewFailure[]
+}
+
+export interface CreateAdminSyncJobInput {
+  mode: 'project' | 'github_user'
+  project_id?: string | number | bigint
+  github_username?: string
+}
+
+export interface CreateAdminSyncJobResult {
+  job_id: string
+  state: string
+  created_at: string | null
+}
+
+export interface AdminSyncJobRecord {
+  job_id: string
+  state: string
+  mode: string
+  project_id: string | null
+  github_username: string | null
+  created_at: string | null
+  updated_at: string | null
+  finished_at: string | null
+  error_code: string | null
+  error_message: string | null
+}
+
+export interface AdminSyncJobStep {
+  name: string
+  state: string
+  message: string
+  at: string | null
+}
+
+export interface AdminSyncJobDetail extends AdminSyncJobRecord {
+  steps: AdminSyncJobStep[]
+  error_details: unknown
+}
+
+export interface AdminSyncJobsQuery {
+  state?: string
+  mode?: string
+  page?: number
+  page_size?: number
+}
+
+export interface AdminSyncJobsListResult {
+  jobs: AdminSyncJobRecord[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface AdminLogsQuery {
+  project_id?: string
+  action?: string
+  from?: string
+  to?: string
+  page?: number
+  page_size?: number
+}
+
+export interface AdminLogRecord {
+  id: string
+  created_at: string | null
+  action: string
+  project_id: string | null
+  project_name: string
+  result: string
+  operator_source: string
+  message: string
+}
+
+export interface AdminLogsListResult {
+  logs: AdminLogRecord[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface AdminStatusSummary {
+  backend_health: string
+  db_health: string
+  github_health: string
+  github_rate_remaining: number | null
+}
+
 export class AdminProjectsApiError extends Error {
   status?: number
   code: AdminProjectErrorCode
@@ -93,7 +200,6 @@ function toIdentifierText(value: unknown): string {
 
   return ''
 }
-
 
 function toNullableText(value: unknown): string | null {
   const text = toText(value)
@@ -132,6 +238,15 @@ function toPositiveInteger(value: unknown, fallback: number): number {
   return Math.max(1, Math.round(parsed))
 }
 
+function toNonNegativeInteger(value: unknown, fallback: number): number {
+  const parsed = toFiniteNumber(value)
+  if (parsed === null || parsed < 0) {
+    return fallback
+  }
+
+  return Math.max(0, Math.round(parsed))
+}
+
 function toBoolean(value: unknown): boolean {
   if (typeof value === 'boolean') {
     return value
@@ -149,10 +264,15 @@ function toBoolean(value: unknown): boolean {
   return false
 }
 
+function toArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : []
+}
+
 function normalizeErrorCode(value: unknown): AdminProjectErrorCode {
   const code = toText(value).toLowerCase()
   if (
     code === 'unauthorized' ||
+    code === 'validation_failed' ||
     code === 'project_not_found' ||
     code === 'project_slug_conflict' ||
     code === 'invalid_stage' ||
@@ -160,7 +280,11 @@ function normalizeErrorCode(value: unknown): AdminProjectErrorCode {
     code === 'invalid_visibility' ||
     code === 'invalid_link_type' ||
     code === 'repository_conflict' ||
-    code === 'sync_failed'
+    code === 'sync_job_not_found' ||
+    code === 'sync_job_state_invalid' ||
+    code === 'sync_rate_limited' ||
+    code === 'sync_failed' ||
+    code === 'internal_error'
   ) {
     return code
   }
@@ -227,6 +351,7 @@ function normalizeProjectsList(value: unknown): AdminProjectsListResult {
   const projects = rawProjects
     .map((entry) => normalizeProjectRecord(entry))
     .filter((entry): entry is AdminProjectRecord => Boolean(entry))
+
   const pagination = toRecord(payload?.pagination)
   const total = toPositiveInteger(payload?.total ?? payload?.count ?? pagination?.total ?? projects.length, projects.length)
   const page = toPositiveInteger(payload?.page ?? pagination?.page ?? 1, 1)
@@ -253,6 +378,231 @@ function normalizeProjectDetail(value: unknown): AdminProjectRecord {
   }
 
   return project
+}
+
+function normalizeOverviewFailure(value: unknown): AdminOverviewFailure | null {
+  const payload = toRecord(value)
+  if (!payload) {
+    return null
+  }
+
+  const jobId = toIdentifierText(payload.job_id) || toIdentifierText(payload.id)
+  const projectId = toIdentifierText(payload.project_id) || null
+  const projectName = toText(payload.project_name) || toText(payload.project_slug) || toText(payload.project)
+  const reason = toText(payload.reason) || toText(payload.error_message) || toText(payload.message)
+  const failedAt = toNullableText(payload.failed_at) || toNullableText(payload.timestamp) || toNullableText(payload.created_at)
+
+  if (!jobId && !projectName && !reason && !failedAt) {
+    return null
+  }
+
+  return {
+    job_id: jobId || '--',
+    project_id: projectId,
+    project_name: projectName,
+    reason,
+    failed_at: failedAt,
+  }
+}
+
+function normalizeOverviewSummary(value: unknown): AdminOverviewSummary {
+  const payload = toRecord(value)
+  const failuresRaw = toArray(payload?.latest_failures ?? payload?.failures)
+
+  return {
+    projects_total: toNonNegativeInteger(payload?.projects_total, 0),
+    projects_public: toNonNegativeInteger(payload?.projects_public, 0),
+    projects_draft: toNonNegativeInteger(payload?.projects_draft, 0),
+    sync_recent_success: toNonNegativeInteger(payload?.sync_recent_success, 0),
+    sync_recent_failed: toNonNegativeInteger(payload?.sync_recent_failed, 0),
+    latest_failures: failuresRaw
+      .map((entry) => normalizeOverviewFailure(entry))
+      .filter((entry): entry is AdminOverviewFailure => Boolean(entry)),
+  }
+}
+
+function normalizeSyncJobRecord(value: unknown): AdminSyncJobRecord | null {
+  const payload = toRecord(value)
+  if (!payload) {
+    return null
+  }
+
+  const jobId = toIdentifierText(payload.job_id) || toIdentifierText(payload.id)
+  if (!jobId) {
+    return null
+  }
+
+  return {
+    job_id: jobId,
+    state: toText(payload.state).toLowerCase() || toText(payload.status).toLowerCase() || 'unknown',
+    mode: toText(payload.mode).toLowerCase() || 'unknown',
+    project_id: toIdentifierText(payload.project_id) || null,
+    github_username: toNullableText(payload.github_username),
+    created_at: toNullableText(payload.created_at),
+    updated_at: toNullableText(payload.updated_at),
+    finished_at: toNullableText(payload.finished_at) || toNullableText(payload.completed_at),
+    error_code: toNullableText(payload.error_code),
+    error_message: toNullableText(payload.error_message),
+  }
+}
+
+function normalizeSyncJobsList(value: unknown): AdminSyncJobsListResult {
+  const payload = toRecord(value)
+  const rawJobs =
+    (Array.isArray(value) ? value : null) ??
+    (Array.isArray(payload?.jobs) ? payload?.jobs : null) ??
+    (Array.isArray(payload?.items) ? payload?.items : null) ??
+    []
+
+  const jobs = rawJobs
+    .map((entry) => normalizeSyncJobRecord(entry))
+    .filter((entry): entry is AdminSyncJobRecord => Boolean(entry))
+
+  const pagination = toRecord(payload?.pagination)
+  const total = toPositiveInteger(payload?.total ?? payload?.count ?? pagination?.total ?? jobs.length, jobs.length)
+  const page = toPositiveInteger(payload?.page ?? pagination?.page ?? 1, 1)
+  const rawPageSize = payload?.page_size ?? payload?.pageSize ?? pagination?.page_size ?? 20
+  const pageSize = toPositiveInteger(rawPageSize, 20)
+
+  return {
+    jobs,
+    total,
+    page,
+    page_size: pageSize,
+  }
+}
+
+function normalizeSyncJobStep(value: unknown): AdminSyncJobStep | null {
+  const payload = toRecord(value)
+  if (!payload) {
+    return null
+  }
+
+  const name = toText(payload.name) || toText(payload.step) || toText(payload.action)
+  const state = toText(payload.state).toLowerCase() || toText(payload.status).toLowerCase()
+  const message = toText(payload.message) || toText(payload.detail)
+  const at = toNullableText(payload.at) || toNullableText(payload.timestamp) || toNullableText(payload.created_at)
+
+  if (!name && !state && !message && !at) {
+    return null
+  }
+
+  return {
+    name: name || 'step',
+    state: state || 'unknown',
+    message,
+    at,
+  }
+}
+
+function normalizeSyncJobDetail(value: unknown): AdminSyncJobDetail {
+  const payload = toRecord(value)
+  const base =
+    normalizeSyncJobRecord(payload?.job) ??
+    normalizeSyncJobRecord(payload?.item) ??
+    normalizeSyncJobRecord(payload)
+
+  if (!base) {
+    throw new AdminProjectsApiError('Sync job detail payload is invalid.')
+  }
+
+  const rawSteps = toArray(payload?.steps ?? payload?.logs ?? payload?.events)
+  const steps = rawSteps
+    .map((entry) => normalizeSyncJobStep(entry))
+    .filter((entry): entry is AdminSyncJobStep => Boolean(entry))
+
+  return {
+    ...base,
+    steps,
+    error_details: payload?.error_details ?? payload?.details ?? null,
+  }
+}
+
+function normalizeCreateSyncJobResult(value: unknown): CreateAdminSyncJobResult {
+  const payload = toRecord(value)
+  const record = normalizeSyncJobRecord(payload)
+  const jobId = toIdentifierText(payload?.job_id) || record?.job_id
+
+  if (!jobId) {
+    throw new AdminProjectsApiError('Sync job create payload is invalid.')
+  }
+
+  return {
+    job_id: jobId,
+    state: toText(payload?.state) || record?.state || 'queued',
+    created_at: toNullableText(payload?.created_at) || record?.created_at || null,
+  }
+}
+
+function normalizeLogRecord(value: unknown): AdminLogRecord | null {
+  const payload = toRecord(value)
+  if (!payload) {
+    return null
+  }
+
+  const createdAt = toNullableText(payload.created_at) || toNullableText(payload.timestamp) || toNullableText(payload.at)
+  const action = toText(payload.action)
+  const projectId = toIdentifierText(payload.project_id) || null
+  const projectName = toText(payload.project_name) || toText(payload.project_slug) || ''
+  const result = toText(payload.result) || toText(payload.status)
+  const operatorSource = toText(payload.operator_source) || toText(payload.source) || toText(payload.operator)
+  const message = toText(payload.message) || toText(payload.detail)
+  const id =
+    toIdentifierText(payload.id) ||
+    toIdentifierText(payload.log_id) ||
+    [createdAt || 'log', action || 'unknown', projectId || 'na'].join(':')
+
+  if (!createdAt && !action && !projectId && !message && !result) {
+    return null
+  }
+
+  return {
+    id,
+    created_at: createdAt,
+    action,
+    project_id: projectId,
+    project_name: projectName,
+    result,
+    operator_source: operatorSource,
+    message,
+  }
+}
+
+function normalizeLogsList(value: unknown): AdminLogsListResult {
+  const payload = toRecord(value)
+  const rawLogs =
+    (Array.isArray(value) ? value : null) ??
+    (Array.isArray(payload?.logs) ? payload?.logs : null) ??
+    (Array.isArray(payload?.items) ? payload?.items : null) ??
+    []
+
+  const logs = rawLogs
+    .map((entry) => normalizeLogRecord(entry))
+    .filter((entry): entry is AdminLogRecord => Boolean(entry))
+
+  const pagination = toRecord(payload?.pagination)
+  const total = toPositiveInteger(payload?.total ?? payload?.count ?? pagination?.total ?? logs.length, logs.length)
+  const page = toPositiveInteger(payload?.page ?? pagination?.page ?? 1, 1)
+  const rawPageSize = payload?.page_size ?? payload?.pageSize ?? pagination?.page_size ?? 20
+  const pageSize = toPositiveInteger(rawPageSize, 20)
+
+  return {
+    logs,
+    total,
+    page,
+    page_size: pageSize,
+  }
+}
+
+function normalizeStatusSummary(value: unknown): AdminStatusSummary {
+  const payload = toRecord(value)
+
+  return {
+    backend_health: toText(payload?.backend_health) || 'unknown',
+    db_health: toText(payload?.db_health) || 'unknown',
+    github_health: toText(payload?.github_health) || 'unknown',
+    github_rate_remaining: toFiniteNumber(payload?.github_rate_remaining ?? payload?.github_rate_limit_remaining),
+  }
 }
 
 function getRuntimeConfig(): { API_BASE?: string; REQUEST_TIMEOUT_MS?: number } | undefined {
@@ -287,7 +637,7 @@ function getTimeoutMs(): number {
   return 4000
 }
 
-function buildAdminUrl(pathname: string, query?: AdminProjectsQuery): string {
+function buildAdminUrl(pathname: string, query?: object): string {
   const base = `${getRuntimeApiBase()}${pathname}`
   if (!query) {
     return base
@@ -295,20 +645,34 @@ function buildAdminUrl(pathname: string, query?: AdminProjectsQuery): string {
 
   const searchParams = new URLSearchParams()
 
-  if (toText(query.q)) {
-    searchParams.set('q', toText(query.q))
-  }
-  if (toText(query.stage)) {
-    searchParams.set('stage', toText(query.stage))
-  }
-  if (toText(query.visibility)) {
-    searchParams.set('visibility', toText(query.visibility))
-  }
-  if (typeof query.page === 'number' && Number.isFinite(query.page) && query.page > 0) {
-    searchParams.set('page', String(Math.round(query.page)))
-  }
-  if (typeof query.page_size === 'number' && Number.isFinite(query.page_size) && query.page_size > 0) {
-    searchParams.set('page_size', String(Math.round(query.page_size)))
+  for (const [key, rawValue] of Object.entries(query as Record<string, unknown>)) {
+    if (rawValue === undefined || rawValue === null) {
+      continue
+    }
+
+    if (typeof rawValue === 'string') {
+      const text = rawValue.trim()
+      if (text) {
+        searchParams.set(key, text)
+      }
+      continue
+    }
+
+    if (typeof rawValue === 'number') {
+      if (Number.isFinite(rawValue)) {
+        searchParams.set(key, String(rawValue))
+      }
+      continue
+    }
+
+    if (typeof rawValue === 'boolean') {
+      searchParams.set(key, rawValue ? 'true' : 'false')
+      continue
+    }
+
+    if (typeof rawValue === 'bigint') {
+      searchParams.set(key, rawValue.toString())
+    }
   }
 
   const suffix = searchParams.toString()
@@ -363,7 +727,7 @@ async function requestJson<T>(
     method?: 'GET' | 'POST' | 'PATCH' | 'PUT'
     body?: Record<string, unknown>
     signal?: AbortSignal
-    query?: AdminProjectsQuery
+    query?: object
   },
 ): Promise<T> {
   const timeoutMs = getTimeoutMs()
@@ -525,6 +889,114 @@ export async function syncAdminProjectRepositories(token: string, projectId: str
   return normalizeProjectDetail(payload)
 }
 
+export async function fetchAdminOverview(token: string, signal?: AbortSignal): Promise<AdminOverviewSummary> {
+  const payload = await requestJson<unknown>('/admin/overview', {
+    token: toText(token),
+    method: 'GET',
+    signal,
+  })
 
+  return normalizeOverviewSummary(payload)
+}
 
+export async function createAdminSyncJob(
+  token: string,
+  input: CreateAdminSyncJobInput,
+  signal?: AbortSignal,
+): Promise<CreateAdminSyncJobResult> {
+  const mode = toText(input.mode).toLowerCase()
+  if (mode !== 'project' && mode !== 'github_user') {
+    throw new AdminProjectsApiError('Sync mode is invalid.', { code: 'validation_failed' })
+  }
 
+  const body: Record<string, unknown> = { mode }
+
+  if (mode === 'project') {
+    const projectId = toIdentifierText(input.project_id)
+    if (!projectId) {
+      throw new AdminProjectsApiError('Project id is required for project mode.', { code: 'validation_failed' })
+    }
+    body.project_id = projectId
+  } else {
+    const githubUsername = toText(input.github_username)
+    if (!githubUsername) {
+      throw new AdminProjectsApiError('github_username is required for github_user mode.', { code: 'validation_failed' })
+    }
+    body.github_username = githubUsername
+  }
+
+  const payload = await requestJson<unknown>('/admin/sync/jobs', {
+    token: toText(token),
+    method: 'POST',
+    body,
+    signal,
+  })
+
+  return normalizeCreateSyncJobResult(payload)
+}
+
+export async function fetchAdminSyncJobs(
+  token: string,
+  query?: AdminSyncJobsQuery,
+  signal?: AbortSignal,
+): Promise<AdminSyncJobsListResult> {
+  const payload = await requestJson<unknown>('/admin/sync/jobs', {
+    token: toText(token),
+    method: 'GET',
+    query,
+    signal,
+  })
+
+  return normalizeSyncJobsList(payload)
+}
+
+export async function fetchAdminSyncJobById(token: string, jobId: string, signal?: AbortSignal): Promise<AdminSyncJobDetail> {
+  const normalizedJobId = toIdentifierText(jobId)
+  if (!normalizedJobId) {
+    throw new AdminProjectsApiError('Job id is required.', { code: 'validation_failed' })
+  }
+
+  const payload = await requestJson<unknown>(`/admin/sync/jobs/${encodeURIComponent(normalizedJobId)}`, {
+    token: toText(token),
+    method: 'GET',
+    signal,
+  })
+
+  return normalizeSyncJobDetail(payload)
+}
+
+export async function retryAdminSyncJob(token: string, jobId: string, signal?: AbortSignal): Promise<AdminSyncJobDetail> {
+  const normalizedJobId = toIdentifierText(jobId)
+  if (!normalizedJobId) {
+    throw new AdminProjectsApiError('Job id is required.', { code: 'validation_failed' })
+  }
+
+  const payload = await requestJson<unknown>(`/admin/sync/jobs/${encodeURIComponent(normalizedJobId)}/retry`, {
+    token: toText(token),
+    method: 'POST',
+    signal,
+  })
+
+  return normalizeSyncJobDetail(payload)
+}
+
+export async function fetchAdminLogs(token: string, query?: AdminLogsQuery, signal?: AbortSignal): Promise<AdminLogsListResult> {
+  const payload = await requestJson<unknown>('/admin/logs', {
+    token: toText(token),
+    method: 'GET',
+    query,
+    signal,
+  })
+
+  return normalizeLogsList(payload)
+}
+
+export async function fetchAdminStatus(token: string, signal?: AbortSignal): Promise<AdminStatusSummary> {
+  const payload = await requestJson<unknown>('/admin/status', {
+    token: toText(token),
+    method: 'GET',
+    signal,
+  })
+
+  return normalizeStatusSummary(payload)
+}

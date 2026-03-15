@@ -4,14 +4,14 @@ export function buildAdminProjectsHead(locale: UiLocale = 'zh-CN') {
   return {
     meta: [
       {
-        title: locale === 'zh-CN' ? 'Control Center · Projects 管理 | lambertlab' : 'Control Center · Projects Admin | lambertlab',
+        title: locale === 'zh-CN' ? 'Control Center · 管理控制台 | lambertlab' : 'Control Center · Admin Console | lambertlab',
       },
       {
         name: 'description',
         content:
           locale === 'zh-CN'
-            ? 'Control Center 一期 Projects 后台管理：token 门禁、列表筛选分页、编辑保存与仓库同步。'
-            : 'Control Center phase-1 Projects admin with token gate, list filtering, edit save, and repository sync.',
+            ? 'Control Center 二期：概览、项目管理、同步中心、操作日志与系统状态。'
+            : 'Control Center phase-2 console: overview, projects, sync center, logs, and status.',
       },
     ],
     links: [

@@ -3,12 +3,12 @@ import { AdminOverviewConsolePage } from '~/components/admin/projects/AdminOverv
 import { buildAdminProjectsHead } from '~/components/admin/projects/adminProjectsHead'
 import { useAdminCompatPathNormalization } from '~/lib/adminCompatPathNormalization'
 
-export const Route = createFileRoute('/admin/index.html')({
+export const Route = createFileRoute('/admin/overview/index.html')({
   head: () => buildAdminProjectsHead(),
-  component: AdminEntryHtmlRoutePage,
+  component: AdminOverviewHtmlRoutePage,
 })
 
-function AdminEntryHtmlRoutePage() {
+function AdminOverviewHtmlRoutePage() {
   useAdminCompatPathNormalization()
   return <AdminOverviewConsolePage />
 }
