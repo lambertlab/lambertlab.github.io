@@ -6,6 +6,7 @@ import {
   type AdminProjectRecord,
   type CreateAdminProjectInput,
   createAdminProject,
+  deleteAdminProjectById,
   fetchAdminProjectById,
   fetchAdminProjects,
   syncAdminProjectRepositories,
@@ -322,6 +323,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
   const [saveState, setSaveState] = React.useState<OperationState>({ status: 'idle', message: '' })
   const [syncState, setSyncState] = React.useState<OperationState>({ status: 'idle', message: '' })
+  const [deleteState, setDeleteState] = React.useState<OperationState>({ status: 'idle', message: '' })
   const [createForm, setCreateForm] = React.useState<CreateFormState>(DEFAULT_CREATE_FORM)
   const [createState, setCreateState] = React.useState<OperationState>({ status: 'idle', message: '' })
 
@@ -344,6 +346,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       setForm(null)
       setSaveState({ status: 'idle', message: '' })
       setSyncState({ status: 'idle', message: '' })
+      setDeleteState({ status: 'idle', message: '' })
       setCreateState({ status: 'idle', message: '' })
       setCreateForm(DEFAULT_CREATE_FORM)
       if (mode === 'projects') {
@@ -667,6 +670,48 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     }
   }, [invalidate, selectedId, t, token])
 
+  const deleteProject = React.useCallback(async () => {
+    if (!token || !selectedId || !detailProject) return
+
+    const projectName = detailProject.name || detailProject.slug || detailProject.id
+    const confirmed = typeof window === 'undefined' || window.confirm(
+      t(`确认删除项目「${projectName}」？此操作不可撤销。`, `Delete project "${projectName}"? This cannot be undone.`),
+    )
+    if (!confirmed) return
+
+    setDeleteState({ status: 'running', message: t('正在删除项目...', 'Deleting project...') })
+    try {
+      await deleteAdminProjectById(token, selectedId)
+      const remainingProjects = projects.filter((item) => item.id !== selectedId)
+
+      setProjects(remainingProjects)
+      setBackendTotal((prev) => Math.max(0, prev - 1))
+      setSaveState({ status: 'idle', message: '' })
+      setSyncState({ status: 'idle', message: '' })
+      setDetailProject(null)
+      setForm(null)
+      setDetailMessage('')
+      setDetailStatus('idle')
+      setDeleteState({ status: 'success', message: t(`已删除：${projectName}`, `Deleted: ${projectName}`) })
+
+      if (remainingProjects.length === 0) {
+        setListStatus('empty')
+        patchSearch({ projectId: '', page: 1 })
+        return
+      }
+
+      setListStatus('ready')
+      patchSearch({ projectId: remainingProjects[0].id, page: 1 })
+    } catch (error) {
+      const mapped = errorMessage(error)
+      if (mapped.code === 'unauthorized') {
+        invalidate(mapped.message)
+        return
+      }
+      setDeleteState({ status: 'error', message: mapped.message })
+    }
+  }, [detailProject, invalidate, patchSearch, projects, selectedId, t, token])
+
   const ready = authStatus === 'ready'
 
   const resetFilters = () => {
@@ -853,11 +898,13 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
                 <label className="admin-checkbox-row"><input type="checkbox" checked={form.is_featured} onChange={(event) => setForm((prev) => (prev ? { ...prev, is_featured: event.target.checked } : prev))} /><span>is_featured</span></label>
                 <div className="admin-editor-actions">
-                  <button className="admin-primary-button" type="submit" disabled={saveState.status === 'running' || syncState.status === 'running'}>{saveState.status === 'running' ? t('Saving...', 'Saving...') : t('Save', 'Save')}</button>
-                  <button className="admin-secondary-button" type="button" disabled={saveState.status === 'running' || syncState.status === 'running'} onClick={() => void syncProject()}>{syncState.status === 'running' ? t('Syncing...', 'Syncing...') : t('Sync Repositories', 'Sync Repositories')}</button>
+                  <button className="admin-primary-button" type="submit" disabled={saveState.status === 'running' || syncState.status === 'running' || deleteState.status === 'running'}>{saveState.status === 'running' ? t('Saving...', 'Saving...') : t('Save', 'Save')}</button>
+                  <button className="admin-secondary-button" type="button" disabled={saveState.status === 'running' || syncState.status === 'running' || deleteState.status === 'running'} onClick={() => void syncProject()}>{syncState.status === 'running' ? t('Syncing...', 'Syncing...') : t('Sync Repositories', 'Sync Repositories')}</button>
+                  <button className="admin-danger-button" type="button" disabled={saveState.status === 'running' || syncState.status === 'running' || deleteState.status === 'running'} onClick={() => void deleteProject()}>{deleteState.status === 'running' ? t('\u5220\u9664\u4e2d...', 'Deleting...') : t('\u5220\u9664\u9879\u76ee', 'Delete Project')}</button>
                 </div>
                 {saveState.status !== 'idle' && saveState.message ? <p className="admin-feedback" data-tone={saveState.status === 'success' ? 'success' : saveState.status === 'error' ? 'error' : 'info'}>{saveState.message}</p> : null}
                 {syncState.status !== 'idle' && syncState.message ? <p className="admin-feedback" data-tone={syncState.status === 'success' ? 'success' : syncState.status === 'error' ? 'error' : 'info'}>{syncState.message}</p> : null}
+                {deleteState.status !== 'idle' && deleteState.message ? <p className="admin-feedback" data-tone={deleteState.status === 'success' ? 'success' : deleteState.status === 'error' ? 'error' : 'info'}>{deleteState.message}</p> : null}
                 <p className="admin-detail-meta">{t('Synced: ', 'Synced: ')} {formatTime(detailProject.synced_at)}</p>
                 <p className="admin-detail-meta">{t('Updated: ', 'Updated: ')} {formatTime(detailProject.updated_at)}</p>
               </form>

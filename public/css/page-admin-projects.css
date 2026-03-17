@@ -157,7 +157,8 @@
 }
 
 .admin-primary-button,
-.admin-secondary-button {
+.admin-secondary-button,
+.admin-danger-button {
   min-height: 38px;
   border-radius: 999px;
   border: 1px solid var(--admin-line);
@@ -193,8 +194,21 @@
   color: var(--admin-brand);
 }
 
+.admin-danger-button {
+  border-color: var(--admin-danger);
+  color: var(--admin-danger);
+  background: #fff5f5;
+}
+
+.admin-danger-button:hover {
+  border-color: var(--admin-danger);
+  background: var(--admin-danger);
+  color: #fff;
+}
+
 .admin-primary-button:disabled,
-.admin-secondary-button:disabled {
+.admin-secondary-button:disabled,
+.admin-danger-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

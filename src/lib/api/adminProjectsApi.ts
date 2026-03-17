@@ -751,7 +751,7 @@ function mapUnauthorized(status: number | undefined, code: AdminProjectErrorCode
   return code
 }
 
-type AdminRequestMethod = 'GET' | 'POST' | 'PATCH' | 'PUT'
+type AdminRequestMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 type AdminRequestFailurePhase = 'main_request' | 'main_response_parse' | 'preflight_or_network' | 'timeout' | 'unknown'
 
 interface AdminRequestFailureDetails {
@@ -863,7 +863,7 @@ async function requestJson<T>(
   pathname: string,
   options: {
     token: string
-    method?: 'GET' | 'POST' | 'PATCH' | 'PUT'
+    method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'
     body?: Record<string, unknown>
     signal?: AbortSignal
     query?: object
@@ -1088,6 +1088,19 @@ export async function updateAdminProjectById(
   })
 
   return normalizeProjectDetail(payload)
+}
+
+export async function deleteAdminProjectById(token: string, projectId: string, signal?: AbortSignal): Promise<void> {
+  const normalizedProjectId = toIdentifierText(projectId)
+  if (!normalizedProjectId) {
+    throw new AdminProjectsApiError('Project id is required.')
+  }
+
+  await requestJson(`/admin/projects/${encodeURIComponent(normalizedProjectId)}`, {
+    token: toText(token),
+    method: 'DELETE',
+    signal,
+  })
 }
 
 export async function createAdminProject(
