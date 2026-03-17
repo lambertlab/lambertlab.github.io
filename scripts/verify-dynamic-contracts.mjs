@@ -7,6 +7,10 @@ import { createGateCollector } from './gate-layering.mjs'
 const outputRoot = path.resolve('.output/public')
 const preferredPort = 4202
 
+const homeRoutes = { canonical: '/', compat: '/index.html' }
+const projectsCatalogRoutes = { canonical: '/projects/', compat: '/projects/index.html' }
+const projectDetailRoutes = { canonical: '/projects/personal-toolbox/', compat: '/projects/personal-toolbox/index.html' }
+
 function ensure(condition, message) {
   if (!condition) {
     throw new Error(message)
@@ -376,7 +380,7 @@ async function newContext(browser, state) {
   return context
 }
 
-async function testHomeFeaturedContracts(browser, baseUrl) {
+async function testHomeFeaturedCanonicalContracts(browser, baseUrl) {
   const context = await newContext(browser, {
     featuredMode: 'success',
     listMode: 'success',
@@ -386,7 +390,7 @@ async function testHomeFeaturedContracts(browser, baseUrl) {
 
   try {
     const page = await context.newPage()
-    await page.goto(`${baseUrl}/index.html`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${baseUrl}${homeRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('[data-home-featured-slot="0"][aria-busy="true"]', { timeout: 5000 })
     await page.waitForSelector('[data-home-featured-slot="0"][data-featured-state="ready"]', { timeout: 5000 })
 
@@ -396,7 +400,6 @@ async function testHomeFeaturedContracts(browser, baseUrl) {
     await context.close()
   }
 }
-
 async function readProjectsCatalogDebugState(page) {
   return await page.evaluate(() => {
     const readHidden = (selector) => {
@@ -420,10 +423,7 @@ async function readProjectsCatalogDebugState(page) {
       emptyHidden: readHidden('[data-empty-state]'),
       errorHidden: readHidden('[data-error-state]'),
       cards: document.querySelectorAll('.project-card').length,
-      hasProjectsRuntime: Boolean(window.__LL_PROJECTS_RUNTIME__),
-      hasProjectsCatalogBootstrapped: Boolean(window.__LL_PROJECTS_CATALOG_BOOTSTRAPPED__),
-      hasProjectsRuntimeScript: Boolean(document.querySelector('script[src="/js/projects-runtime.js"]')),
-      hasProjectsCatalogScript: Boolean(document.querySelector('script[src="/js/projects-catalog.js"]')),
+
       hasProjectSearchInput: Boolean(document.getElementById('project-search')),
       hasSortInput: Boolean(document.getElementById('sort-by')),
       hasStageInput: Boolean(document.getElementById('stage-filter')),
@@ -439,34 +439,25 @@ async function readProjectsCatalogDebugState(page) {
   })
 }
 
-async function ensureProjectsCatalogBootstrapped(page) {
-  const bootstrapped = await page.evaluate(() => Boolean(window.__LL_PROJECTS_CATALOG_BOOTSTRAPPED__))
-  if (bootstrapped) {
-    return
-  }
-
-  const suffix = `l3-replay=${Date.now()}`
-  await page.addScriptTag({ url: `/js/projects-runtime.js?${suffix}` }).catch(() => {})
-  await page.addScriptTag({ url: `/js/projects-catalog.js?${suffix}` })
-  await page.waitForTimeout(250)
+async function ensureProjectsCatalogReady(page) {
+  await page.waitForSelector('[data-project-catalog]', { timeout: 8000 })
 }
 
-async function testProjectsListStatesAndReplay(browser, baseUrl) {
+async function testProjectsListCanonicalStatesWithCompatReplay(browser, baseUrl) {
   const state = {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
     delayMs: 700,
-    disableAppHydration: true,
   }
   const context = await newContext(browser, state)
 
   try {
     const page = await context.newPage()
-    await page.goto(`${baseUrl}/projects/?q=toolbox&stage=active&source=github&type=tooling&featured=1&sort=name`, {
+    await page.goto(`${baseUrl}${projectsCatalogRoutes.canonical}?q=toolbox&stage=active&source=github&type=tooling&featured=1&sort=name`, {
       waitUntil: 'domcontentloaded',
     })
-    await ensureProjectsCatalogBootstrapped(page)
+    await ensureProjectsCatalogReady(page)
 
     await page.waitForSelector('[data-loading-state]:not([hidden])', { timeout: 5000 })
     try {
@@ -493,7 +484,7 @@ async function testProjectsListStatesAndReplay(browser, baseUrl) {
       }
     })
 
-    ensure(filters.pathname === '/projects/', `projects list should stay on canonical path, got ${filters.pathname}`)
+    ensure(filters.pathname === projectsCatalogRoutes.canonical, `projects list should stay on canonical path, got ${filters.pathname}`)
     ensure(filters.q === 'toolbox', 'projects list URL replay did not restore query')
     ensure(filters.stage === 'active', 'projects list URL replay did not restore stage')
     ensure(filters.source === 'github', 'projects list URL replay did not restore source')
@@ -503,31 +494,32 @@ async function testProjectsListStatesAndReplay(browser, baseUrl) {
     const canonicalTitle = (await page.locator('.project-card .project-name').first().textContent())?.trim() || ''
     ensure(canonicalTitle.length > 0, 'projects list did not render card content')
 
-    await page.goto(`${baseUrl}/projects/index.html?q=toolbox`, { waitUntil: 'domcontentloaded' })
-    await ensureProjectsCatalogBootstrapped(page)
-    await page.waitForFunction(() => window.location.pathname === '/projects/', { timeout: 8000 })
+    await page.goto(`${baseUrl}${projectsCatalogRoutes.compat}?q=toolbox`, { waitUntil: 'domcontentloaded' })
+    await ensureProjectsCatalogReady(page)
+    await page.waitForFunction((expectedPath) => window.location.pathname === expectedPath, projectsCatalogRoutes.canonical, { timeout: 8000 })
     await page.waitForSelector('[data-project-grid]:not([hidden]) .project-card', { timeout: 8000 })
 
     const replayTitle = (await page.locator('.project-card .project-name').first().textContent())?.trim() || ''
-    ensure(replayTitle === canonicalTitle, '/projects/index.html did not replay same catalog rendering as /projects/')
+    ensure(
+      replayTitle === canonicalTitle,
+      `${projectsCatalogRoutes.compat} did not replay same catalog rendering as ${projectsCatalogRoutes.canonical}`,
+    )
   } finally {
     await context.close()
   }
 }
-
 async function testProjectsListEmptyState(browser, baseUrl) {
   const context = await newContext(browser, {
     featuredMode: 'success',
     listMode: 'empty',
     detailMode: 'success',
     delayMs: 0,
-    disableAppHydration: true,
   })
 
   try {
     const page = await context.newPage()
     await page.goto(`${baseUrl}/projects/`, { waitUntil: 'domcontentloaded' })
-    await ensureProjectsCatalogBootstrapped(page)
+    await ensureProjectsCatalogReady(page)
     try {
       await page.waitForSelector('[data-empty-state]:not([hidden])', { timeout: 8000 })
     } catch (error) {
@@ -545,14 +537,13 @@ async function testProjectsListErrorRetry(browser, baseUrl) {
     listMode: 'error',
     detailMode: 'success',
     delayMs: 0,
-    disableAppHydration: true,
   }
   const context = await newContext(browser, state)
 
   try {
     const page = await context.newPage()
     await page.goto(`${baseUrl}/projects/`, { waitUntil: 'domcontentloaded' })
-    await ensureProjectsCatalogBootstrapped(page)
+    await ensureProjectsCatalogReady(page)
     try {
       await page.waitForSelector('[data-error-state]:not([hidden])', { timeout: 8000 })
     } catch (error) {
@@ -568,7 +559,7 @@ async function testProjectsListErrorRetry(browser, baseUrl) {
   }
 }
 
-async function testProjectDetailStatesAndReplay(browser, baseUrl) {
+async function testProjectDetailCanonicalStatesWithCompatReplay(browser, baseUrl) {
   const successState = {
     featuredMode: 'success',
     listMode: 'success',
@@ -579,18 +570,21 @@ async function testProjectDetailStatesAndReplay(browser, baseUrl) {
 
   try {
     const page = await context.newPage()
-    await page.goto(`${baseUrl}/projects/personal-toolbox/`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${baseUrl}${projectDetailRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.project-detail-loading', { timeout: 5000 })
     await page.waitForSelector('.project-detail-layout', { timeout: 10000 })
 
     const canonicalTitle = (await page.locator('.project-detail-hero h1').textContent())?.trim() || ''
     ensure(canonicalTitle.length > 0, 'project detail did not render ready state')
 
-    await page.goto(`${baseUrl}/projects/personal-toolbox/index.html`, { waitUntil: 'domcontentloaded' })
-    await page.waitForFunction(() => window.location.pathname === '/projects/personal-toolbox/', { timeout: 8000 })
+    await page.goto(`${baseUrl}${projectDetailRoutes.compat}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction((expectedPath) => window.location.pathname === expectedPath, projectDetailRoutes.canonical, { timeout: 8000 })
     await page.waitForSelector('.project-detail-layout', { timeout: 8000 })
     const replayTitle = (await page.locator('.project-detail-hero h1').textContent())?.trim() || ''
-    ensure(replayTitle === canonicalTitle, '/projects/$slug/index.html did not replay same rendering as canonical path')
+    ensure(
+      replayTitle === canonicalTitle,
+      `${projectDetailRoutes.compat} did not replay same rendering as canonical path ${projectDetailRoutes.canonical}`,
+    )
   } finally {
     await context.close()
   }
@@ -603,7 +597,7 @@ async function testProjectDetailStatesAndReplay(browser, baseUrl) {
   })
   try {
     const page = await notFoundContext.newPage()
-    await page.goto(`${baseUrl}/projects/personal-toolbox/`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${baseUrl}${projectDetailRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.project-detail-message', { timeout: 8000 })
   } finally {
     await notFoundContext.close()
@@ -617,7 +611,7 @@ async function testProjectDetailStatesAndReplay(browser, baseUrl) {
   })
   try {
     const page = await degradedContext.newPage()
-    await page.goto(`${baseUrl}/projects/personal-toolbox/`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${baseUrl}${projectDetailRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.project-detail-degraded[data-detail-state="degraded"]', { timeout: 8000 })
     await page.waitForSelector('.project-detail-layout', { timeout: 8000 })
 
@@ -636,7 +630,7 @@ async function testProjectDetailStatesAndReplay(browser, baseUrl) {
   const errorContext = await newContext(browser, errorState)
   try {
     const page = await errorContext.newPage()
-    await page.goto(`${baseUrl}/projects/personal-toolbox/`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${baseUrl}${projectDetailRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.project-detail-message button.project-detail-button.primary', { timeout: 8000 })
 
     errorState.detailMode = 'success'
@@ -646,7 +640,6 @@ async function testProjectDetailStatesAndReplay(browser, baseUrl) {
     await errorContext.close()
   }
 }
-
 async function main() {
   if (!fs.existsSync(outputRoot)) {
     throw new Error('Missing ".output/public". Run `npm run build` first.')
@@ -658,11 +651,11 @@ async function main() {
 
   let browser
   const checks = [
-    { name: 'home-featured-contracts', run: () => testHomeFeaturedContracts(browser, baseUrl) },
-    { name: 'projects-list-states-and-replay', run: () => testProjectsListStatesAndReplay(browser, baseUrl) },
+    { name: 'home-featured-canonical-contracts', run: () => testHomeFeaturedCanonicalContracts(browser, baseUrl) },
+    { name: 'projects-list-canonical-states-with-compat-replay', run: () => testProjectsListCanonicalStatesWithCompatReplay(browser, baseUrl) },
     { name: 'projects-list-empty-state', run: () => testProjectsListEmptyState(browser, baseUrl) },
     { name: 'projects-list-error-retry', run: () => testProjectsListErrorRetry(browser, baseUrl) },
-    { name: 'project-detail-states-and-replay', run: () => testProjectDetailStatesAndReplay(browser, baseUrl) },
+    { name: 'project-detail-canonical-states-with-compat-replay', run: () => testProjectDetailCanonicalStatesWithCompatReplay(browser, baseUrl) },
   ]
   const failures = []
 
@@ -721,3 +714,6 @@ main().catch((error) => {
   console.error(error)
   process.exit(1)
 })
+
+
+

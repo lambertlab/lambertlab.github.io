@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { JournalDetailTemplate } from '~/components/content/JournalDetailTemplate'
+import { PublicCompatRouteAdapter } from '~/components/content/PublicCompatRouteAdapter'
 import { journalDetailContentBySlug, toContentPageMetadata } from '~/content/contentModels'
 import { buildContentPageHead } from '~/lib/contentPageHead'
 
@@ -10,5 +11,9 @@ export const Route = createFileRoute('/journal/ai-collaboration-checklist/index.
 })
 
 function JournalAiCollaborationChecklistHtmlPage() {
-  return <JournalDetailTemplate content={journalDetailContentBySlug['ai-collaboration-checklist']} />
+  return (
+    <PublicCompatRouteAdapter>
+      <JournalDetailTemplate content={journalDetailContentBySlug['ai-collaboration-checklist']} />
+    </PublicCompatRouteAdapter>
+  )
 }

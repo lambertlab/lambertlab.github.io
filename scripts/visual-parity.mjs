@@ -584,12 +584,7 @@ async function launchVisualBrowser() {
 
 async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
   const selectors = ['.ll-header', '.ll-brand', '.ll-nav', '[data-theme-mode-switch]', '[data-system-status]']
-  const navigationSequence = [
-    { selector: '.ll-header .ll-nav-link[href="/projects/"]', to: '/projects/' },
-    { selector: '.ll-header .ll-nav-link[href="/journal/index.html"]', to: '/journal/index.html' },
-    { selector: '.ll-header .ll-nav-link[href="/about/index.html"]', to: '/about/index.html' },
-    { selector: '.ll-header .ll-cta[href="/contact/index.html"]', to: '/contact/index.html' },
-  ]
+  const navigationSequence = ['/projects/', '/journal/', '/about/', '/contact/']
 
   let context
   let page
@@ -600,20 +595,19 @@ async function runHeaderStabilityCheck(browser, baseUrl, thresholdPx) {
     })
     await configureContext(context, 'light')
     page = await context.newPage()
-    await page.goto(joinUrl(baseUrl, '/index.html'))
+    await page.goto(joinUrl(baseUrl, '/'))
     await waitForPageStable(page)
 
     const baselineRects = await collectNodeRects(page, selectors)
     let maxShift = 0
     const records = []
 
-    for (const item of navigationSequence) {
-      await page.locator(item.selector).first().click()
-      await page.waitForURL(`**${item.to}`)
+    for (const targetPath of navigationSequence) {
+      await page.goto(joinUrl(baseUrl, targetPath), { waitUntil: 'domcontentloaded' })
       await waitForPageStable(page)
       const nextRects = await collectNodeRects(page, selectors)
       const shift = calculateMaxShift(baselineRects, nextRects)
-      records.push({ step: item.to, shift })
+      records.push({ step: targetPath, shift })
       maxShift = Math.max(maxShift, shift)
     }
 
@@ -1080,3 +1074,4 @@ main().catch((error) => {
   console.error(error)
   process.exitCode = 1
 })
+

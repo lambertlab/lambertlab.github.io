@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ProjectDetailPage } from '~/components/projects/ProjectDetailPage'
+import { ProjectDetailRoutePage } from '~/components/projects/ProjectDetailRoutePage'
 import { buildProjectDetailHead } from '~/components/projects/projectDetailHead'
 
 export const Route = createFileRoute('/projects/$projectSlug/')({
@@ -10,5 +10,5 @@ export const Route = createFileRoute('/projects/$projectSlug/')({
 function DynamicProjectDetailPage() {
   const { projectSlug } = Route.useParams()
 
-  return <ProjectDetailPage slug={projectSlug} />
+  return <ProjectDetailRoutePage slug={projectSlug} />
 }

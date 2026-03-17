@@ -1,7 +1,7 @@
-﻿import { createFileRoute } from '@tanstack/react-router'
-import { AdminSyncConsolePage } from '~/components/admin/projects/AdminSyncConsolePage'
+import { createFileRoute } from '@tanstack/react-router'
+import { AdminCompatRouteAdapter } from '~/components/admin/projects/AdminCompatRouteAdapter'
+import { AdminSyncRoutePage } from '~/components/admin/projects/AdminSyncRoutePage'
 import { buildAdminProjectsHead } from '~/components/admin/projects/adminProjectsHead'
-import { useAdminCompatPathNormalization } from '~/lib/adminCompatPathNormalization'
 
 export const Route = createFileRoute('/admin/sync/index.html')({
   head: () => buildAdminProjectsHead(),
@@ -9,6 +9,9 @@ export const Route = createFileRoute('/admin/sync/index.html')({
 })
 
 function AdminSyncHtmlRoutePage() {
-  useAdminCompatPathNormalization()
-  return <AdminSyncConsolePage />
+  return (
+    <AdminCompatRouteAdapter>
+      <AdminSyncRoutePage />
+    </AdminCompatRouteAdapter>
+  )
 }

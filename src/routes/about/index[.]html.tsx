@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { AboutPage } from '~/components/content/AboutPage'
+import { PublicCompatRouteAdapter } from '~/components/content/PublicCompatRouteAdapter'
 import { aboutPageContentModel, toContentPageMetadata } from '~/content/contentModels'
 import { buildContentPageHead } from '~/lib/contentPageHead'
 
@@ -9,5 +10,9 @@ export const Route = createFileRoute('/about/index.html')({
 })
 
 function AboutHtmlPage() {
-  return <AboutPage content={aboutPageContentModel} />
+  return (
+    <PublicCompatRouteAdapter>
+      <AboutPage content={aboutPageContentModel} />
+    </PublicCompatRouteAdapter>
+  )
 }

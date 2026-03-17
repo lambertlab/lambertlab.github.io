@@ -25,7 +25,7 @@ export function NotFound({ children }: { children?: any }) {
         >
           {locale === 'zh-CN' ? '返回上页' : 'Go back'}
         </button>
-        <Link to="/index.html" style={{ color: '#2563eb' }}>
+        <Link to="/" style={{ color: '#2563eb' }}>
           {locale === 'zh-CN' ? '回到首页' : 'Start over'}
         </Link>
       </p>

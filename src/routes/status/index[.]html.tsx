@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { PublicCompatRouteAdapter } from '~/components/content/PublicCompatRouteAdapter'
 import { StatusPage } from '~/components/status/StatusPage'
 import { buildStatusPageHead } from '~/components/status/statusPageHead'
 
@@ -8,5 +9,9 @@ export const Route = createFileRoute('/status/index.html')({
 })
 
 function StatusHtmlRoutePage() {
-  return <StatusPage />
+  return (
+    <PublicCompatRouteAdapter>
+      <StatusPage />
+    </PublicCompatRouteAdapter>
+  )
 }

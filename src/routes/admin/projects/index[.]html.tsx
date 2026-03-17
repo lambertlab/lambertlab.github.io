@@ -1,13 +1,11 @@
-﻿import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import * as React from 'react'
-import { AdminProjectsConsolePage } from '~/components/admin/projects/AdminProjectsConsolePage'
+import { createFileRoute } from '@tanstack/react-router'
+import { AdminCompatRouteAdapter } from '~/components/admin/projects/AdminCompatRouteAdapter'
+import { AdminProjectsRoutePage } from '~/components/admin/projects/AdminProjectsRoutePage'
 import {
   normalizeAdminProjectsSearchState,
-  toAdminProjectsRouteSearch,
   type AdminProjectsSearchState,
 } from '~/components/admin/projects/adminProjectsSearch'
 import { buildAdminProjectsHead } from '~/components/admin/projects/adminProjectsHead'
-import { useAdminCompatPathNormalization } from '~/lib/adminCompatPathNormalization'
 
 export const Route = createFileRoute('/admin/projects/index.html')({
   validateSearch: (search): AdminProjectsSearchState =>
@@ -17,22 +15,11 @@ export const Route = createFileRoute('/admin/projects/index.html')({
 })
 
 function AdminProjectsHtmlRoutePage() {
-  useAdminCompatPathNormalization()
-
   const search = Route.useSearch()
-  const navigate = useNavigate({ from: '/admin/projects/index.html' })
 
-  const handleSearchPatch = React.useCallback(
-    (patch: Partial<AdminProjectsSearchState>) => {
-      const nextSearch = normalizeAdminProjectsSearchState({ ...search, ...patch } as Record<string, unknown>)
-      void navigate({
-        replace: true,
-        search: () => toAdminProjectsRouteSearch(nextSearch),
-      })
-    },
-    [navigate, search],
+  return (
+    <AdminCompatRouteAdapter>
+      <AdminProjectsRoutePage from="/admin/projects/index.html" searchState={search} />
+    </AdminCompatRouteAdapter>
   )
-
-  return <AdminProjectsConsolePage mode="projects" searchState={search} onSearchStateChange={handleSearchPatch} />
 }
-

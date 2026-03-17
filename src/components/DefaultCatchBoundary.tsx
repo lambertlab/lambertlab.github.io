@@ -51,12 +51,12 @@ export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
           {locale === 'zh-CN' ? '重试' : 'Try again'}
         </button>
         {isRoot ? (
-          <Link to="/index.html" style={{ color: '#2563eb' }}>
+          <Link to="/" style={{ color: '#2563eb' }}>
             {locale === 'zh-CN' ? '首页' : 'Home'}
           </Link>
         ) : (
           <Link
-            to="/index.html"
+            to="/"
             style={{ color: '#2563eb' }}
             onClick={(e) => {
               e.preventDefault()

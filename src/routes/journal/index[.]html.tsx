@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { PublicCompatRouteAdapter } from '~/components/content/PublicCompatRouteAdapter'
 import { JournalIndexPage } from '~/components/content/JournalIndexPage'
 import { journalIndexContentModel, toContentPageMetadata } from '~/content/contentModels'
 import { buildContentPageHead } from '~/lib/contentPageHead'
@@ -9,5 +10,9 @@ export const Route = createFileRoute('/journal/index.html')({
 })
 
 function JournalHtmlPage() {
-  return <JournalIndexPage content={journalIndexContentModel} />
+  return (
+    <PublicCompatRouteAdapter>
+      <JournalIndexPage content={journalIndexContentModel} />
+    </PublicCompatRouteAdapter>
+  )
 }

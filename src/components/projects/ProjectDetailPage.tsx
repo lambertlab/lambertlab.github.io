@@ -489,7 +489,7 @@ export function ProjectDetailPage({ slug }: ProjectDetailPageProps) {
               <Link className="project-detail-button primary" to="/projects">
                 {locale === 'zh-CN' ? '返回项目目录' : 'Back to Projects'}
               </Link>
-              <Link className="project-detail-button" to="/index.html">
+              <Link className="project-detail-button" to="/">
                 {locale === 'zh-CN' ? '回到首页' : 'Back home'}
               </Link>
             </div>

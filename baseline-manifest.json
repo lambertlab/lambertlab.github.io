@@ -1,4 +1,11 @@
 {
+  "manifest_role": "legacy-archive-evidence",
+  "active_registry_source": "./scripts/page-registry.mjs",
+  "notes": [
+    "This file preserves the historical baseline snapshot for comparison only.",
+    "Active prerender and page registry truth now lives in scripts/page-registry.mjs and is centered on canonical routes.",
+    "Compat paths listed here are legacy evidence, not current prerender source-of-truth entries."
+  ],
   "baseline_commit": "c70d82d",
   "baseline_source": "D:\\Dspace\\projects\\personal\\personal-website\\lambertlab.github.io",
   "pages": [
@@ -59,4 +66,3 @@
     "RETRY_TIMES"
   ]
 }
-

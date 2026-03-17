@@ -173,7 +173,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
       <header className="ll-header">
         <nav className="ll-header-inner">
-          <a className="ll-brand" href="/index.html">
+          <a className="ll-brand" href="/">
             <span className="ll-brand-mark">L</span>
             <span className="ll-brand-text">lambertlab</span>
           </a>
@@ -181,13 +181,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
             <a className="ll-nav-link" href="/projects/">
               {shellCopy.nav.projects[locale]}
             </a>
-            <a className="ll-nav-link" href="/journal/index.html">
+            <a className="ll-nav-link" href="/journal/">
               {shellCopy.nav.journal[locale]}
             </a>
-            <a className="ll-nav-link" href="/about/index.html">
+            <a className="ll-nav-link" href="/about/">
               {shellCopy.nav.about[locale]}
             </a>
-            <a className="ll-cta" href="/contact/index.html">
+            <a className="ll-cta" href="/contact/">
               {shellCopy.nav.contact[locale]}
             </a>
             <a
@@ -225,7 +225,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
             <span>{shellCopy.footer.copy[locale]}</span>
           </div>
           <div className="ll-site-footer-links">
-            <a className="ll-site-footer-link" href="/contact/index.html">
+            <a className="ll-site-footer-link" href="/contact/">
               {shellCopy.footer.contact[locale]}
             </a>
             <a className="ll-site-footer-link" href="/status/">

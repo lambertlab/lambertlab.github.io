@@ -1,7 +1,7 @@
-﻿import { createFileRoute } from '@tanstack/react-router'
-import { AdminLogsConsolePage } from '~/components/admin/projects/AdminLogsConsolePage'
+import { createFileRoute } from '@tanstack/react-router'
+import { AdminCompatRouteAdapter } from '~/components/admin/projects/AdminCompatRouteAdapter'
+import { AdminLogsRoutePage } from '~/components/admin/projects/AdminLogsRoutePage'
 import { buildAdminProjectsHead } from '~/components/admin/projects/adminProjectsHead'
-import { useAdminCompatPathNormalization } from '~/lib/adminCompatPathNormalization'
 
 export const Route = createFileRoute('/admin/logs/index.html')({
   head: () => buildAdminProjectsHead(),
@@ -9,6 +9,9 @@ export const Route = createFileRoute('/admin/logs/index.html')({
 })
 
 function AdminLogsHtmlRoutePage() {
-  useAdminCompatPathNormalization()
-  return <AdminLogsConsolePage />
+  return (
+    <AdminCompatRouteAdapter>
+      <AdminLogsRoutePage />
+    </AdminCompatRouteAdapter>
+  )
 }

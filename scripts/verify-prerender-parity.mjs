@@ -1,22 +1,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createGateCollector } from './gate-layering.mjs'
+import { prerenderOutputFiles } from './page-registry.mjs'
 
 const outputRoot = path.resolve('.output/public')
-const pagesToCheck = [
-  'index.html',
-  'about/index.html',
-  'contact/index.html',
-  'projects/index.html',
-  'projects/personal-toolbox/index.html',
-  'projects/ai-message-value-triage/index.html',
-  'projects/personal-website/index.html',
-  'journal/index.html',
-  'status/index.html',
-  'journal/model-first-engineering/index.html',
-  'journal/ai-collaboration-checklist/index.html',
-  'journal/operational-habits-that-stick/index.html',
-]
+const pagesToCheck = prerenderOutputFiles
 
 const shellRequiredFragments = [
   'class="ll-header"',
@@ -25,13 +13,20 @@ const shellRequiredFragments = [
   'data-theme-mode-switch',
   'data-system-status',
   'href="/projects/"',
-  'href="/journal/index.html"',
-  'href="/about/index.html"',
-  'href="/contact/index.html"',
+  'href="/journal/"',
+  'href="/about/"',
+  'href="/contact/"',
   'href="/status/"',
 ]
 
-const forbiddenFragments = ['href="/projects/index.html"', 'Control Center']
+const forbiddenFragments = [
+  'href="/index.html"',
+  'href="/about/index.html"',
+  'href="/contact/index.html"',
+  'href="/journal/index.html"',
+  'href="/projects/index.html"',
+  'href="/status/index.html"',
+]
 
 const pageSpecificRequiredFragments = {
   'contact/index.html': ['class="wrap"', 'class="grid"', 'href="https://github.com/lambertlab"', 'href="mailto:you@example.com"'],
@@ -57,16 +52,26 @@ const pageSpecificRequiredFragments = {
     'data-project-grid',
   ],
   'status/index.html': ['class="status-page-shell"', 'class="status-state-panel"', 'class="status-page-hero"'],
+  'admin/index.html': ['Control Center'],
+  'admin/projects/index.html': ['Control Center'],
   'projects/personal-toolbox/index.html': ['project-detail-shell', 'project-detail-loading'],
   'projects/ai-message-value-triage/index.html': ['project-detail-shell', 'project-detail-loading'],
   'projects/personal-website/index.html': ['project-detail-shell', 'project-detail-loading'],
 }
 
 const pageSpecificForbiddenFragments = {
-  'contact/index.html': ['data-legacy-page="contact"'],
-  'journal/index.html': ['data-legacy-page="journal"'],
-  'projects/personal-toolbox/index.html': ['href="../index.html"', 'href="/projects/personal-toolbox/index.html"'],
-  'projects/ai-message-value-triage/index.html': ['href="../index.html"', 'href="/projects/ai-message-value-triage/index.html"'],
+  'index.html': ['Control Center'],
+  'about/index.html': ['Control Center'],
+  'contact/index.html': ['data-legacy-page="contact"', 'Control Center'],
+  'journal/index.html': ['data-legacy-page="journal"', 'Control Center'],
+  'status/index.html': ['Control Center'],
+  'journal/model-first-engineering/index.html': ['Control Center'],
+  'journal/ai-collaboration-checklist/index.html': ['Control Center'],
+  'journal/operational-habits-that-stick/index.html': ['Control Center'],
+  'projects/index.html': ['Control Center'],
+  'projects/personal-toolbox/index.html': ['href="../index.html"', 'href="/projects/personal-toolbox/index.html"', 'Control Center'],
+  'projects/ai-message-value-triage/index.html': ['href="../index.html"', 'href="/projects/ai-message-value-triage/index.html"', 'Control Center'],
+  'projects/personal-website/index.html': ['Control Center'],
 }
 
 const gate = createGateCollector('verify-prerender-parity')

@@ -154,20 +154,20 @@ export const aboutPageContentModel: AboutPageContentModel = {
       },
       {
         label: text('阅读日志', 'Read Journal'),
-        href: '/journal/index.html',
+        href: '/journal/',
         visible: true,
       },
     ],
     workflow: [
       {
         label: text('联系我', 'Get in touch'),
-        href: '/contact/index.html',
+        href: '/contact/',
         visible: true,
         tone: 'primary',
       },
       {
         label: text('返回首页', 'Back Home'),
-        href: '/index.html',
+        href: '/',
         visible: true,
       },
     ],
@@ -239,7 +239,7 @@ export const contactPageContentModel: ContactPageContentModel = {
         summary: text('继续浏览首页中的项目与洞察。', 'Return to the homepage to continue exploring projects and insights.'),
         cta: {
           label: text('回到首页', 'Back Home'),
-          href: '/index.html',
+          href: '/',
           visible: true,
         },
       },
@@ -248,7 +248,7 @@ export const contactPageContentModel: ContactPageContentModel = {
   cta: {
     backToHome: {
       label: text('回到首页', 'Back Home'),
-      href: '/index.html',
+      href: '/',
       visible: false,
     },
   },
@@ -359,7 +359,7 @@ export const journalIndexContentModel: JournalIndexContentModel = {
   cta: {
     subscribe: {
       label: text('订阅更新与协作交流 →', 'Subscribe for updates and collaboration →'),
-      href: '/contact/index.html',
+      href: '/contact/',
       visible: true,
     },
   },
@@ -419,12 +419,12 @@ export const journalDetailContentBySlug: Record<JournalDetailSlug, JournalDetail
       actions: [
         {
           label: text('返回洞察目录', 'Back to Journal'),
-          href: '/journal/index.html',
+          href: '/journal/',
           visible: true,
         },
         {
           label: text('返回首页', 'Back Home'),
-          href: '/index.html',
+          href: '/',
           visible: true,
           tone: 'primary',
         },
@@ -470,12 +470,12 @@ export const journalDetailContentBySlug: Record<JournalDetailSlug, JournalDetail
       actions: [
         {
           label: text('返回洞察目录', 'Back to Journal'),
-          href: '/journal/index.html',
+          href: '/journal/',
           visible: true,
         },
         {
           label: text('返回首页', 'Back Home'),
-          href: '/index.html',
+          href: '/',
           visible: true,
           tone: 'primary',
         },
@@ -521,12 +521,12 @@ export const journalDetailContentBySlug: Record<JournalDetailSlug, JournalDetail
       actions: [
         {
           label: text('返回洞察目录', 'Back to Journal'),
-          href: '/journal/index.html',
+          href: '/journal/',
           visible: true,
         },
         {
           label: text('返回首页', 'Back Home'),
-          href: '/index.html',
+          href: '/',
           visible: true,
           tone: 'primary',
         },

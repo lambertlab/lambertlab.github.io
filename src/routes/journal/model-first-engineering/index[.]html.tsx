@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { JournalDetailTemplate } from '~/components/content/JournalDetailTemplate'
+import { PublicCompatRouteAdapter } from '~/components/content/PublicCompatRouteAdapter'
 import { journalDetailContentBySlug, toContentPageMetadata } from '~/content/contentModels'
 import { buildContentPageHead } from '~/lib/contentPageHead'
 
@@ -9,5 +10,9 @@ export const Route = createFileRoute('/journal/model-first-engineering/index.htm
 })
 
 function JournalModelFirstEngineeringHtmlPage() {
-  return <JournalDetailTemplate content={journalDetailContentBySlug['model-first-engineering']} />
+  return (
+    <PublicCompatRouteAdapter>
+      <JournalDetailTemplate content={journalDetailContentBySlug['model-first-engineering']} />
+    </PublicCompatRouteAdapter>
+  )
 }

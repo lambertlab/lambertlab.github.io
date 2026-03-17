@@ -1,160 +1,191 @@
 {
-  "defaultMode": "smoke",
-  "modes": {
-    "smoke": {
-      "viewports": ["desktop"],
-      "themes": ["light", "dark"],
-      "pages": ["home", "projects", "journal", "about", "contact", "status-empty", "status-single", "status-multi"],
-      "headerStability": {
-        "skipAllowlist": []
-      },
-      "expectedDiffs": {
-        "home__desktop__light": {
-          "category": "intentional-change",
-          "reason": "Homepage Technology panel now renders Featured Projects from the unified projects contract."
-        },
-        "home__desktop__dark": {
-          "category": "intentional-change",
-          "reason": "Homepage Technology panel now renders Featured Projects from the unified projects contract."
-        },
-        "projects__desktop__light": {
-          "category": "intentional-change",
-          "reason": "Projects shell and catalog now follow the API-first structure gate contract."
-        },
-        "projects__desktop__dark": {
-          "category": "intentional-change",
-          "reason": "Projects shell and catalog now follow the API-first structure gate contract."
-        },
-        "journal__desktop__light": {
-          "category": "intentional-change",
-          "reason": "Journal now inherits the unified public footer and clickable Status entry shell."
-        },
-        "journal__desktop__dark": {
-          "category": "intentional-change",
-          "reason": "Journal now inherits the unified public footer and clickable Status entry shell."
-        },
-        "about__desktop__light": {
-          "category": "intentional-change",
-          "reason": "About now inherits the unified public footer and clickable Status entry shell."
-        },
-        "about__desktop__dark": {
-          "category": "intentional-change",
-          "reason": "About now inherits the unified public footer and clickable Status entry shell."
-        },
-        "contact__desktop__light": {
-          "category": "intentional-change",
-          "reason": "Contact now inherits the unified public footer and clickable Status entry shell."
-        },
-        "contact__desktop__dark": {
-          "category": "intentional-change",
-          "reason": "Contact now inherits the unified public footer and clickable Status entry shell."
-        },
-        "status-empty__desktop__light": {
-          "category": "intentional-change",
-          "reason": "Status empty scenario is validated by current public trust shell semantics."
-        },
-        "status-empty__desktop__dark": {
-          "category": "intentional-change",
-          "reason": "Status empty scenario is validated by current public trust shell semantics."
-        },
-        "status-single__desktop__light": {
-          "category": "intentional-change",
-          "reason": "Status single-issue scenario is validated by current public trust issue-card semantics."
-        },
-        "status-single__desktop__dark": {
-          "category": "intentional-change",
-          "reason": "Status single-issue scenario is validated by current public trust issue-card semantics."
-        },
-        "status-multi__desktop__light": {
-          "category": "intentional-change",
-          "reason": "Status multi-issue scenario is validated by current public trust multi-issue semantics."
-        },
-        "status-multi__desktop__dark": {
-          "category": "intentional-change",
-          "reason": "Status multi-issue scenario is validated by current public trust multi-issue semantics."
-        }
-      }
-    },
-    "full": {
-      "viewports": "all",
-      "themes": "all",
-      "pages": "all"
-    }
-  },
-  "ports": {
-    "newSite": 4102
-  },
-  "thresholds": {
-    "fullPageMismatchRatio": 0.015,
-    "keyAreaMismatchRatio": 0.02,
-    "headerShiftPx": 1.5
-  },
-  "viewports": [
-    { "name": "desktop", "width": 1440, "height": 900 },
-    { "name": "tablet", "width": 1024, "height": 1366 },
-    { "name": "mobile", "width": 390, "height": 844 }
-  ],
-  "themes": ["light", "dark"],
-  "pages": [
-    {
-      "name": "home",
-      "path": "/index.html",
-      "heroSelector": "main section.max-w-7xl",
-      "contentSelector": "[data-split-layout]"
-    },
-    {
-      "name": "projects",
-      "path": "/projects/",
-      "heroSelector": ".page-hero",
-      "contentSelector": "[data-project-grid]"
-    },
-    {
-      "name": "journal",
-      "path": "/journal/index.html",
-      "heroSelector": ".hero",
-      "contentSelector": ".journal-grid"
-    },
-    {
-      "name": "about",
-      "path": "/about/index.html",
-      "heroSelector": ".hero",
-      "contentSelector": ".about-grid"
-    },
-    {
-      "name": "contact",
-      "path": "/contact/index.html",
-      "heroSelector": ".hero",
-      "contentSelector": ".grid"
-    },
-    {
-      "name": "status-empty",
-      "path": "/status/?issues=empty",
-      "heroSelector": ".status-page-hero",
-      "contentSelector": ".status-sections"
-    },
-    {
-      "name": "status-single",
-      "path": "/status/?issues=single",
-      "heroSelector": ".status-page-hero",
-      "contentSelector": ".status-sections"
-    },
-    {
-      "name": "status-multi",
-      "path": "/status/?issues=multi",
-      "heroSelector": ".status-page-hero",
-      "contentSelector": ".status-sections"
-    },
-    {
-      "name": "project-personal-toolbox",
-      "path": "/projects/personal-toolbox/",
-      "heroSelector": ".hero",
-      "contentSelector": ".article"
-    },
-    {
-      "name": "project-ai-message-value-triage",
-      "path": "/projects/ai-message-value-triage/",
-      "heroSelector": ".hero",
-      "contentSelector": ".article"
-    }
-  ]
+    "defaultMode":  "smoke",
+    "modes":  {
+                  "smoke":  {
+                                "viewports":  [
+                                                  "desktop"
+                                              ],
+                                "themes":  [
+                                               "light",
+                                               "dark"
+                                           ],
+                                "pages":  [
+                                              "home",
+                                              "projects",
+                                              "journal",
+                                              "about",
+                                              "contact",
+                                              "status-empty",
+                                              "status-single",
+                                              "status-multi"
+                                          ],
+                                "headerStability":  {
+                                                        "skipAllowlist":  [
+
+                                                                          ]
+                                                    },
+                                "expectedDiffs":  {
+                                                      "home__desktop__light":  {
+                                                                                   "category":  "intentional-change",
+                                                                                   "reason":  "Homepage Technology panel now renders Featured Projects from the unified projects contract."
+                                                                               },
+                                                      "home__desktop__dark":  {
+                                                                                  "category":  "intentional-change",
+                                                                                  "reason":  "Homepage Technology panel now renders Featured Projects from the unified projects contract."
+                                                                              },
+                                                      "projects__desktop__light":  {
+                                                                                       "category":  "intentional-change",
+                                                                                       "reason":  "Projects shell and catalog now follow the API-first structure gate contract."
+                                                                                   },
+                                                      "projects__desktop__dark":  {
+                                                                                      "category":  "intentional-change",
+                                                                                      "reason":  "Projects shell and catalog now follow the API-first structure gate contract."
+                                                                                  },
+                                                      "journal__desktop__light":  {
+                                                                                      "category":  "intentional-change",
+                                                                                      "reason":  "Journal now inherits the unified public footer and clickable Status entry shell."
+                                                                                  },
+                                                      "journal__desktop__dark":  {
+                                                                                     "category":  "intentional-change",
+                                                                                     "reason":  "Journal now inherits the unified public footer and clickable Status entry shell."
+                                                                                 },
+                                                      "about__desktop__light":  {
+                                                                                    "category":  "intentional-change",
+                                                                                    "reason":  "About now inherits the unified public footer and clickable Status entry shell."
+                                                                                },
+                                                      "about__desktop__dark":  {
+                                                                                   "category":  "intentional-change",
+                                                                                   "reason":  "About now inherits the unified public footer and clickable Status entry shell."
+                                                                               },
+                                                      "contact__desktop__light":  {
+                                                                                      "category":  "intentional-change",
+                                                                                      "reason":  "Contact now inherits the unified public footer and clickable Status entry shell."
+                                                                                  },
+                                                      "contact__desktop__dark":  {
+                                                                                     "category":  "intentional-change",
+                                                                                     "reason":  "Contact now inherits the unified public footer and clickable Status entry shell."
+                                                                                 },
+                                                      "status-empty__desktop__light":  {
+                                                                                           "category":  "intentional-change",
+                                                                                           "reason":  "Status empty scenario is validated by current public trust shell semantics."
+                                                                                       },
+                                                      "status-empty__desktop__dark":  {
+                                                                                          "category":  "intentional-change",
+                                                                                          "reason":  "Status empty scenario is validated by current public trust shell semantics."
+                                                                                      },
+                                                      "status-single__desktop__light":  {
+                                                                                            "category":  "intentional-change",
+                                                                                            "reason":  "Status single-issue scenario is validated by current public trust issue-card semantics."
+                                                                                        },
+                                                      "status-single__desktop__dark":  {
+                                                                                           "category":  "intentional-change",
+                                                                                           "reason":  "Status single-issue scenario is validated by current public trust issue-card semantics."
+                                                                                       },
+                                                      "status-multi__desktop__light":  {
+                                                                                           "category":  "intentional-change",
+                                                                                           "reason":  "Status multi-issue scenario is validated by current public trust multi-issue semantics."
+                                                                                       },
+                                                      "status-multi__desktop__dark":  {
+                                                                                          "category":  "intentional-change",
+                                                                                          "reason":  "Status multi-issue scenario is validated by current public trust multi-issue semantics."
+                                                                                      }
+                                                  }
+                            },
+                  "full":  {
+                               "viewports":  "all",
+                               "themes":  "all",
+                               "pages":  "all"
+                           }
+              },
+    "ports":  {
+                  "newSite":  4102
+              },
+    "thresholds":  {
+                       "fullPageMismatchRatio":  0.015,
+                       "keyAreaMismatchRatio":  0.02,
+                       "headerShiftPx":  1.5
+                   },
+    "viewports":  [
+                      {
+                          "name":  "desktop",
+                          "width":  1440,
+                          "height":  900
+                      },
+                      {
+                          "name":  "tablet",
+                          "width":  1024,
+                          "height":  1366
+                      },
+                      {
+                          "name":  "mobile",
+                          "width":  390,
+                          "height":  844
+                      }
+                  ],
+    "themes":  [
+                   "light",
+                   "dark"
+               ],
+    "pages":  [
+                  {
+                      "name":  "home",
+                      "path":  "/",
+                      "heroSelector":  "main section.max-w-7xl",
+                      "contentSelector":  "[data-split-layout]"
+                  },
+                  {
+                      "name":  "projects",
+                      "path":  "/projects/",
+                      "heroSelector":  ".page-hero",
+                      "contentSelector":  "[data-project-grid]"
+                  },
+                  {
+                      "name":  "journal",
+                      "path":  "/journal/",
+                      "heroSelector":  ".hero",
+                      "contentSelector":  ".journal-grid"
+                  },
+                  {
+                      "name":  "about",
+                      "path":  "/about/",
+                      "heroSelector":  ".hero",
+                      "contentSelector":  ".about-grid"
+                  },
+                  {
+                      "name":  "contact",
+                      "path":  "/contact/",
+                      "heroSelector":  ".hero",
+                      "contentSelector":  ".grid"
+                  },
+                  {
+                      "name":  "status-empty",
+                      "path":  "/status/?issues=empty",
+                      "heroSelector":  ".status-page-hero",
+                      "contentSelector":  ".status-sections"
+                  },
+                  {
+                      "name":  "status-single",
+                      "path":  "/status/?issues=single",
+                      "heroSelector":  ".status-page-hero",
+                      "contentSelector":  ".status-sections"
+                  },
+                  {
+                      "name":  "status-multi",
+                      "path":  "/status/?issues=multi",
+                      "heroSelector":  ".status-page-hero",
+                      "contentSelector":  ".status-sections"
+                  },
+                  {
+                      "name":  "project-personal-toolbox",
+                      "path":  "/projects/personal-toolbox/",
+                      "heroSelector":  ".hero",
+                      "contentSelector":  ".article"
+                  },
+                  {
+                      "name":  "project-ai-message-value-triage",
+                      "path":  "/projects/ai-message-value-triage/",
+                      "heroSelector":  ".hero",
+                      "contentSelector":  ".article"
+                  }
+              ]
 }

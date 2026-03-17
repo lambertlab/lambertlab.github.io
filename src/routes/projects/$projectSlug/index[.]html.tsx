@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ProjectDetailPage } from '~/components/projects/ProjectDetailPage'
+import { ProjectDetailRoutePage } from '~/components/projects/ProjectDetailRoutePage'
+import { ProjectsCompatRouteAdapter } from '~/components/projects/ProjectsCompatRouteAdapter'
 import { buildProjectDetailHead } from '~/components/projects/projectDetailHead'
-import { useProjectsCompatPathNormalization } from '~/lib/projectsCompatPathNormalization'
 
 export const Route = createFileRoute('/projects/$projectSlug/index.html')({
   head: () => buildProjectDetailHead(),
@@ -11,7 +11,9 @@ export const Route = createFileRoute('/projects/$projectSlug/index.html')({
 function DynamicProjectDetailHtmlPage() {
   const { projectSlug } = Route.useParams()
 
-  useProjectsCompatPathNormalization()
-
-  return <ProjectDetailPage slug={projectSlug} />
+  return (
+    <ProjectsCompatRouteAdapter>
+      <ProjectDetailRoutePage slug={projectSlug} />
+    </ProjectsCompatRouteAdapter>
+  )
 }
