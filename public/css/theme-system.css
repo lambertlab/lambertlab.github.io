@@ -4,9 +4,9 @@
   --ll-theme-control-border: #ced6e2;
   --ll-theme-control-text: #7f6a5e;
   --ll-theme-control-hover-bg: rgba(255, 255, 255, 0.58);
-  --ll-theme-control-active-bg: #ef684f;
+  --ll-theme-control-active-bg: #2563eb;
   --ll-theme-control-active-text: #fff7f2;
-  --ll-theme-control-active-shadow: 0 10px 20px -14px rgba(239, 104, 79, 0.84);
+  --ll-theme-control-active-shadow: 0 12px 24px -14px rgba(37, 99, 235, 0.75);
   --ll-theme-control-shell-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 8px 18px -16px rgba(15, 23, 42, 0.5);
   --ll-theme-transition-x: 50vw;
   --ll-theme-transition-y: 50vh;
@@ -19,9 +19,9 @@
   --ll-theme-control-border: rgba(255, 241, 228, 0.44);
   --ll-theme-control-text: #ecd7c7;
   --ll-theme-control-hover-bg: rgba(255, 255, 255, 0.08);
-  --ll-theme-control-active-bg: #ff785e;
+  --ll-theme-control-active-bg: var(--ll-accent);
   --ll-theme-control-active-text: #fff4ec;
-  --ll-theme-control-active-shadow: 0 12px 24px -14px rgba(255, 120, 94, 0.78);
+  --ll-theme-control-active-shadow: 0 10px 24px -14px var(--ll-accent-glow);
   --ll-theme-control-shell-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 8px 16px -14px rgba(0, 0, 0, 0.78);
   --ll-bg-canvas: #120907;
   --ll-bg-surface-1: #1a0c09;
