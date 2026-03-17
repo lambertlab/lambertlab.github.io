@@ -31,9 +31,9 @@ const FILTER_COPY = {
     waitingTags: '等待中',
     noTags: '暂无标签',
     sort: { recent: '最近更新', stars: 'Stars', name: '名称 (A-Z)' },
-    stage: { all: '全部', building: '建设中', active: '活跃', maintenance: '维护中', research: '研究中', archived: '已归档' },
-    source: { all: '全部', github: 'GitHub', local: '本地', private: '私有', hybrid: '混合' },
-    type: { all: '全部', website: '站点', backend: '后端', tooling: '工具', infra: '基础设施', research: '研究', agent: '智能体', data: '数据', library: '库' },
+    stage: { all: '全部阶段', building: '建设中', active: '活跃', maintenance: '维护中', research: '研究中', archived: '已归档' },
+    source: { all: '全部来源', github: 'GitHub', local: '本地', private: '私有', hybrid: '混合' },
+    type: { all: '全部类型', website: '站点', backend: '后端', tooling: '工具', infra: '基础设施', research: '研究', agent: '智能体', data: '数据', library: '库' },
   },
   en: {
     searchLabel: 'Search',
@@ -47,9 +47,9 @@ const FILTER_COPY = {
     waitingTags: 'Waiting',
     noTags: 'No tags',
     sort: { recent: 'Most Recent', stars: 'Stars', name: 'Name (A-Z)' },
-    stage: { all: 'All', building: 'Building', active: 'Active', maintenance: 'Maintenance', research: 'Research', archived: 'Archived' },
-    source: { all: 'All', github: 'GitHub', local: 'Local', private: 'Private', hybrid: 'Hybrid' },
-    type: { all: 'All', website: 'Website', backend: 'Backend', tooling: 'Tooling', infra: 'Infrastructure', research: 'Research', agent: 'Agent', data: 'Data', library: 'Library' },
+    stage: { all: 'All Stages', building: 'Building', active: 'Active', maintenance: 'Maintenance', research: 'Research', archived: 'Archived' },
+    source: { all: 'All Sources', github: 'GitHub', local: 'Local', private: 'Private', hybrid: 'Hybrid' },
+    type: { all: 'All Types', website: 'Website', backend: 'Backend', tooling: 'Tooling', infra: 'Infrastructure', research: 'Research', agent: 'Agent', data: 'Data', library: 'Library' },
   },
 } as const
 
