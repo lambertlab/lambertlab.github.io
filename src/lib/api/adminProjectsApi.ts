@@ -13,6 +13,8 @@
   | 'sync_rate_limited'
   | 'sync_failed'
   | 'internal_error'
+  | 'request_timeout'
+  | 'network_failed'
   | 'unknown'
 
 export interface AdminProjectRecord {
@@ -65,6 +67,23 @@ export interface AdminProjectUpdateInput {
   accent?: string | null
 }
 
+export interface CreateAdminProjectInput {
+  project_key: string
+  slug: string
+  name: string
+  summary: string
+  stage: string
+  project_type: string
+  visibility: string
+  sort_order: number
+  headline?: string
+  overview?: string
+  status_note?: string | null
+  is_featured?: boolean
+  featured_rank?: number | null
+  accent?: string | null
+}
+
 export interface AdminOverviewFailure {
   job_id: string
   project_id: string | null
@@ -88,10 +107,19 @@ export interface CreateAdminSyncJobInput {
   github_username?: string
 }
 
+export interface AdminSyncResultSummary {
+  fetched: number
+  created: number
+  updated: number
+  deactivated: number
+  synced_at: string | null
+}
+
 export interface CreateAdminSyncJobResult {
   job_id: string
   state: string
   created_at: string | null
+  result: AdminSyncResultSummary | null
 }
 
 export interface AdminSyncJobRecord {
@@ -105,6 +133,7 @@ export interface AdminSyncJobRecord {
   finished_at: string | null
   error_code: string | null
   error_message: string | null
+  result: AdminSyncResultSummary | null
 }
 
 export interface AdminSyncJobStep {
@@ -284,7 +313,9 @@ function normalizeErrorCode(value: unknown): AdminProjectErrorCode {
     code === 'sync_job_state_invalid' ||
     code === 'sync_rate_limited' ||
     code === 'sync_failed' ||
-    code === 'internal_error'
+    code === 'internal_error' ||
+    code === 'request_timeout' ||
+    code === 'network_failed'
   ) {
     return code
   }
@@ -421,6 +452,32 @@ function normalizeOverviewSummary(value: unknown): AdminOverviewSummary {
   }
 }
 
+function normalizeSyncResultSummary(value: unknown): AdminSyncResultSummary | null {
+  const payload = toRecord(value)
+  if (!payload) {
+    return null
+  }
+
+  const fetched = toNonNegativeInteger(payload.fetched, 0)
+  const created = toNonNegativeInteger(payload.created, 0)
+  const updated = toNonNegativeInteger(payload.updated, 0)
+  const deactivated = toNonNegativeInteger(payload.deactivated, 0)
+  const syncedAt = toNullableText(payload.synced_at) || toNullableText(payload.syncedAt)
+
+  const hasAnyValue = fetched > 0 || created > 0 || updated > 0 || deactivated > 0 || Boolean(syncedAt)
+  if (!hasAnyValue) {
+    return null
+  }
+
+  return {
+    fetched,
+    created,
+    updated,
+    deactivated,
+    synced_at: syncedAt,
+  }
+}
+
 function normalizeSyncJobRecord(value: unknown): AdminSyncJobRecord | null {
   const payload = toRecord(value)
   if (!payload) {
@@ -443,6 +500,7 @@ function normalizeSyncJobRecord(value: unknown): AdminSyncJobRecord | null {
     finished_at: toNullableText(payload.finished_at) || toNullableText(payload.completed_at),
     error_code: toNullableText(payload.error_code),
     error_message: toNullableText(payload.error_message),
+    result: normalizeSyncResultSummary(payload.result ?? payload.summary),
   }
 }
 
@@ -520,7 +578,8 @@ function normalizeSyncJobDetail(value: unknown): AdminSyncJobDetail {
 
 function normalizeCreateSyncJobResult(value: unknown): CreateAdminSyncJobResult {
   const payload = toRecord(value)
-  const record = normalizeSyncJobRecord(payload)
+  const jobPayload = toRecord(payload?.job) ?? payload
+  const record = normalizeSyncJobRecord(jobPayload)
   const jobId = toIdentifierText(payload?.job_id) || record?.job_id
 
   if (!jobId) {
@@ -531,6 +590,7 @@ function normalizeCreateSyncJobResult(value: unknown): CreateAdminSyncJobResult 
     job_id: jobId,
     state: toText(payload?.state) || record?.state || 'queued',
     created_at: toNullableText(payload?.created_at) || record?.created_at || null,
+    result: record?.result ?? normalizeSyncResultSummary(payload?.result ?? payload?.summary),
   }
 }
 
@@ -628,7 +688,11 @@ function getRuntimeApiBase(): string {
   return configuredBase.endsWith('/') ? configuredBase.slice(0, -1) : configuredBase
 }
 
-function getTimeoutMs(): number {
+function getTimeoutMs(overrideMs?: number): number {
+  if (typeof overrideMs === 'number' && Number.isFinite(overrideMs) && overrideMs > 0) {
+    return Math.floor(overrideMs)
+  }
+
   const timeoutMs = getRuntimeConfig()?.REQUEST_TIMEOUT_MS
   if (typeof timeoutMs === 'number' && Number.isFinite(timeoutMs) && timeoutMs > 0) {
     return Math.floor(timeoutMs)
@@ -687,6 +751,72 @@ function mapUnauthorized(status: number | undefined, code: AdminProjectErrorCode
   return code
 }
 
+type AdminRequestMethod = 'GET' | 'POST' | 'PATCH' | 'PUT'
+type AdminRequestFailurePhase = 'main_request' | 'main_response_parse' | 'preflight_or_network' | 'timeout' | 'unknown'
+
+interface AdminRequestFailureDetails {
+  request_url: string
+  method: AdminRequestMethod
+  status: number | null
+  phase: AdminRequestFailurePhase
+  cause?: string
+  preflight_hint?: string
+}
+
+function withRequestFailureDetails(
+  error: AdminProjectsApiError,
+  details: AdminRequestFailureDetails,
+): AdminProjectsApiError {
+  const existing = toRecord(error.details)
+  const next: Record<string, unknown> = {
+    ...(existing ?? {}),
+    request_url: details.request_url,
+    method: details.method,
+    status: details.status,
+    phase: details.phase,
+  }
+
+  if (details.cause) {
+    next.cause = details.cause
+  }
+  if (details.preflight_hint) {
+    next.preflight_hint = details.preflight_hint
+  }
+
+  error.details = next
+  if (typeof details.status === 'number') {
+    error.status = details.status
+  }
+
+  return error
+}
+
+function mergeAbortSignals(primary?: AbortSignal, secondary?: AbortSignal): AbortSignal | undefined {
+  if (!primary) {
+    return secondary
+  }
+
+  if (!secondary) {
+    return primary
+  }
+
+  if (primary.aborted) {
+    return primary
+  }
+
+  if (secondary.aborted) {
+    return secondary
+  }
+
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+
+  primary.addEventListener('abort', abort, { once: true })
+  secondary.addEventListener('abort', abort, { once: true })
+
+  return controller.signal
+}
+
 async function parseErrorFromResponse(response: Response): Promise<AdminProjectsApiError> {
   let message = ''
   let code: AdminProjectErrorCode = 'unknown'
@@ -695,6 +825,7 @@ async function parseErrorFromResponse(response: Response): Promise<AdminProjects
   try {
     const body = (await response.json()) as {
       detail?: unknown
+      message?: unknown
       error?: {
         code?: unknown
         message?: unknown
@@ -702,10 +833,18 @@ async function parseErrorFromResponse(response: Response): Promise<AdminProjects
       } | null
     }
 
-    const errorObject = toRecord(body.error)
-    code = normalizeErrorCode(errorObject?.code)
-    message = toText(errorObject?.message) || toText(body.detail)
-    details = errorObject?.details ?? null
+    const detailObject = toRecord(body.detail)
+    const topLevelErrorObject = toRecord(body.error)
+    const nestedErrorObject = toRecord(detailObject?.error)
+    const errorObject = nestedErrorObject ?? topLevelErrorObject
+
+    code = normalizeErrorCode(errorObject?.code ?? detailObject?.code)
+    message =
+      toText(errorObject?.message) ||
+      toText(detailObject?.message) ||
+      toText(body.message) ||
+      toText(body.detail)
+    details = errorObject?.details ?? detailObject?.details ?? null
   } catch {
     message = ''
   }
@@ -728,9 +867,12 @@ async function requestJson<T>(
     body?: Record<string, unknown>
     signal?: AbortSignal
     query?: object
+    timeoutMs?: number
   },
 ): Promise<T> {
-  const timeoutMs = getTimeoutMs()
+  const method: AdminRequestMethod = options.method ?? 'GET'
+  const requestUrl = buildAdminUrl(pathname, options.query)
+  const timeoutMs = getTimeoutMs(options.timeoutMs)
   const timeoutController = typeof AbortController === 'function' ? new AbortController() : null
   const timerId =
     timeoutController &&
@@ -739,47 +881,99 @@ async function requestJson<T>(
     }, timeoutMs)
 
   try {
-    const response = await fetch(buildAdminUrl(pathname, options.query), {
-      method: options.method ?? 'GET',
+    const response = await fetch(requestUrl, {
+      method,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
         'X-Admin-Token': options.token,
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
-      signal: options.signal ?? timeoutController?.signal,
+      signal: mergeAbortSignals(options.signal, timeoutController?.signal),
     })
 
     if (!response.ok) {
-      throw await parseErrorFromResponse(response)
+      throw withRequestFailureDetails(await parseErrorFromResponse(response), {
+        request_url: requestUrl,
+        method,
+        status: response.status,
+        phase: 'main_request',
+      })
     }
 
     if (response.status === 204) {
       return {} as T
     }
 
-    return (await response.json()) as T
+    try {
+      return (await response.json()) as T
+    } catch (error) {
+      const cause = error instanceof Error ? toText(error.message) : ''
+      throw withRequestFailureDetails(
+        new AdminProjectsApiError('Admin response payload is not valid JSON.', {
+          code: 'unknown',
+          status: response.status,
+        }),
+        {
+          request_url: requestUrl,
+          method,
+          status: response.status,
+          phase: 'main_response_parse',
+          cause,
+        },
+      )
+    }
   } catch (error) {
     if (error instanceof AdminProjectsApiError) {
       throw error
     }
 
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new AdminProjectsApiError('Admin request timed out.', { code: 'unknown' })
+      throw withRequestFailureDetails(new AdminProjectsApiError('Admin request timed out.', { code: 'request_timeout' }), {
+        request_url: requestUrl,
+        method,
+        status: null,
+        phase: 'timeout',
+      })
+    }
+
+    if (error instanceof TypeError) {
+      const normalizedMessage = toText(error.message).toLowerCase()
+      const isFailedToFetch = normalizedMessage.includes('failed to fetch') || normalizedMessage.includes('networkerror') || normalizedMessage.includes('load failed')
+      if (isFailedToFetch) {
+        throw withRequestFailureDetails(new AdminProjectsApiError('Network request failed.', { code: 'network_failed' }), {
+          request_url: requestUrl,
+          method,
+          status: null,
+          phase: 'preflight_or_network',
+          cause: toText(error.message),
+          preflight_hint: 'Check OPTIONS preflight response and CORS allow headers.',
+        })
+      }
     }
 
     if (error instanceof Error) {
-      throw new AdminProjectsApiError(error.message, { code: 'unknown' })
+      throw withRequestFailureDetails(new AdminProjectsApiError(error.message, { code: 'unknown' }), {
+        request_url: requestUrl,
+        method,
+        status: null,
+        phase: 'unknown',
+        cause: toText(error.message),
+      })
     }
 
-    throw new AdminProjectsApiError('Unknown admin request error.', { code: 'unknown' })
+    throw withRequestFailureDetails(new AdminProjectsApiError('Unknown admin request error.', { code: 'unknown' }), {
+      request_url: requestUrl,
+      method,
+      status: null,
+      phase: 'unknown',
+    })
   } finally {
     if (timerId) {
       globalThis.clearTimeout(timerId)
     }
   }
 }
-
 function cleanUpdatePayload(input: AdminProjectUpdateInput): Record<string, unknown> {
   const payload: Record<string, unknown> = {}
 
@@ -806,6 +1000,28 @@ function cleanUpdatePayload(input: AdminProjectUpdateInput): Record<string, unkn
     }
     payload[field] = value
   }
+
+  return payload
+}
+
+function cleanCreatePayload(input: CreateAdminProjectInput): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    project_key: input.project_key,
+    slug: input.slug,
+    name: input.name,
+    summary: input.summary,
+    stage: input.stage,
+    project_type: input.project_type,
+    visibility: input.visibility,
+    sort_order: input.sort_order,
+  }
+
+  if (input.headline !== undefined) payload.headline = input.headline
+  if (input.overview !== undefined) payload.overview = input.overview
+  if (input.status_note !== undefined) payload.status_note = input.status_note
+  if (input.is_featured !== undefined) payload.is_featured = input.is_featured
+  if (input.featured_rank !== undefined) payload.featured_rank = input.featured_rank
+  if (input.accent !== undefined) payload.accent = input.accent
 
   return payload
 }
@@ -874,6 +1090,45 @@ export async function updateAdminProjectById(
   return normalizeProjectDetail(payload)
 }
 
+export async function createAdminProject(
+  token: string,
+  input: CreateAdminProjectInput,
+  signal?: AbortSignal,
+): Promise<AdminProjectRecord> {
+  const projectKey = toText(input.project_key)
+  const slug = toText(input.slug)
+  const name = toText(input.name)
+  const summary = toText(input.summary)
+  const stage = toText(input.stage).toLowerCase()
+  const projectType = toText(input.project_type).toLowerCase()
+  const visibility = toText(input.visibility).toLowerCase()
+  const sortOrder = toFiniteNumber(input.sort_order)
+
+  if (!projectKey || !slug || !name || !summary || !stage || !projectType || !visibility || sortOrder === null) {
+    throw new AdminProjectsApiError('Create project payload is invalid.', { code: 'validation_failed' })
+  }
+
+  const payload = await requestJson<unknown>('/admin/projects', {
+    token: toText(token),
+    method: 'POST',
+    body: cleanCreatePayload({
+      ...input,
+      project_key: projectKey,
+      slug,
+      name,
+      summary,
+      stage,
+      project_type: projectType,
+      visibility,
+      sort_order: Math.round(sortOrder),
+    }),
+    signal,
+    timeoutMs: 12000,
+  })
+
+  return normalizeProjectDetail(payload)
+}
+
 export async function syncAdminProjectRepositories(token: string, projectId: string, signal?: AbortSignal): Promise<AdminProjectRecord> {
   const normalizedProjectId = toIdentifierText(projectId)
   if (!normalizedProjectId) {
@@ -930,6 +1185,7 @@ export async function createAdminSyncJob(
     method: 'POST',
     body,
     signal,
+    timeoutMs: 12000,
   })
 
   return normalizeCreateSyncJobResult(payload)
@@ -1000,3 +1256,4 @@ export async function fetchAdminStatus(token: string, signal?: AbortSignal): Pro
 
   return normalizeStatusSummary(payload)
 }
+

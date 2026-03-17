@@ -1198,8 +1198,8 @@
     updateSummary(state, sorted.length);
 
     if (allProjects.length === 0) {
-      showEmpty(getUiText("后端返回空目录（count=0）。请先同步项目数据后重试。", "The backend returned an empty catalog (count=0). Sync project data first and retry."));
-      setFetchStatus(getUiText("目录加载成功，但当前无项目数据。", "Catalog loaded successfully, but no project data is available."));
+      showEmpty(getUiText("\u76ee\u5f55\u4e3a\u7a7a\uff08\u4e2d\u6027\u7a7a\u6001\uff09\u3002\u53ef\u5728 /admin/projects \u521b\u5efa\u9996\u6761\u9879\u76ee\uff0c\u6216\u524d\u5f80 /admin/sync \u6267\u884c github_user=lambertlab \u5bfc\u5165\u3002", "Catalog is empty (neutral state). Create your first project in /admin/projects, or run github_user=lambertlab import in /admin/sync."));
+      setFetchStatus(getUiText("\u76ee\u5f55\u52a0\u8f7d\u6210\u529f\u3002\u5f53\u524d\u6682\u65e0\u9879\u76ee\uff0c\u4f46\u53ef\u7ee7\u7eed\u6267\u884c\u521b\u5efa\u6216\u5bfc\u5165\u3002", "Catalog loaded successfully. No projects yet, and intake actions are available."));
       return;
     }
 

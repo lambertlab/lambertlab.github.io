@@ -4,6 +4,8 @@ import {
   AdminProjectsApiError,
   type AdminProjectErrorCode,
   type AdminProjectRecord,
+  type CreateAdminProjectInput,
+  createAdminProject,
   fetchAdminProjectById,
   fetchAdminProjects,
   syncAdminProjectRepositories,
@@ -40,6 +42,17 @@ interface FormState {
   featured_rank: string
   sort_order: string
   accent: string
+}
+
+interface CreateFormState {
+  project_key: string
+  slug: string
+  name: string
+  summary: string
+  stage: string
+  project_type: string
+  visibility: string
+  sort_order: string
 }
 
 interface OperationState {
@@ -128,6 +141,43 @@ function toPayload(form: FormState) {
   }
 }
 
+const DEFAULT_CREATE_FORM: CreateFormState = {
+  project_key: '',
+  slug: '',
+  name: '',
+  summary: '',
+  stage: 'active',
+  project_type: 'tooling',
+  visibility: 'public',
+  sort_order: '100',
+}
+
+function toCreatePayload(form: CreateFormState): CreateAdminProjectInput | null {
+  const projectKey = form.project_key.trim()
+  const slug = form.slug.trim()
+  const name = form.name.trim()
+  const summary = form.summary.trim()
+  const stage = form.stage.trim().toLowerCase()
+  const projectType = form.project_type.trim().toLowerCase()
+  const visibility = form.visibility.trim().toLowerCase()
+  const sortOrder = Number(form.sort_order.trim())
+
+  if (!projectKey || !slug || !name || !summary || !stage || !projectType || !visibility || !Number.isFinite(sortOrder)) {
+    return null
+  }
+
+  return {
+    project_key: projectKey,
+    slug,
+    name,
+    summary,
+    stage,
+    project_type: projectType,
+    visibility,
+    sort_order: Math.round(sortOrder),
+  }
+}
+
 function formatTime(value: string | null): string {
   if (!value) return '--'
   const parsed = new Date(value)
@@ -135,10 +185,86 @@ function formatTime(value: string | null): string {
   return parsed.toLocaleString('zh-CN', { hour12: false })
 }
 
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  return value as Record<string, unknown>
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    globalThis.setTimeout(resolve, ms)
+  })
+}
+
+interface CreateRequestDiagnostic {
+  requestUrl: string
+  method: string
+  code: AdminProjectErrorCode
+  status: number | null
+  phase: string
+  preflightHint: string
+}
+
+function readCreateDiagnostic(error: unknown): CreateRequestDiagnostic | null {
+  if (!(error instanceof AdminProjectsApiError)) {
+    return null
+  }
+
+  const details = toRecord(error.details)
+  const statusFromDetails = toFiniteNumber(details?.status)
+  const phaseFromDetails = toText(details?.phase)
+
+  return {
+    requestUrl: toText(details?.request_url),
+    method: toText(details?.method).toUpperCase() || 'POST',
+    code: error.code,
+    status: typeof error.status === 'number' ? error.status : statusFromDetails,
+    phase: phaseFromDetails || (error.code === 'network_failed' ? 'preflight_or_network' : error.code === 'request_timeout' ? 'timeout' : 'unknown'),
+    preflightHint: toText(details?.preflight_hint),
+  }
+}
+
+function formatCreateDiagnostic(diagnostic: CreateRequestDiagnostic | null, fallbackCode: AdminProjectErrorCode): string {
+  const requestUrl = diagnostic?.requestUrl || '/admin/projects'
+  const code = diagnostic?.code || fallbackCode
+  const status = typeof diagnostic?.status === 'number' ? String(diagnostic.status) : '--'
+  const method = diagnostic?.method || 'POST'
+  const phase = diagnostic?.phase || 'unknown'
+  const hint = diagnostic?.preflightHint
+
+  const summary = ['URL=' + requestUrl, 'code=' + code, 'HTTP=' + status, 'method=' + method, 'phase=' + phase]
+  if (hint) {
+    summary.push('hint=' + hint)
+  }
+
+  return summary.join(' | ')
+}
+
 function errorMessage(error: unknown): { code: AdminProjectErrorCode; message: string } {
   if (error instanceof AdminProjectsApiError) {
     if (error.code === 'unauthorized') return { code: 'unauthorized', message: 'Admin Token 无效或过期，请重新验证。' }
     if (error.code === 'project_not_found') return { code: error.code, message: '未找到该项目，请刷新列表后重试。' }
+    if (error.code === 'validation_failed') return { code: error.code, message: '\u8bf7\u6c42\u53c2\u6570\u6821\u9a8c\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u5fc5\u586b\u9879\u3002' }
+    if (error.code === 'request_timeout') return { code: error.code, message: '\u8bf7\u6c42\u8d85\u65f6\uff0c\u53ef\u80fd\u5df2\u53d7\u7406\u3002\u7cfb\u7edf\u5c06\u81ea\u52a8\u56de\u67e5\u521b\u5efa\u7ed3\u679c\u3002' }
+    if (error.code === 'network_failed') return { code: error.code, message: '\u7f51\u7edc\u8bf7\u6c42\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 API_BASE\u3001CORS \u6216\u670d\u52a1\u53ef\u8fbe\u6027\u540e\u91cd\u8bd5\u3002' }
     if (error.code === 'project_slug_conflict') return { code: error.code, message: 'Slug 冲突，请更换后保存。' }
     if (error.code === 'invalid_stage') return { code: error.code, message: 'stage 不合法，请按协议填写。' }
     if (error.code === 'invalid_project_type') return { code: error.code, message: 'project_type 不合法，请按协议填写。' }
@@ -147,6 +273,7 @@ function errorMessage(error: unknown): { code: AdminProjectErrorCode; message: s
     if (error.code === 'sync_failed') return { code: error.code, message: '同步失败，请稍后重试。' }
     if (error.code === 'sync_rate_limited') return { code: error.code, message: 'GitHub 配额限流，请稍后再试。' }
     if (error.code === 'invalid_link_type') return { code: error.code, message: '链接类型不合法，请检查后重试。' }
+    if (toText(error.message).toLowerCase().includes('failed to fetch')) return { code: 'network_failed', message: '\u7f51\u7edc\u8bf7\u6c42\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5 API_BASE\u3001CORS \u6216\u670d\u52a1\u53ef\u8fbe\u6027\u540e\u91cd\u8bd5\u3002' }
     if (toText(error.message)) return { code: error.code, message: toText(error.message) }
   }
 
@@ -195,6 +322,8 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
   const [saveState, setSaveState] = React.useState<OperationState>({ status: 'idle', message: '' })
   const [syncState, setSyncState] = React.useState<OperationState>({ status: 'idle', message: '' })
+  const [createForm, setCreateForm] = React.useState<CreateFormState>(DEFAULT_CREATE_FORM)
+  const [createState, setCreateState] = React.useState<OperationState>({ status: 'idle', message: '' })
 
   useDocumentMetadata(
     mode === 'projects' ? t('Control Center · Projects 管理 | lambertlab', 'Control Center · Projects Admin | lambertlab') : t('Control Center · Admin 入口 | lambertlab', 'Control Center · Admin Entry | lambertlab'),
@@ -215,6 +344,8 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       setForm(null)
       setSaveState({ status: 'idle', message: '' })
       setSyncState({ status: 'idle', message: '' })
+      setCreateState({ status: 'idle', message: '' })
+      setCreateForm(DEFAULT_CREATE_FORM)
       if (mode === 'projects') {
         patchSearch({ projectId: '', page: 1 })
       }
@@ -379,6 +510,119 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     return () => controller.abort()
   }, [authStatus, loadDetail, mode, selectedId])
 
+  const createProject = React.useCallback(async () => {
+    if (!token) return
+
+    const payload = toCreatePayload(createForm)
+    if (!payload) {
+      setCreateState({ status: 'error', message: t('\u8bf7\u586b\u5199\u5fc5\u586b\u5b57\u6bb5\uff0c\u5e76\u786e\u4fdd sort_order \u4e3a\u6570\u5b57\u3002', 'Please fill required fields and ensure sort_order is numeric.') })
+      return
+    }
+
+    const commitCreated = (created: AdminProjectRecord, successMessage?: string) => {
+      const name = created.name || created.slug || created.id
+
+      setCreateState({ status: 'success', message: successMessage || t('\u521b\u5efa\u6210\u529f\uff1a' + name, 'Created: ' + name) })
+      setCreateForm((prev) => ({
+        ...DEFAULT_CREATE_FORM,
+        stage: prev.stage,
+        project_type: prev.project_type,
+        visibility: prev.visibility,
+        sort_order: prev.sort_order,
+      }))
+
+      setProjects((prev) => [created, ...prev.filter((item) => item.id !== created.id)])
+      setBackendTotal((prev) => Math.max(prev, 1))
+      setDetailProject(created)
+      setForm(toForm(created))
+      setDetailStatus('ready')
+      setDetailMessage('')
+
+      patchSearch({
+        q: '',
+        stage: '',
+        visibility: '',
+        page: 1,
+        projectId: created.id,
+      })
+      setListNonce((prev) => prev + 1)
+    }
+
+    setCreateState({ status: 'running', message: t('\u6b63\u5728\u521b\u5efa\u9879\u76ee...', 'Creating project...') })
+
+    try {
+      const created = await createAdminProject(token, payload)
+      commitCreated(created)
+    } catch (error) {
+      const mapped = errorMessage(error)
+      if (mapped.code === 'unauthorized') {
+        invalidate(mapped.message)
+        return
+      }
+
+      const diagnostic = readCreateDiagnostic(error)
+      const diagnosticMessage = formatCreateDiagnostic(diagnostic, mapped.code)
+      const shouldProbe = mapped.code === 'request_timeout' || mapped.code === 'network_failed' || diagnostic?.phase === 'main_response_parse'
+      if (!shouldProbe) {
+        setCreateState({
+          status: 'error',
+          message: mapped.message + t('；诊断：', ' | Diagnostic: ') + diagnosticMessage,
+        })
+        return
+      }
+
+      setCreateState({ status: 'running', message: t('\u8bf7\u6c42\u672a\u786e\u8ba4\uff0c\u6b63\u5728\u56de\u67e5\u9879\u76ee\u5217\u8868...', 'Request not confirmed. Re-checking project list...') })
+
+      const normalizedSlug = payload.slug.trim().toLowerCase()
+      const probeQueries: Array<{ q?: string; page: number; page_size: number }> = [
+        { q: payload.slug, page: 1, page_size: 100 },
+        { page: 1, page_size: 200 },
+      ]
+
+      if (payload.project_key.trim().toLowerCase() !== normalizedSlug) {
+        probeQueries.splice(1, 0, { q: payload.project_key, page: 1, page_size: 100 })
+      }
+
+      let recovered: AdminProjectRecord | null = null
+
+      for (let attempt = 0; attempt < 4 && !recovered; attempt += 1) {
+        for (const query of probeQueries) {
+          try {
+            const probe = await fetchAdminProjects(token, query)
+            recovered = probe.projects.find((item) => item.slug.trim().toLowerCase() === normalizedSlug) ?? null
+            if (recovered) {
+              break
+            }
+          } catch (probeError) {
+            const probeMapped = errorMessage(probeError)
+            if (probeMapped.code === 'unauthorized') {
+              invalidate(probeMapped.message)
+              return
+            }
+          }
+        }
+
+        if (!recovered && attempt < 3) {
+          await sleep(700 + attempt * 500)
+        }
+      }
+
+      if (recovered) {
+        const name = recovered.name || recovered.slug || recovered.id
+        commitCreated(recovered, t('\u8bf7\u6c42\u4e2d\u65ad\u4f46\u9879\u76ee\u5df2\u521b\u5efa\uff1a' + name, 'Request interrupted but project was created: ' + name))
+        return
+      }
+
+      setCreateState({
+        status: 'error',
+        message:
+          t('\u521b\u5efa\u8bf7\u6c42\u672a\u6210\u529f\u8fd4\u56de\uff0c\u4e14\u56de\u67e5\u672a\u53d1\u73b0\u65b0\u9879\u76ee\u3002\u8bf7\u68c0\u67e5 API_BASE\u3001CORS \u6216\u7f51\u7edc\u8fde\u63a5\u540e\u91cd\u8bd5\u3002', 'Create request did not return successfully and probe found no new project. Check API_BASE/CORS/network and retry.') +
+          t('；诊断：', ' | Diagnostic: ') +
+          diagnosticMessage,
+      })
+    }
+  }, [createForm, invalidate, patchSearch, t, token])
+
   const saveProject = React.useCallback(async () => {
     if (!token || !selectedId || !form) return
 
@@ -515,8 +759,16 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
             </div>
 
             {listStatus === 'loading' ? <div className="admin-state-card">{t('加载中...', 'Loading...')}</div> : null}
-            {listStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{listMessage}</p><button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('重试', 'Retry')}</button></div> : null}
-            {listStatus === 'empty' ? <div className="admin-state-card"><p>{t('暂无项目。', 'No projects.')}</p><button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('重试', 'Retry')}</button></div> : null}
+            {listStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{listMessage}</p><button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('\u91cd\u8bd5', 'Retry')}</button></div> : null}
+            {listStatus === 'empty' ? (
+              <div className="admin-state-card">
+                <p>{t('\u5f53\u524d\u76ee\u5f55\u4e3a\u7a7a\uff08\u975e\u9519\u8bef\u6001\uff09\u3002\u53ef\u5728\u53f3\u4fa7\u521b\u5efa\u9996\u6761\u9879\u76ee\uff0c\u6216\u524d\u5f80 /admin/sync \u6267\u884c github_user=lambertlab \u5bfc\u5165\u3002', 'Catalog is empty (not an error). Create your first project in the right panel, or run github_user=lambertlab import in /admin/sync.')}</p>
+                <div className="admin-list-actions">
+                  <button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('\u91cd\u8bd5', 'Retry')}</button>
+                  <Link className="admin-secondary-button" to="/admin/sync">/admin/sync</Link>
+                </div>
+              </div>
+            ) : null}
             {listStatus === 'ready' && filtered.length === 0 ? <div className="admin-state-card"><p>{t('筛选后为空。', 'No results after filters.')}</p><button className="admin-secondary-button" type="button" onClick={resetFilters}>{t('清空筛选', 'Clear Filters')}</button></div> : null}
 
             {listStatus === 'ready' && filtered.length > 0 ? (
@@ -545,10 +797,35 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
           </aside>
 
           <section className="admin-projects-detail-panel">
-            <h2>{t('项目编辑与同步', 'Project Edit & Sync')}</h2>
-            {!selectedId ? <div className="admin-state-card">{t('请选择项目。', 'Select a project.')}</div> : null}
-            {selectedId && detailStatus === 'loading' ? <div className="admin-state-card">{t('详情加载中...', 'Loading detail...')}</div> : null}
-            {selectedId && detailStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{detailMessage}</p><button className="admin-primary-button" type="button" onClick={() => void loadDetail(selectedId)}>{t('重试详情', 'Retry detail')}</button></div> : null}
+            <h2>{t('\u521b\u5efa / \u7f16\u8f91 / \u540c\u6b65', 'Create / Edit / Sync')}</h2>
+
+            <div className="admin-state-card">
+              <h3>{t('\u521b\u5efa\u9879\u76ee', 'Create Project')}</h3>
+              <p>{t('\u5373\u4f7f\u76ee\u5f55\u4e3a\u7a7a\u4e5f\u53ef\u521b\u5efa\u9996\u6761\u9879\u76ee\u3002\u5fc5\u586b\u5b57\u6bb5\u9075\u5faa\u672c\u8f6e API \u534f\u8bae\u3002', 'Create the first project even when the catalog is empty. Required fields follow this round API contract.')}</p>
+              <form className="admin-editor-form" onSubmit={(event) => { event.preventDefault(); void createProject() }}>
+                <div className="admin-editor-grid two-col">
+                  <label>project_key<input type="text" value={createForm.project_key} onChange={(event) => setCreateForm((prev) => ({ ...prev, project_key: event.target.value }))} placeholder="my-first-project" /></label>
+                  <label>slug<input type="text" value={createForm.slug} onChange={(event) => setCreateForm((prev) => ({ ...prev, slug: event.target.value }))} placeholder="my-first-project" /></label>
+                </div>
+                <label>name<input type="text" value={createForm.name} onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="My First Project" /></label>
+                <label>summary<textarea rows={3} value={createForm.summary} onChange={(event) => setCreateForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder={t('\u4e00\u53e5\u8bdd\u6458\u8981', 'One-line summary')} /></label>
+                <div className="admin-editor-grid three-col">
+                  <label>stage<select value={createForm.stage} onChange={(event) => setCreateForm((prev) => ({ ...prev, stage: event.target.value }))}>{STAGES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  <label>project_type<select value={createForm.project_type} onChange={(event) => setCreateForm((prev) => ({ ...prev, project_type: event.target.value }))}>{PROJECT_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  <label>visibility<select value={createForm.visibility} onChange={(event) => setCreateForm((prev) => ({ ...prev, visibility: event.target.value }))}>{VISIBILITY.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                </div>
+                <label>sort_order<input type="number" value={createForm.sort_order} onChange={(event) => setCreateForm((prev) => ({ ...prev, sort_order: event.target.value }))} /></label>
+                <div className="admin-editor-actions">
+                  <button className="admin-primary-button" type="submit" disabled={createState.status === 'running'}>{createState.status === 'running' ? t('\u521b\u5efa\u4e2d...', 'Creating...') : t('\u521b\u5efa\u9879\u76ee', 'Create Project')}</button>
+                  <Link className="admin-secondary-button" to="/admin/sync">/admin/sync</Link>
+                </div>
+                {createState.message ? <p className="admin-feedback" data-tone={createState.status === 'success' ? 'success' : createState.status === 'error' ? 'error' : 'info'}>{createState.message}</p> : null}
+              </form>
+            </div>
+
+            {!selectedId ? <div className="admin-state-card">{t('\u53ef\u76f4\u63a5\u521b\u5efa\u9879\u76ee\u3002\u521b\u5efa\u6210\u529f\u540e\u4f1a\u81ea\u52a8\u9009\u4e2d\u5e76\u8fdb\u5165\u7f16\u8f91\u6001\u3002', 'Create is ready. New project will be auto-selected for editing.')}</div> : null}
+            {selectedId && detailStatus === 'loading' ? <div className="admin-state-card">{t('\u6b63\u5728\u52a0\u8f7d\u8be6\u60c5...', 'Loading detail...')}</div> : null}
+            {selectedId && detailStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{detailMessage}</p><button className="admin-primary-button" type="button" onClick={() => void loadDetail(selectedId)}>{t('\u91cd\u8bd5\u52a0\u8f7d\u8be6\u60c5', 'Retry detail')}</button></div> : null}
 
             {selectedId && detailStatus === 'ready' && form && detailProject ? (
               <form className="admin-editor-form" onSubmit={(event) => { event.preventDefault(); void saveProject() }}>
@@ -576,13 +853,13 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
                 <label className="admin-checkbox-row"><input type="checkbox" checked={form.is_featured} onChange={(event) => setForm((prev) => (prev ? { ...prev, is_featured: event.target.checked } : prev))} /><span>is_featured</span></label>
                 <div className="admin-editor-actions">
-                  <button className="admin-primary-button" type="submit" disabled={saveState.status === 'running' || syncState.status === 'running'}>{saveState.status === 'running' ? t('保存中...', 'Saving...') : t('保存变更', 'Save')}</button>
-                  <button className="admin-secondary-button" type="button" disabled={saveState.status === 'running' || syncState.status === 'running'} onClick={() => void syncProject()}>{syncState.status === 'running' ? t('同步中...', 'Syncing...') : t('同步仓库', 'Sync Repositories')}</button>
+                  <button className="admin-primary-button" type="submit" disabled={saveState.status === 'running' || syncState.status === 'running'}>{saveState.status === 'running' ? t('Saving...', 'Saving...') : t('Save', 'Save')}</button>
+                  <button className="admin-secondary-button" type="button" disabled={saveState.status === 'running' || syncState.status === 'running'} onClick={() => void syncProject()}>{syncState.status === 'running' ? t('Syncing...', 'Syncing...') : t('Sync Repositories', 'Sync Repositories')}</button>
                 </div>
                 {saveState.status !== 'idle' && saveState.message ? <p className="admin-feedback" data-tone={saveState.status === 'success' ? 'success' : saveState.status === 'error' ? 'error' : 'info'}>{saveState.message}</p> : null}
                 {syncState.status !== 'idle' && syncState.message ? <p className="admin-feedback" data-tone={syncState.status === 'success' ? 'success' : syncState.status === 'error' ? 'error' : 'info'}>{syncState.message}</p> : null}
-                <p className="admin-detail-meta">{t('上次同步：', 'Synced: ')} {formatTime(detailProject.synced_at)}</p>
-                <p className="admin-detail-meta">{t('最后更新：', 'Updated: ')} {formatTime(detailProject.updated_at)}</p>
+                <p className="admin-detail-meta">{t('Synced: ', 'Synced: ')} {formatTime(detailProject.synced_at)}</p>
+                <p className="admin-detail-meta">{t('Updated: ', 'Updated: ')} {formatTime(detailProject.updated_at)}</p>
               </form>
             ) : null}
           </section>
@@ -591,6 +868,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     </main>
   )
 }
+
 
 
 

@@ -11,6 +11,7 @@
   var slots = Array.prototype.slice.call(featuredRoot.querySelectorAll("[data-home-featured-slot]"));
   var featuredProjects = [];
   var featuredErrorMessage = "";
+  var featuredIsEmpty = false;
   if (!slots.length) {
     return;
   }
@@ -79,6 +80,39 @@
     setChip(stageNode, project.stage || getUiText("未知", "Unknown"), "neutral");
     setChip(typeNode, project.projectType || getUiText("类型待补充", "Type pending"), "neutral");
     setChip(sourceNode, project.sourceType || getUiText("来源待补充", "Source pending"), "neutral");
+  }
+
+  function setCatalogEmptyState(slot) {
+    if (!slot) {
+      return;
+    }
+
+    var rankNode = slot.querySelector("[data-project-rank]");
+    var nameNode = slot.querySelector("[data-project-name]");
+    var summaryNode = slot.querySelector("[data-project-summary]");
+    var stageNode = slot.querySelector("[data-project-stage]");
+    var typeNode = slot.querySelector("[data-project-type]");
+    var sourceNode = slot.querySelector("[data-project-source]");
+
+    slot.href = "./projects/";
+    slot.removeAttribute("target");
+    slot.removeAttribute("rel");
+    slot.removeAttribute("aria-busy");
+    slot.setAttribute("data-featured-state", "empty");
+
+    if (rankNode) {
+      rankNode.textContent = getUiText("\u9879\u76ee\u76ee\u5f55", "Project Directory");
+    }
+    if (nameNode) {
+      nameNode.textContent = getUiText("\u6682\u65e0\u9879\u76ee", "No projects yet");
+    }
+    if (summaryNode) {
+      summaryNode.textContent = getUiText("\u5f53\u524d\u4e3a\u4e2d\u6027\u7a7a\u6001\u3002\u53ef\u524d\u5f80 /admin/projects \u521b\u5efa\u9996\u6761\u9879\u76ee\uff0c\u6216\u5728 /admin/sync \u4f7f\u7528 github_user=lambertlab \u5bfc\u5165\u3002", "This is a neutral empty state. Create in /admin/projects, or import with github_user=lambertlab in /admin/sync.");
+    }
+
+    setChip(stageNode, getUiText("\u76ee\u5f55\u4e3a\u7a7a", "Empty catalog"), "neutral");
+    setChip(typeNode, getUiText("\u53ef\u7ee7\u7eed\u64cd\u4f5c", "Action available"), "neutral");
+    setChip(sourceNode, getUiText("\u53ef\u7528\u6536\u5f55\u901a\u9053", "Intake channels"), "neutral");
   }
 
   function setErrorState(slot, message) {
@@ -158,6 +192,13 @@
       return;
     }
 
+    if (featuredIsEmpty) {
+      slots.forEach(function (slot) {
+        setCatalogEmptyState(slot);
+      });
+      return;
+    }
+
     if (featuredErrorMessage) {
       slots.forEach(function (slot) {
         setErrorState(slot, featuredErrorMessage);
@@ -172,11 +213,19 @@
     var projects = Array.isArray(result.projects) ? result.projects : [];
 
     if (!projects.length) {
-      throw new Error("No featured projects found.");
+      featuredProjects = [];
+      featuredErrorMessage = "";
+      featuredIsEmpty = true;
+
+      slots.forEach(function (slot) {
+        setCatalogEmptyState(slot);
+      });
+      return;
     }
 
     featuredProjects = projects.slice();
     featuredErrorMessage = "";
+    featuredIsEmpty = false;
 
     slots.forEach(function (slot, index) {
       var project = projects[index];
@@ -194,6 +243,7 @@
 
     featuredProjects = [];
     featuredErrorMessage = message;
+    featuredIsEmpty = false;
 
     slots.forEach(function (slot) {
       setErrorState(slot, message);
