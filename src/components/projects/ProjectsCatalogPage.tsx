@@ -1,14 +1,64 @@
+import { useProjectsCatalog } from '~/features/projects/hooks/useProjectsCatalog'
+import { ProjectsCatalogFilters } from '~/features/projects/ui/ProjectsCatalogFilters'
+import { ProjectsCatalogGrid } from '~/features/projects/ui/ProjectsCatalogGrid'
+import { ProjectsCatalogMetrics } from '~/features/projects/ui/ProjectsCatalogMetrics'
+import { ProjectsCatalogState } from '~/features/projects/ui/ProjectsCatalogState'
 import { legacyPageMetadata } from '~/lib/siteCopy'
-import { useRuntimeScripts } from '~/lib/useRuntimeScripts'
 import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
 
-const PROJECTS_RUNTIME_SCRIPTS = ['/js/projects-runtime.js', '/js/projects-catalog.js'] as const
+const PAGE_COPY = {
+  'zh-CN': {
+    heroDesc: '浏览所有项目，按阶段、来源与类型快速筛选和发现。支持搜索、排序与 URL 分享。',
+    chipStage: '阶段筛选',
+    chipSource: '来源类型',
+    chipType: '项目类型',
+    chipReplay: 'URL Replay',
+    emptyCatalog: '目录为空（中性空态）。可在 /admin/projects 创建首条项目，或前往 /admin/sync 执行 github_user=lambertlab 导入。',
+    emptyFiltered: '当前筛选条件无匹配项。可以放宽关键词或重置筛选。',
+    statusLoading: '正在读取目录数据...',
+    statusReady: '目录加载成功。',
+    statusReadyEmpty: '目录加载成功。当前暂无项目，但可继续执行创建或导入。',
+    statusReadyFiltered: '目录加载成功，筛选后无匹配项。',
+    statusError: '目录读取失败，可点击重试。',
+    resultsMeta: (visible: number, total: number) => `显示 ${visible} / ${total} 个项目`,
+  },
+  en: {
+    heroDesc: 'Browse every project with fast filters for stage, source, and type. Supports search, sorting, and URL replay.',
+    chipStage: 'Stage Filter',
+    chipSource: 'Source Type',
+    chipType: 'Project Type',
+    chipReplay: 'URL Replay',
+    emptyCatalog: 'Catalog is empty (neutral state). Create your first project in /admin/projects, or run github_user=lambertlab import in /admin/sync.',
+    emptyFiltered: 'No projects match the current filters. Try loosening the query or clearing filters.',
+    statusLoading: 'Fetching the latest catalog data...',
+    statusReady: 'Catalog loaded successfully.',
+    statusReadyEmpty: 'Catalog loaded successfully. No projects yet, and intake actions are available.',
+    statusReadyFiltered: 'Catalog loaded successfully, but no entries match the current filters.',
+    statusError: 'Catalog loading failed. Click Retry to try again.',
+    resultsMeta: (visible: number, total: number) => `Showing ${visible} / ${total} projects`,
+  },
+} as const
 
 export function ProjectsCatalogPage() {
   const { locale } = useUiLocale()
+  const catalog = useProjectsCatalog()
+  const copy = PAGE_COPY[locale]
 
-  useRuntimeScripts(PROJECTS_RUNTIME_SCRIPTS)
   useDocumentMetadata(legacyPageMetadata.projects.title[locale], legacyPageMetadata.projects.description[locale])
+
+  const isFilteredEmpty = catalog.status === 'ready' && catalog.visibleProjects.length === 0
+  const showEmpty = catalog.status === 'empty' || isFilteredEmpty
+  const showGrid = catalog.status === 'ready' && catalog.visibleProjects.length > 0
+  const emptyMessage = catalog.status === 'empty' ? copy.emptyCatalog : copy.emptyFiltered
+  const fetchStatus = catalog.status === 'loading'
+    ? copy.statusLoading
+    : catalog.status === 'error'
+      ? copy.statusError
+      : catalog.status === 'empty'
+        ? copy.statusReadyEmpty
+        : isFilteredEmpty
+          ? copy.statusReadyFiltered
+          : copy.statusReady
 
   return (
     <main id="main-content" data-project-catalog>
@@ -17,201 +67,38 @@ export function ProjectsCatalogPage() {
           <div>
             <p className="hero-kicker">Project Catalog</p>
             <h1 className="hero-title">Explore the Project Catalog</h1>
-            <p className="hero-desc">浏览所有项目，按阶段、来源与类型快速筛选和发现。支持搜索、排序与 URL 分享。</p>
+            <p className="hero-desc">{copy.heroDesc}</p>
             <div className="hero-chip-row">
-              <span className="chip">Stage Filter</span>
-              <span className="chip">Source Type</span>
-              <span className="chip">Project Type</span>
-              <span className="chip">URL Replay</span>
+              <span className="chip">{copy.chipStage}</span>
+              <span className="chip">{copy.chipSource}</span>
+              <span className="chip">{copy.chipType}</span>
+              <span className="chip">{copy.chipReplay}</span>
             </div>
           </div>
-          <div className="hero-metrics" aria-label="catalog metrics">
-            <article className="metric">
-              <p className="label">Projects</p>
-              <p className="value" data-total-items>
-                --
-              </p>
-              <p className="desc">目录项目总数</p>
-            </article>
-            <article className="metric">
-              <p className="label">Active</p>
-              <p className="value" data-live-items>
-                --
-              </p>
-              <p className="desc">当前活跃项目数量</p>
-            </article>
-            <article className="metric">
-              <p className="label">Last Updated</p>
-              <p className="value" data-last-sync>
-                Pending
-              </p>
-              <p className="desc">目录最近更新时间</p>
-            </article>
-            <article className="metric">
-              <p className="label">Sources</p>
-              <p className="value" data-source-count>
-                --
-              </p>
-              <p className="desc">项目来源类型数量</p>
-            </article>
-          </div>
+          <ProjectsCatalogMetrics metrics={catalog.metrics} status={catalog.status} locale={locale} />
         </div>
       </section>
 
-      <section className="control-strip" aria-label="Project controls">
-        <div className="field">
-          <label className="field-label sr-only" htmlFor="project-search" id="project-search-label">
-            Search
-          </label>
-          <input className="field-input" id="project-search" type="search" placeholder="Search by name, summary, tags, stack" />
-        </div>
-
-        <div className="field">
-          <label className="field-label sr-only" htmlFor="sort-by" id="sort-by-label">
-            Sort
-          </label>
-          <div className="field-custom-select" data-custom-select>
-            <button
-              className="field-select-trigger"
-              id="sort-by-trigger"
-              type="button"
-              aria-haspopup="listbox"
-              aria-expanded="false"
-              aria-labelledby="sort-by-label"
-              data-custom-select-trigger
-            >
-              Most Recent
-            </button>
-            <div className="field-select-listbox" id="sort-by-listbox" role="listbox" aria-labelledby="sort-by-label" hidden data-custom-select-listbox></div>
-            <select className="field-select field-native-select" id="sort-by" aria-label="Sort" tabIndex={-1}>
-              <option value="recent">Most Recent</option>
-              <option value="stars">Stars</option>
-              <option value="name">Name (A-Z)</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="field">
-          <label className="field-label sr-only" htmlFor="stage-filter" id="stage-filter-label">
-            Stage
-          </label>
-          <div className="field-custom-select" data-custom-select>
-            <button
-              className="field-select-trigger"
-              id="stage-filter-trigger"
-              type="button"
-              aria-haspopup="listbox"
-              aria-expanded="false"
-              aria-labelledby="stage-filter-label"
-              data-custom-select-trigger
-            >
-              All
-            </button>
-            <div className="field-select-listbox" id="stage-filter-listbox" role="listbox" aria-labelledby="stage-filter-label" hidden data-custom-select-listbox></div>
-            <select className="field-select field-native-select" id="stage-filter" aria-label="Stage" tabIndex={-1}>
-              <option value="all">All</option>
-              <option value="building">Building</option>
-              <option value="active">Active</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="research">Research</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="field">
-          <label className="field-label sr-only" htmlFor="source-filter" id="source-filter-label">
-            Source
-          </label>
-          <div className="field-custom-select" data-custom-select>
-            <button
-              className="field-select-trigger"
-              id="source-filter-trigger"
-              type="button"
-              aria-haspopup="listbox"
-              aria-expanded="false"
-              aria-labelledby="source-filter-label"
-              data-custom-select-trigger
-            >
-              All
-            </button>
-            <div className="field-select-listbox" id="source-filter-listbox" role="listbox" aria-labelledby="source-filter-label" hidden data-custom-select-listbox></div>
-            <select className="field-select field-native-select" id="source-filter" aria-label="Source" tabIndex={-1}>
-              <option value="all">All</option>
-              <option value="github">GitHub</option>
-              <option value="local">Local</option>
-              <option value="private">Private</option>
-              <option value="hybrid">Hybrid</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="field">
-          <label className="field-label sr-only" htmlFor="type-filter" id="type-filter-label">
-            Type
-          </label>
-          <div className="field-custom-select" data-custom-select>
-            <button
-              className="field-select-trigger"
-              id="type-filter-trigger"
-              type="button"
-              aria-haspopup="listbox"
-              aria-expanded="false"
-              aria-labelledby="type-filter-label"
-              data-custom-select-trigger
-            >
-              All
-            </button>
-            <div className="field-select-listbox" id="type-filter-listbox" role="listbox" aria-labelledby="type-filter-label" hidden data-custom-select-listbox></div>
-            <select className="field-select field-native-select" id="type-filter" aria-label="Type" tabIndex={-1}>
-              <option value="all">All</option>
-              <option value="website">Website</option>
-              <option value="backend">Backend</option>
-              <option value="tooling">Tooling</option>
-              <option value="infra">Infra</option>
-              <option value="research">Research</option>
-              <option value="agent">Agent</option>
-              <option value="data">Data</option>
-              <option value="library">Library</option>
-            </select>
-          </div>
-        </div>
-
-        <button className="ghost-btn" type="button" id="clear-filters">
-          Clear
-        </button>
-
-        <div className="control-strip-meta" aria-label="Catalog filters">
-          <label className="check-item featured-only-label">
-            <input type="checkbox" id="featured-only" /> Featured only
-          </label>
-          <div className="tag-cloud control-tag-cloud" data-tag-cloud>
-            <span className="tag">Waiting</span>
-          </div>
-          <p className="catalog-note control-status" data-fetch-status>
-            准备加载目录数据。
-          </p>
-        </div>
-      </section>
+      <ProjectsCatalogFilters
+        query={catalog.query}
+        onChange={catalog.updateQuery}
+        onReset={catalog.resetQuery}
+        tagCloud={catalog.tagCloud}
+        fetchStatus={fetchStatus}
+        resultsMeta={copy.resultsMeta(catalog.visibleProjects.length, catalog.projects.length)}
+        locale={locale}
+      />
 
       <section className="catalog-layout" aria-label="Project catalog">
-        <div className="catalog-state" data-loading-state role="status" aria-live="polite">
-          正在加载项目目录...
-        </div>
-        <div className="catalog-state catalog-state-error" data-error-state hidden>
-          <p className="catalog-state-title">目录加载失败</p>
-          <p className="catalog-state-detail" data-error-detail>
-            请求失败，请检查后端连接状态。
-          </p>
-          <button className="ghost-btn" type="button" id="retry-fetch">
-            Retry
-          </button>
-        </div>
-
-        <div className="projects-grid" data-project-grid hidden></div>
-        <p className="empty-state" data-empty-state hidden>
-          未找到符合条件的项目。可以放宽关键词，或重置筛选后再试。
-        </p>
+        <ProjectsCatalogState
+          status={catalog.status}
+          message={catalog.message}
+          emptyMessage={emptyMessage}
+          showEmpty={showEmpty}
+          onRetry={catalog.retry}
+          locale={locale}
+        />
+        <ProjectsCatalogGrid projects={catalog.visibleProjects} locale={locale} hidden={!showGrid} />
       </section>
 
       <footer className="footer">

@@ -1,32 +1,28 @@
-export interface ProjectLinks {
-  primary: string | null
-  repo: string | null
-  demo: string | null
-  docs: string | null
-  notes: string | null
-}
+import {
+  normalizeProjectCanonicalPath,
+  normalizeProjectCatalogRecord,
+  normalizeProjectFeaturedRank,
+  normalizeProjectHighlightArray,
+  normalizeProjectLinks,
+  normalizeProjectRepositories,
+  normalizeProjectSourceRefs,
+  normalizeProjectStringArray,
+  normalizeProjectTagArray,
+  normalizeNullableProjectText,
+} from '~/features/projects/model/projectNormalize'
+import type {
+  FetchProjectsListOptions,
+  ProjectCatalogRecord,
+  ProjectLinkItem,
+  ProjectLinks,
+  ProjectRepository,
+  ProjectSourceRefs,
+} from '~/features/projects/model/projectTypes'
 
-export interface ProjectLinkItem {
-  key: string
-  label: string
-  href: string
-  type: string | null
+interface ProjectListResponse {
+  ok: true
+  projects: Array<Record<string, unknown>>
 }
-
-export interface ProjectRepository {
-  name: string
-  full_name: string | null
-  url: string | null
-  visibility: string | null
-  is_primary: boolean
-}
-
-export interface ProjectSourceRefs {
-  repo_full_name: string | null
-  repo_url: string | null
-  visibility: string | null
-}
-
 export interface ProjectDetailRecord {
   project_key: string
   slug: string
@@ -69,6 +65,29 @@ export class ProjectApiError extends Error {
 
 function toText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
+}
+
+function toInteger(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.round(value)
+  }
+
+  if (typeof value !== 'string') {
+    return 0
+  }
+
+  const parsed = Number.parseInt(value, 10)
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function parseTimeScore(value: unknown): number {
+  const text = toText(value)
+  if (!text) {
+    return 0
+  }
+
+  const parsed = Date.parse(text)
+  return Number.isNaN(parsed) ? 0 : parsed
 }
 
 function toRecord(value: unknown): Record<string, unknown> | null {
@@ -483,15 +502,26 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   }
 }
 
+export async function fetchProjectsList(options: FetchProjectsListOptions = {}): Promise<{ projects: ProjectCatalogRecord[] }> {
+  const pathname = options.featuredOnly === true ? '/projects/featured' : '/projects'
+  const response = await fetchJson<ProjectListResponse>(`${getRuntimeApiBase()}${pathname}`, options.signal)
+  if (!Array.isArray(response?.projects)) {
+    throw new ProjectApiError('Projects payload is invalid.')
+  }
+
+  return {
+    projects: response.projects.map((project, index) => normalizeProjectCatalogRecord(project, index)),
+  }
+}
 export function normalizeProjectDetail(payload: Partial<ProjectDetailRecord> & Record<string, unknown>): ProjectDetailRecord {
   const slug = toText(payload.slug)
-  const repositories = normalizeRepositories(payload.repositories)
-  const normalizedLinks = normalizeLinks(payload.links, repositories)
+  const repositories = normalizeProjectRepositories(payload.repositories)
+  const normalizedLinks = normalizeProjectLinks(payload.links, repositories)
 
   return {
     project_key: toText(payload.project_key),
     slug,
-    canonical_path: normalizeCanonicalPath(slug, payload.canonical_path),
+    canonical_path: normalizeProjectCanonicalPath(slug, payload.canonical_path),
     name: toText(payload.name),
     summary: toText(payload.summary),
     headline: toText(payload.headline),
@@ -499,18 +529,18 @@ export function normalizeProjectDetail(payload: Partial<ProjectDetailRecord> & R
     stage: toText(payload.stage),
     source_type: toText(payload.source_type),
     project_type: toText(payload.project_type),
-    stack: normalizeStringArray(payload.stack),
-    tags: normalizeTagArray(payload.tags),
+    stack: normalizeProjectStringArray(payload.stack),
+    tags: normalizeProjectTagArray(payload.tags),
     is_featured: payload.is_featured === true,
-    featured_rank: normalizeFeaturedRank(payload.featured_rank),
-    status_note: normalizeNullableText(payload.status_note),
-    highlights: normalizeHighlightArray(payload.highlights),
+    featured_rank: normalizeProjectFeaturedRank(payload.featured_rank),
+    status_note: normalizeNullableProjectText(payload.status_note),
+    highlights: normalizeProjectHighlightArray(payload.highlights),
     links: normalizedLinks.links,
     link_items: normalizedLinks.items,
     repositories,
-    source_refs: normalizeSourceRefs(payload.source_refs, repositories, normalizedLinks.links.repo),
-    updated_at: normalizeNullableText(payload.updated_at),
-    synced_at: normalizeNullableText(payload.synced_at),
+    source_refs: normalizeProjectSourceRefs(payload.source_refs, repositories, normalizedLinks.links.repo),
+    updated_at: normalizeNullableProjectText(payload.updated_at),
+    synced_at: normalizeNullableProjectText(payload.synced_at),
   }
 }
 
@@ -537,3 +567,6 @@ declare global {
     }
   }
 }
+
+
+

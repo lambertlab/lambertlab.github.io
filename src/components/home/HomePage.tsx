@@ -1,16 +1,15 @@
 import * as React from 'react'
 import { useHomeSplitLayout } from '~/components/home/hooks/useHomeSplitLayout'
+import { useFeaturedProjects } from '~/features/projects/hooks/useFeaturedProjects'
+import { FeaturedProjectsSection } from '~/features/projects/ui/FeaturedProjectsSection'
 import { rootMetadata } from '~/lib/siteCopy'
-import { useRuntimeScripts } from '~/lib/useRuntimeScripts'
 import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
-
-const HOME_RUNTIME_SCRIPTS = ['/js/projects-runtime.js', '/js/home-featured-projects.js'] as const
 
 export function HomePage() {
   const { locale } = useUiLocale()
+  const featuredProjectsState = useFeaturedProjects(3)
 
   useHomeSplitLayout(true)
-  useRuntimeScripts(HOME_RUNTIME_SCRIPTS)
   useDocumentMetadata(rootMetadata.title[locale], rootMetadata.description[locale])
 
   return (
@@ -38,93 +37,14 @@ export function HomePage() {
               </div>
             </div>
 
-            <div className="panel-content-grid grid grid-cols-2 gap-4 flex-grow relative z-10" data-home-featured-projects>
-              <a
-                className="bento-card col-span-2 flex justify-between items-center group featured-project-card featured-project-card-hero"
-                data-home-featured-slot="0"
-                href="/projects/"
-                aria-busy="true"
-              >
-                <div className="featured-project-copy">
-                  <span className="accent-label text-blue-600" data-project-rank>
-                    Featured Projects
-                  </span>
-                  <h3 className="font-bold text-lg" data-project-name>
-                    Loading featured project
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-2" data-project-summary>
-                    正在从统一 Projects 真相源加载首页精选。
-                  </p>
-                  <div className="featured-chip-row">
-                    <span className="card-meta" data-project-stage>
-                      Loading
-                    </span>
-                    <span className="card-meta" data-meta-tone="neutral" data-project-type>
-                      Type pending
-                    </span>
-                    <span className="card-meta" data-meta-tone="neutral" data-project-source>
-                      Source pending
-                    </span>
-                  </div>
-                </div>
-                <div className="featured-project-arrow" aria-hidden="true">
-                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path d="M17 8l4 4m0 0l-4 4m4-4H3" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-                  </svg>
-                </div>
-              </a>
-
-              <a className="bento-card featured-project-card" data-home-featured-slot="1" href="/projects/" aria-busy="true">
-                <span className="accent-label text-slate-400" data-project-rank>
-                  Featured Projects
-                </span>
-                <h3 className="font-bold mt-1" data-project-name>
-                  Loading next featured project
-                </h3>
-                <p className="text-xs text-slate-500 mt-2" data-project-summary>
-                  目录精选会与首页卡片保持同一字段口径。
-                </p>
-                <div className="featured-chip-row">
-                  <span className="card-meta" data-project-stage>
-                    Loading
-                  </span>
-                  <span className="card-meta" data-meta-tone="neutral" data-project-type>
-                    Type pending
-                  </span>
-                </div>
-              </a>
-
-              <a className="bento-card featured-project-card" data-home-featured-slot="2" href="/projects/" aria-busy="true">
-                <span className="accent-label text-slate-400" data-project-rank>
-                  Featured Projects
-                </span>
-                <h3 className="font-bold mt-1" data-project-name>
-                  Loading featured project
-                </h3>
-                <p className="text-xs text-slate-500 mt-2" data-project-summary>
-                  主动作将统一进入详情主路径。
-                </p>
-                <div className="featured-chip-row">
-                  <span className="card-meta" data-project-stage>
-                    Loading
-                  </span>
-                  <span className="card-meta" data-meta-tone="neutral" data-project-type>
-                    Type pending
-                  </span>
-                </div>
-              </a>
-
-              <a className="bento-card col-span-2 featured-directory-card" href="/projects/">
-                <span className="accent-label text-slate-400">Project Directory</span>
-                <h3 className="font-bold mt-1">Browse All Projects</h3>
-                <p className="text-xs text-slate-500 mt-2">
-                  打开完整目录，继续使用搜索、筛选、URL Replay 与详情入口。
-                </p>
-                <span className="card-meta" data-meta-tone="neutral">
-                  entry · catalog
-                </span>
-              </a>
-            </div>
+            <FeaturedProjectsSection
+              status={featuredProjectsState.status}
+              projects={featuredProjectsState.projects}
+              message={featuredProjectsState.message}
+              onRetry={featuredProjectsState.retry}
+              locale={locale}
+              directoryHref="/projects/"
+            />
           </section>
 
           <section className="panel" data-purpose="life-panel" aria-label="Life world">
@@ -155,7 +75,7 @@ export function HomePage() {
                 <span className="accent-label text-slate-600">Notes</span>
                 <h3 className="font-bold mt-1">Journal</h3>
                 <p className="text-xs text-slate-500 mt-2">持续记录工程与生活中的观察。</p>
-                <a className="card-meta" data-meta-tone="neutral" href="/journal/index.html">
+                <a className="card-meta" data-meta-tone="neutral" href="/journal/">
                   open journal
                 </a>
               </article>

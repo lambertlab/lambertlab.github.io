@@ -27,6 +27,10 @@ const legacyPathsToDelete = [
   'src/legacy/parseLegacyHtml.ts',
   'src/legacy/useHomeSplitLayout.ts',
   'src/legacy-html',
+  'src/lib/useRuntimeScripts.ts',
+  'public/js/home-featured-projects.js',
+  'public/js/projects-catalog.js',
+  'public/js/projects-runtime.js',
 ]
 
 const legacyImportWhitelist = [
