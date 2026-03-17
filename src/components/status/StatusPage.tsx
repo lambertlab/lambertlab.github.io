@@ -18,7 +18,7 @@ import { useDocumentMetadata, useUiLocale, type UiLocale } from '~/lib/uiLocale'
 type StatusPageState =
   | { status: 'loading' }
   | { status: 'ready'; page: StatusPublicPagePayload }
-  | { status: 'error'; message: string }
+  | { status: 'error'; rawMessage: string }
 
 const DEFAULT_OVERALL_CONTEXT: StatusOverallContext = {
   label: 'Public trust summary',
@@ -318,48 +318,48 @@ function KnownIssueCard({ issue, locale }: { issue: StatusKnownIssue; locale: Ui
 export function StatusPage() {
   const { locale } = useUiLocale()
   const [state, setState] = React.useState<StatusPageState>({ status: 'loading' })
+  const activeRequestRef = React.useRef<AbortController | null>(null)
   const metadata = buildStatusMetadata(state, locale)
 
   useDocumentMetadata(metadata.title, metadata.description)
 
-  const loadPage = React.useEffectEvent((signal?: AbortSignal) => {
-    setState({ status: 'loading' })
+  const loadPage = React.useCallback(() => {
+    activeRequestRef.current?.abort()
 
-    fetchStatusPublicPage(signal)
+    const controller = new AbortController()
+    activeRequestRef.current = controller
+
+    setState((currentState) => (currentState.status === 'loading' ? currentState : { status: 'loading' }))
+
+    fetchStatusPublicPage(controller.signal)
       .then((page) => {
-        if (signal?.aborted) {
+        if (controller.signal.aborted) {
           return
         }
 
-        React.startTransition(() => {
-          setState({ status: 'ready', page })
-        })
+        setState({ status: 'ready', page })
       })
       .catch((error: unknown) => {
-        if (signal?.aborted) {
+        if (controller.signal.aborted) {
           return
         }
 
-        const fallback = locale === 'zh-CN' ? '公开摘要暂不可用。' : 'The public summary is temporarily unavailable.'
-        const message =
+        const rawMessage =
           error instanceof StatusPublicApiError && error.message.trim()
-            ? localizeStatusErrorMessage(error.message, locale)
-            : fallback
+            ? error.message
+            : 'The public summary is temporarily unavailable.'
 
-        React.startTransition(() => {
-          setState({ status: 'error', message })
-        })
+        setState({ status: 'error', rawMessage })
       })
-  })
+  }, [])
 
   React.useEffect(() => {
-    const controller = new AbortController()
-    loadPage(controller.signal)
+    loadPage()
 
     return () => {
-      controller.abort()
+      activeRequestRef.current?.abort()
     }
-  }, [loadPage, locale])
+  }, [loadPage])
 
   const overallContext = state.status === 'ready' ? state.page.overall_status.context : DEFAULT_OVERALL_CONTEXT
   const overallContextLabel = localizeKnownLabel(overallContext.label, locale)
@@ -433,10 +433,10 @@ export function StatusPage() {
               ? '当前无法加载公开状态摘要。'
               : 'We could not load the current public status summary.'}
           </h2>
-          <p>{state.message}</p>
+          <p>{localizeStatusErrorMessage(state.rawMessage, locale)}</p>
           <p>{locale === 'zh-CN' ? '请稍后重试，以获取下一次刷新后的快照。' : 'Please retry shortly for the next refreshed snapshot.'}</p>
           <div className="status-state-actions">
-            <button className="status-button" onClick={() => loadPage()} type="button">
+            <button className="status-button" onClick={loadPage} type="button">
               {locale === 'zh-CN' ? '重试' : 'Retry'}
             </button>
           </div>
@@ -582,3 +582,4 @@ export function StatusPage() {
     </main>
   )
 }
+

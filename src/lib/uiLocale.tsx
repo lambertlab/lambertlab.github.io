@@ -39,7 +39,11 @@ function readStoredUiLocale(): UiLocale {
   }
 }
 
-function readInitialUiLocale(): UiLocale {
+function readPreferredUiLocale(): UiLocale {
+  if (typeof window !== 'undefined' && isUiLocale(window.__LL_UI_LOCALE__)) {
+    return window.__LL_UI_LOCALE__
+  }
+
   if (typeof document === 'undefined') {
     return DEFAULT_UI_LOCALE
   }
@@ -47,10 +51,6 @@ function readInitialUiLocale(): UiLocale {
   const documentLocale = document.documentElement.getAttribute('data-ui-locale')
   if (isUiLocale(documentLocale)) {
     return documentLocale
-  }
-
-  if (typeof window !== 'undefined' && isUiLocale(window.__LL_UI_LOCALE__)) {
-    return window.__LL_UI_LOCALE__
   }
 
   return readStoredUiLocale()
@@ -71,8 +71,13 @@ const UiLocaleContext = React.createContext<{
 } | null>(null)
 
 export function UiLocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = React.useState<UiLocale>(() => readInitialUiLocale())
+  const [locale, setLocaleState] = React.useState<UiLocale>(DEFAULT_UI_LOCALE)
   const hasMountedRef = React.useRef(false)
+
+  React.useEffect(() => {
+    const nextLocale = readPreferredUiLocale()
+    setLocaleState((currentLocale) => (currentLocale === nextLocale ? currentLocale : nextLocale))
+  }, [])
 
   React.useEffect(() => {
     syncUiLocaleDocument(locale)
@@ -94,9 +99,10 @@ export function UiLocaleProvider({ children }: { children: React.ReactNode }) {
     }
   }, [locale])
 
-  const setLocale = React.useEffectEvent((nextLocale: UiLocale) => {
-    setLocaleState(normalizeUiLocale(nextLocale))
-  })
+  const setLocale = React.useCallback((nextLocale: UiLocale) => {
+    const normalizedLocale = normalizeUiLocale(nextLocale)
+    setLocaleState((currentLocale) => (currentLocale === normalizedLocale ? currentLocale : normalizedLocale))
+  }, [])
 
   return <UiLocaleContext.Provider value={{ locale, setLocale }}>{children}</UiLocaleContext.Provider>
 }
@@ -129,7 +135,7 @@ export function useDocumentMetadata(title: string, description: string) {
 }
 
 export function getUiLocaleBootstrapScript() {
-  return `(function(){try{var key='${UI_LOCALE_STORAGE_KEY}';var raw=localStorage.getItem(key);var locale=raw==='en'||raw==='zh-CN'?raw:'${DEFAULT_UI_LOCALE}';var root=document.documentElement;root.lang=locale;root.setAttribute('data-ui-locale',locale);window.__LL_UI_LOCALE__=locale;}catch(_){var root=document.documentElement;root.lang='${DEFAULT_UI_LOCALE}';root.setAttribute('data-ui-locale','${DEFAULT_UI_LOCALE}');window.__LL_UI_LOCALE__='${DEFAULT_UI_LOCALE}';}})();`
+  return `(function(){try{var key='${UI_LOCALE_STORAGE_KEY}';var raw=localStorage.getItem(key);window.__LL_UI_LOCALE__=raw==='en'||raw==='zh-CN'?raw:'${DEFAULT_UI_LOCALE}';}catch(_){window.__LL_UI_LOCALE__='${DEFAULT_UI_LOCALE}';}})();`
 }
 
 declare global {
@@ -137,3 +143,4 @@ declare global {
     __LL_UI_LOCALE__?: UiLocale
   }
 }
+
