@@ -47,4 +47,4 @@
 3. 任一层失败均阻断，不得以其他层通过替代。
 
 ## 6. P5.2 补充
-1. P5.2 分层信号与白名单追踪细则见：`docs/frontend-governance-p5.2-gate-layering-and-whitelist.md`。
+1. P5.2 分层信号与白名单追踪细则见：`docs/archive/frontend-governance-p5.2-gate-layering-and-whitelist.md`。

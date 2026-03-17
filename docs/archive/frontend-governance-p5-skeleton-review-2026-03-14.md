@@ -5,7 +5,7 @@
 ## 历史态声明（P5.3 收口后）
 1. 本文档为 P5 骨架阶段的盘点记录，不代表当前运行时拓扑。
 2. 文中列举的 `src/legacy-html/**`、`src/legacy/pages.ts`、`src/legacy/parseLegacyHtml.ts`、`LegacyPageView` 为历史态证据，已不在当前运行链路。
-3. 当前编辑流与退场状态以 `docs/frontend-governance-p5.3-editorial-workflow-and-legacy-sunset.md` 为准。
+3. 当前编辑流与退场状态以 `docs/archive/frontend-governance-p5.3-editorial-workflow-and-legacy-sunset.md` 为准。
 
 ## 1. 评审结论（骨架轮）
 1. 已完成 P5.1 / P5.2 / P5.3 前端侧输入清单与风险清单整理。
@@ -42,9 +42,9 @@
    - `src/legacy-html/**`
    - `src/legacy/pages.ts`
    - `src/legacy/parseLegacyHtml.ts`
-   - `docs/legacy-html-inventory-p0-2026-03-13.md`
-   - `docs/legacy-html-exit-checklist-p1-entry.md`
-   - `docs/frontend-governance-p0-gate-layers.md`
+   - `docs/archive/legacy-html-inventory-p0-2026-03-13.md`
+   - `docs/archive/legacy-html-exit-checklist-p1-entry.md`
+   - `docs/archive/frontend-governance-p0-gate-layers.md`
 
 ## 3. P5.1 输入清单与风险清单（内容模型统一与真值下沉）
 ### 3.1 输入清单
@@ -78,7 +78,7 @@
    - `visual-shell-smoke.mjs`
    - `scripts/visual-parity.config.json`
 4. 既有门禁分层基线文档：
-   - `docs/frontend-governance-p0-gate-layers.md`
+   - `docs/archive/frontend-governance-p0-gate-layers.md`
 
 ### 4.2 风险清单
 1. 风险：降噪若只“减少日志”而未保留阻断信号，会弱化门禁价值。
@@ -100,8 +100,8 @@
    - `src/legacy/pages.ts` 当前仍导入 `home/about/projects/legacy project detail` 源文件
    - `src/components/LegacyPageView.tsx` 仍保留 legacy 注入容器能力
 3. 历史退场口径与准入模板：
-   - `docs/legacy-html-inventory-p0-2026-03-13.md`
-   - `docs/legacy-html-exit-checklist-p1-entry.md`
+   - `docs/archive/legacy-html-inventory-p0-2026-03-13.md`
+   - `docs/archive/legacy-html-exit-checklist-p1-entry.md`
 4. 进入 P5.3 前置：
    - P5.1 内容模型冻结
    - P5.2 门禁分层稳定（可用于退场前后对照）

@@ -5,7 +5,7 @@
 ## 历史态声明（P5.3 收口后）
 1. 本文档用于记录 2026-03-13 的阶段性现状与迁移判断。
 2. 文中涉及 `LegacyPageView`、`src/legacy/pages.ts`、`src/legacy/parseLegacyHtml.ts`、`src/legacy-html/**` 的描述均为历史记录，不是当前运行路径。
-3. 当前运行态请以 P5.3 文档为准：`docs/frontend-governance-p5.3-editorial-workflow-and-legacy-sunset.md`。
+3. 当前运行态请以 P5.3 文档为准：`docs/archive/frontend-governance-p5.3-editorial-workflow-and-legacy-sunset.md`。
 
 ## 1. 文档目的
 - 固化 `about`、`contact`、`journal` 首页与文章详情的当前承载分类。

@@ -37,8 +37,8 @@
 | `src/legacy/parseLegacyHtml.ts` | allow-remove | 仅被 `src/legacy/pages.ts` 引用 | 已删除（批次 1） |
 | `src/legacy-html/**`（10 个页面资产） | allow-remove | 仅被已删除的 `src/legacy/pages.ts` 原始导入 | 已删除（批次 2） |
 | `src/legacy/useHomeSplitLayout.ts` | hold | 首页 `src/components/home/HomePage.tsx` 仍使用 | 本轮保留 |
-| `docs/legacy-html-inventory-p0-2026-03-13.md` | must-keep | 历史盘点基线证据 | 保留 |
-| `docs/legacy-html-exit-checklist-p1-entry.md` | must-keep | 退场准入模板证据 | 保留 |
+| `docs/archive/legacy-html-inventory-p0-2026-03-13.md` | must-keep | 历史盘点基线证据 | 保留 |
+| `docs/archive/legacy-html-exit-checklist-p1-entry.md` | must-keep | 退场准入模板证据 | 保留 |
 
 ## 3. 分批退场执行记录
 ### 批次 1：删除 legacy 注入链路
