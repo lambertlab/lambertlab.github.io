@@ -564,6 +564,7 @@ declare global {
       API_BASE?: string
       REQUEST_TIMEOUT_MS?: number
       STATUS_PUBLIC_PATH?: string
+      HOME_CONTENT_PATH?: string
     }
   }
 }

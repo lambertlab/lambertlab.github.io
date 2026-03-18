@@ -1,4 +1,4 @@
-:root {
+﻿:root {
       --bg-start: #edf3ff;
       --bg-end: #f8fbff;
       --text-main: #1e293b;
@@ -72,14 +72,15 @@
       padding: 128px 24px 44px;
     }
 
-    .page-hero {
+     .page-hero {
       border-radius: var(--radius-lg);
       border: 1px solid var(--line);
       background:
         radial-gradient(circle at 100% 0%, rgba(37, 99, 235, 0.11), transparent 42%),
         linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 249, 255, 0.9) 100%);
       box-shadow: var(--shadow-soft);
-      padding: 28px;
+      padding: 20px;
+
       margin-bottom: 16px;
     }
 
@@ -137,38 +138,45 @@
 
     .hero-metrics {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
+      grid-template-columns: 0.82fr 0.82fr 0.82fr 1.54fr;
+      gap: 12px;
     }
 
     .metric {
+      min-width: 0;
       border: 1px solid var(--line);
       border-radius: var(--radius-sm);
       background: var(--surface-strong);
-      padding: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
 
     .metric .label {
       margin: 0;
       font-family: var(--ll-font-mono);
-      font-size: 0.66rem;
-      letter-spacing: 0.09em;
-      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      text-transform: none;
       color: #64748b;
+      white-space: nowrap;
     }
 
     .metric .value {
-      margin: 6px 0 0;
-      font-size: 1.2rem;
+      margin: 0;
+      font-size: clamp(1rem, 1.55vw, 1.18rem);
+      line-height: 1.2;
       letter-spacing: -0.02em;
       font-weight: 700;
+      overflow-wrap: anywhere;
+      text-align: right;
+      margin-left: auto;
     }
 
     .metric .desc {
-      margin: 4px 0 0;
-      font-size: 0.84rem;
-      color: var(--text-muted);
-      line-height: 1.5;
+      display: none;
     }
 
     .control-strip {
@@ -178,7 +186,7 @@
       box-shadow: var(--shadow-soft);
       padding: 14px;
       display: grid;
-      grid-template-columns: minmax(260px, 1fr) auto auto auto auto auto;
+      grid-template-columns: minmax(260px, 1fr) repeat(6, auto);
       gap: 10px;
       align-items: end;
       margin-bottom: 14px;
@@ -655,7 +663,7 @@
       }
 
       .hero-metrics {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: 1fr 1fr;
       }
 
       .control-strip {
@@ -683,8 +691,10 @@
       }
 
       .hero-metrics {
-        grid-template-columns: 1fr;
-      }
+      display: grid;
+      grid-template-columns: 0.82fr 0.82fr 0.82fr 1.54fr;
+      gap: 12px;
+    }
 
       .control-strip {
         grid-template-columns: 1fr;
@@ -715,7 +725,7 @@
   position: sticky;
   top: var(--projects-sticky-top);
   z-index: 38;
-  grid-template-columns: minmax(260px, 1fr) auto auto auto auto auto;
+  grid-template-columns: minmax(260px, 1fr) repeat(6, auto);
 }
 
 .control-strip-meta {
@@ -735,14 +745,25 @@
   min-width: 180px;
 }
 
-.control-status {
-  margin: 0;
-  min-width: 220px;
+.featured-only-control {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.9rem;
 }
 
-.featured-only-label {
-  margin: 0;
-  white-space: nowrap;
+.featured-only-control input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--brand);
 }
 
 .field-custom-select {
@@ -855,17 +876,24 @@
 }
 
 @media (max-width: 900px) {
-  .control-strip-meta {
-    align-items: flex-start;
-  }
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
 
-  .control-status {
-    min-width: 0;
-    width: 100%;
-  }
-}
+      .hero-metrics {
+        grid-template-columns: 1fr 1fr;
+      }
 
-@media (max-width: 720px) {
+      .control-strip {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+
+      .projects-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
   .page-hero,
   .catalog-layout {
     border-radius: 18px;
@@ -876,13 +904,21 @@
     grid-template-columns: 1fr;
   }
 
+  .featured-only-control {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .control-strip-meta {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .control-tag-cloud,
-  .control-status {
+  .control-tag-cloud {
     width: 100%;
   }
 }
+
+
+
+

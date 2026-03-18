@@ -1,4 +1,4 @@
-import type { UiLocale } from '~/lib/uiLocale'
+﻿import type { UiLocale } from '~/lib/uiLocale'
 import type { ProjectCatalogRecord, ProjectsLoadStatus } from '../model/projectTypes'
 
 interface FeaturedProjectsSectionProps {

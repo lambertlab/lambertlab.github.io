@@ -1,4 +1,4 @@
-﻿@import url('/css/shared-header.css');
+@import url('/css/shared-header.css');
 
 :root {
   --admin-bg: #09111f;
@@ -899,35 +899,46 @@
 .admin-search-field--projects input {
   min-height: 42px;
   border-radius: 12px;
+  padding-inline: 16px;
   background: rgba(9, 15, 26, 0.96);
 }
-
 .admin-projects-table-head--projects,
 .admin-project-row {
   grid-template-columns: minmax(220px, 1.45fr) minmax(220px, 1.1fr) minmax(130px, 0.75fr) minmax(140px, 0.8fr) minmax(170px, 0.9fr);
 }
-
 .admin-projects-table-head--projects {
   padding: 0 18px;
 }
-
+.admin-projects-table-head--projects span:first-child {
+  justify-self: start;
+  text-align: left;
+}
+.admin-projects-table-head--projects span:nth-child(2),
+.admin-projects-table-head--projects span:nth-child(3),
+.admin-projects-table-head--projects span:nth-child(4) {
+  justify-self: center;
+  text-align: center;
+}
 .admin-project-row {
   padding: 16px 18px;
 }
-
 .admin-project-row__selector {
   align-self: stretch;
 }
-
 .admin-project-row__stack {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
-
+.admin-project-row__stage,
+.admin-project-row__updated,
 .admin-project-row__actions {
-  justify-content: flex-start;
+  justify-self: center;
+  text-align: center;
+}
+.admin-project-row__actions {
+  justify-content: center;
 }
 
 
@@ -1423,7 +1434,21 @@ body {
 .admin-project-row__identity .name {
   margin: 0;
 }
-
+.admin-sync-import-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: clamp(220px, 42vh, 360px);
+}
+.admin-sync-import-shell__inner {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+.admin-sync-import-shell__button {
+  min-width: min(100%, 240px);
+}
 @media (max-width: 1120px) {
   .admin-console-layout {
     grid-template-columns: 1fr;
@@ -1739,7 +1764,7 @@ body {
 .admin-reference-header__actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .admin-reference-avatar {
@@ -1947,17 +1972,27 @@ body {
 }
 
 .admin-reference-header .system-health-nav {
+  width: 62px;
+  height: var(--ll-header-pill-height, 40px);
+  min-height: var(--ll-header-pill-height, 40px);
+  padding: 0 10px 0 8px;
+  border-radius: var(--ll-header-pill-radius, 999px);
   border-color: rgba(64, 221, 255, 0.18);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px -18px rgba(0, 0, 0, 0.8);
 }
 
 .admin-reference-header .ll-locale-switch {
-  border-color: rgba(64, 221, 255, 0.2);
-  background: linear-gradient(180deg, rgba(16, 31, 52, 0.94), rgba(10, 20, 34, 0.92));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 24px -18px rgba(0, 0, 0, 0.72);
+  width: 64px;
+  height: var(--ll-header-pill-height, 40px);
+  min-height: var(--ll-header-pill-height, 40px);
+  padding: 0 12px;
+  border-radius: 14px;
+  border-color: rgba(96, 165, 250, 0.36);
+  background: linear-gradient(180deg, #327cf5, #2563eb);
+  box-shadow: 0 12px 24px -14px rgba(37, 99, 235, 0.44);
 }
 
 .admin-reference-header .ll-locale-switch:hover,
 .admin-reference-header .ll-locale-switch:focus-visible {
-  border-color: rgba(64, 221, 255, 0.32);
+  border-color: rgba(147, 197, 253, 0.64);
 }

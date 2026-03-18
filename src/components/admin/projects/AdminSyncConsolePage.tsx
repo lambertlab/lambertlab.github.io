@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import {
   createAdminSyncJob,
   fetchAdminSyncJobById,
@@ -117,19 +117,17 @@ function ImportGithubRepoContent() {
   }, [invalidate, t, token])
 
   return (
-    <section className="admin-projects-workspace admin-projects-workspace--catalog">
-      <section className="admin-projects-list-panel admin-projects-board">
-        <div className="admin-section-head admin-section-head--projects">
-          <div>
-            <h2>{t('Import Github Repo', 'Import Github Repo')}</h2>
-          </div>
-          <div className="admin-section-head__actions">
-            <button className="admin-primary-button" type="button" disabled={createState.status === 'running'} onClick={() => void createJob()}>
-              {createState.status === 'running' ? t('导入中...', 'Importing...') : t('导入 lambertlab', 'Import lambertlab')}
-            </button>
-          </div>
-        </div>
-
+    <section className="admin-projects-workspace admin-projects-workspace--catalog admin-sync-import-shell">
+      <div className="admin-sync-import-shell__inner">
+        <button
+          className="admin-primary-button admin-sync-import-shell__button"
+          type="button"
+          disabled={createState.status === 'running'}
+          aria-busy={createState.status === 'running'}
+          onClick={() => void createJob()}
+        >
+          {t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}
+        </button>
         {createState.message ? (
           <div className="admin-surface-feedback">
             <p className="admin-feedback" data-tone={createState.status === 'error' ? 'error' : createState.status === 'success' ? 'success' : 'info'}>
@@ -137,7 +135,7 @@ function ImportGithubRepoContent() {
             </p>
           </div>
         ) : null}
-      </section>
+      </div>
     </section>
   )
 }

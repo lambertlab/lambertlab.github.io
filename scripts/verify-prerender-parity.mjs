@@ -19,6 +19,16 @@ const shellRequiredFragments = [
   'href="/status/"',
 ]
 
+const adminShellRequiredFragments = [
+  'class="ll-header ll-header-admin"',
+  'class="ll-site-footer ll-site-footer-admin"',
+  'id="main-content"',
+  'data-system-status',
+  'href="/admin/overview/"',
+  'href="/admin/projects/"',
+  'href="/status/"',
+]
+
 const forbiddenFragments = [
   'href="/index.html"',
   'href="/about/index.html"',
@@ -34,6 +44,8 @@ const pageSpecificRequiredFragments = {
     'data-home-managed-by-projects',
     'data-home-featured-projects',
     'data-home-featured-slot="0"',
+    'data-home-life-cards',
+    'data-home-life-slot="0"',
   ],
   'journal/index.html': [
     'class="journal-grid"',
@@ -52,8 +64,6 @@ const pageSpecificRequiredFragments = {
     'data-project-grid',
   ],
   'status/index.html': ['class="status-page-shell"', 'class="status-state-panel"', 'class="status-page-hero"'],
-  'admin/index.html': ['Control Center'],
-  'admin/projects/index.html': ['Control Center'],
   'projects/personal-toolbox/index.html': ['project-detail-shell', 'project-detail-loading'],
   'projects/ai-message-value-triage/index.html': ['project-detail-shell', 'project-detail-loading'],
   'projects/personal-website/index.html': ['project-detail-shell', 'project-detail-loading'],
@@ -88,7 +98,8 @@ for (const relativePagePath of pagesToCheck) {
   }
 
   const html = fs.readFileSync(fullPath, 'utf8')
-  for (const fragment of shellRequiredFragments) {
+  const requiredShellFragments = relativePagePath.startsWith('admin/') ? adminShellRequiredFragments : shellRequiredFragments
+  for (const fragment of requiredShellFragments) {
     if (!html.includes(fragment)) {
       gate.addBlocking({
         code: 'prerender.missing-shell-fragment',

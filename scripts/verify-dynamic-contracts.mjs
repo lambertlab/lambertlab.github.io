@@ -99,6 +99,25 @@ function closeServer(server) {
   return new Promise((resolve) => server.close(() => resolve()))
 }
 
+function createMockHomeLifeCards() {
+  return [
+    {
+      accent: 'Reading',
+      title: 'Database Life Card',
+      description: 'Loaded from the live /home-content contract.',
+      href: '/journal/',
+      external: false,
+    },
+    {
+      accent: 'Routine',
+      title: 'Live Habit Review',
+      description: 'The homepage life panel now renders database-backed cards only.',
+      href: '',
+      external: false,
+    },
+  ]
+}
+
 function createMockProjects() {
   return [
     {
@@ -238,6 +257,31 @@ async function installRoutes(context, state) {
 
     if (!(requestType === 'fetch' || requestType === 'xhr')) {
       await route.continue()
+      return
+    }
+
+    if (pathname === '/home-content') {
+      if (state.homeContentMode === 'error') {
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ detail: 'home-content unavailable' }),
+        })
+        return
+      }
+
+      const lifeCards = state.homeContentMode === 'empty' ? [] : createMockHomeLifeCards()
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          source: 'database',
+          fetched_at: '2026-03-12T00:00:00Z',
+          technology: [],
+          life: lifeCards,
+        }),
+      })
       return
     }
 
@@ -400,6 +444,68 @@ async function testHomeFeaturedCanonicalContracts(browser, baseUrl) {
     await context.close()
   }
 }
+async function testHomeLifeCardsDatabaseContracts(browser, baseUrl) {
+  const successContext = await newContext(browser, {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'success',
+    delayMs: 500,
+  })
+
+  try {
+    const page = await successContext.newPage()
+    await page.goto(`${baseUrl}${homeRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('[data-home-life-slot="0"][aria-busy="true"]', { timeout: 5000 })
+    await page.waitForSelector('[data-home-life-slot="0"][data-life-state="ready"]', { timeout: 5000 })
+
+    const title = (await page.locator('[data-home-life-slot="0"] [data-life-card-title]').textContent())?.trim() || ''
+    ensure(title === 'Database Life Card', `home life panel did not render database content, got ${title}`)
+
+    const legacyCardCount = await page.locator('text=Atomic Habits').count()
+    ensure(legacyCardCount === 0, 'home life panel still renders legacy static cards')
+  } finally {
+    await successContext.close()
+  }
+
+  const emptyContext = await newContext(browser, {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'empty',
+    delayMs: 0,
+  })
+
+  try {
+    const page = await emptyContext.newPage()
+    await page.goto(`${baseUrl}${homeRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('[data-home-life-slot="0"][data-life-state="empty"]', { timeout: 8000 })
+  } finally {
+    await emptyContext.close()
+  }
+
+  const errorState = {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'error',
+    delayMs: 0,
+  }
+  const errorContext = await newContext(browser, errorState)
+
+  try {
+    const page = await errorContext.newPage()
+    await page.goto(`${baseUrl}${homeRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('[data-home-life-slot="0"][data-life-state="error"]', { timeout: 8000 })
+
+    errorState.homeContentMode = 'success'
+    await page.locator('#retry-home-life').click()
+    await page.waitForSelector('[data-home-life-slot="0"][data-life-state="ready"]', { timeout: 8000 })
+  } finally {
+    await errorContext.close()
+  }
+}
+
 async function readProjectsCatalogDebugState(page) {
   return await page.evaluate(() => {
     const readHidden = (selector) => {
@@ -652,6 +758,7 @@ async function main() {
   let browser
   const checks = [
     { name: 'home-featured-canonical-contracts', run: () => testHomeFeaturedCanonicalContracts(browser, baseUrl) },
+    { name: 'home-life-database-contracts', run: () => testHomeLifeCardsDatabaseContracts(browser, baseUrl) },
     { name: 'projects-list-canonical-states-with-compat-replay', run: () => testProjectsListCanonicalStatesWithCompatReplay(browser, baseUrl) },
     { name: 'projects-list-empty-state', run: () => testProjectsListEmptyState(browser, baseUrl) },
     { name: 'projects-list-error-retry', run: () => testProjectsListErrorRetry(browser, baseUrl) },

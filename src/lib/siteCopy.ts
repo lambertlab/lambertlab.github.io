@@ -41,7 +41,7 @@ export const shellCopy = {
   nav: {
     projects: {
       'zh-CN': '项目',
-      en: 'Projects',
+      en: 'Project',
     },
     journal: {
       'zh-CN': '日志',
@@ -52,7 +52,7 @@ export const shellCopy = {
       en: 'About',
     },
     contact: {
-      'zh-CN': '????',
+      'zh-CN': '\u4e0e\u6211\u8054\u7cfb',
       en: 'Get in touch',
     },
   },
@@ -108,7 +108,7 @@ export const shellCopy = {
       en: 'Public entry points',
     },
     contact: {
-      'zh-CN': '????',
+      'zh-CN': '\u4e0e\u6211\u8054\u7cfb',
       en: 'Contact',
     },
     status: {

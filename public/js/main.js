@@ -19,8 +19,6 @@
   var themeTransitionDurationMs = 520;
   var themeTransitionInProgress = false;
   var mainScriptElement = document.currentScript || document.querySelector('script[src$="js/main.js"]');
-  var homepageSnapshotCache = window.__HOME_CONTENT_SNAPSHOT__ || null;
-  var homepageSnapshotRequest = null;
   var systemStatusCacheKey = "system-status-cache-v1";
   var colorModeOptions = [
     { value: "system", text: "跟随系统" },
@@ -641,145 +639,8 @@
     return path;
   }
 
-  function getCardTextElement(card, selector) {
-    var node = card.querySelector(selector);
-    if (!node) {
-      return null;
-    }
-
-    return node;
-  }
-
-  function applyCardSnapshot(card, snapshot) {
-    if (!card || !snapshot || typeof snapshot !== "object") {
-      return;
-    }
-
-    var accent = getCardTextElement(card, ".accent-label");
-    if (accent && typeof snapshot.accent === "string" && snapshot.accent.trim()) {
-      accent.textContent = snapshot.accent.trim();
-    }
-
-    var title = getCardTextElement(card, "h3");
-    if (title && typeof snapshot.title === "string" && snapshot.title.trim()) {
-      title.textContent = snapshot.title.trim();
-    }
-
-    var description = getCardTextElement(card, "p");
-    if (description && typeof snapshot.description === "string") {
-      if (snapshot.description.trim()) {
-        description.hidden = false;
-        description.textContent = snapshot.description.trim();
-      } else {
-        description.hidden = true;
-      }
-    }
-
-    if (card.tagName === "A") {
-      if (typeof snapshot.href === "string" && snapshot.href.trim()) {
-        card.setAttribute("href", snapshot.href.trim());
-      }
-
-      if (snapshot.external === true) {
-        card.setAttribute("target", "_blank");
-        card.setAttribute("rel", "noreferrer");
-      }
-
-      if (snapshot.external === false) {
-        card.removeAttribute("target");
-        card.removeAttribute("rel");
-      }
-    }
-  }
-
-  function applyPanelSnapshot(panelPurpose, cardsSnapshot) {
-    if (!Array.isArray(cardsSnapshot)) {
-      return;
-    }
-
-    var panel = document.querySelector('.panel[data-purpose="' + panelPurpose + '"]');
-    if (!panel || panel.hasAttribute("data-home-managed-by-projects")) {
-      return;
-    }
-
-    var cards = panel.querySelectorAll(".panel-content-grid .bento-card");
-    if (!cards.length) {
-      return;
-    }
-
-    var size = Math.min(cards.length, cardsSnapshot.length);
-    for (var index = 0; index < size; index += 1) {
-      applyCardSnapshot(cards[index], cardsSnapshot[index]);
-    }
-  }
-
-  function applyHomepageSnapshot(payload) {
-    if (!payload || typeof payload !== "object") {
-      return false;
-    }
-    if (!Array.isArray(payload.technology) || !Array.isArray(payload.life)) {
-      return false;
-    }
-
-    applyPanelSnapshot("tech-panel", payload.technology);
-    applyPanelSnapshot("life-panel", payload.life);
-    return true;
-  }
-
-  function requestHomepageSnapshot(endpoint, timeoutMs) {
-    if (homepageSnapshotCache) {
-      return Promise.resolve(homepageSnapshotCache);
-    }
-    if (homepageSnapshotRequest) {
-      return homepageSnapshotRequest;
-    }
-
-    homepageSnapshotRequest = fetchWithTimeout(endpoint, timeoutMs)
-      .then(function (response) {
-        if (!response.ok) {
-          throw new Error("HTTP_" + response.status);
-        }
-        return response.json();
-      })
-      .then(function (payload) {
-        if (!payload || payload.ok !== true) {
-          throw new Error("INVALID_PAYLOAD");
-        }
-        homepageSnapshotCache = payload;
-        window.__HOME_CONTENT_SNAPSHOT__ = payload;
-        return payload;
-      })
-      .finally(function () {
-        homepageSnapshotRequest = null;
-      });
-
-    return homepageSnapshotRequest;
-  }
-
-  function initHomepageContent() {
-    var splitLayout = document.querySelector("[data-split-layout]");
-    if (!splitLayout) {
-      return;
-    }
-
-    var runtimeConfig = window.__APP_CONFIG__ || {};
-    var apiBase = normalizeApiBase(runtimeConfig.API_BASE);
-    var contentPath = normalizeApiPath(runtimeConfig.HOME_CONTENT_PATH, "/home-content");
-    var timeoutMs = getPositiveInteger(runtimeConfig.REQUEST_TIMEOUT_MS, 3000);
-    if (!apiBase) {
-      return;
-    }
-
-    requestHomepageSnapshot(apiBase + contentPath, timeoutMs)
-      .then(function (payload) {
-        applyHomepageSnapshot(payload);
-      })
-      .catch(function () {
-        /* keep static fallback content when request fails */
-      });
-  }
-
   function getStatusElements(rootElement) {
+
     return {
       badge: rootElement.querySelector("[data-system-status-badge]"),
       title: rootElement.querySelector("[data-system-status-title]"),
@@ -1339,6 +1200,5 @@
   initScrollbarVisibility();
   initTheme();
   initMobileMenu();
-  initHomepageContent();
   initSystemHealthProbe();
 })();
