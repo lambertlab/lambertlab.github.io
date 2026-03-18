@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && tsc --noEmit",
+    "build": "node scripts/build-friendly.mjs",
     "verify": "npm run build:verify && npm run visual:parity:smoke",
     "build:verify": "npm run build && node scripts/verify-prerender-parity.mjs && node scripts/verify-dynamic-contracts.mjs && node scripts/verify-editorial-workflow.mjs",
     "gate:l1": "npm run build && node scripts/verify-prerender-parity.mjs",
@@ -17,9 +17,10 @@
     "verify:editorial-workflow": "node scripts/verify-editorial-workflow.mjs",
     "visual:parity": "npm run visual:parity:smoke",
     "visual:parity:smoke": "npm run build && node scripts/visual-shell-smoke.mjs",
-    "visual:parity:full": "npm run build && cmd /c \"set VISUAL_PARITY_MODE=full&& node scripts/visual-parity.mjs\"",
+    "visual:parity:full": "npm run build && node scripts/visual-parity.mjs --mode=full",
     "preview": "vite preview",
-    "start": "node .output/server/index.mjs"
+    "start": "node .output/server/index.mjs",
+    "build:env": "node scripts/build-friendly.mjs --print-env"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.166.6",
