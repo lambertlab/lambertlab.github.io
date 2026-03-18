@@ -36,6 +36,16 @@ function PipelinesIcon() {
   )
 }
 
+function RepoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M4 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 3v5h5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 13h8M8 17h5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function LogsIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -80,6 +90,10 @@ export function AdminConsoleSidebar({ activeMode }: AdminConsoleSidebarProps) {
           <ProjectsIcon />
           <span>{t('Projects', 'Projects')}</span>
         </Link>
+        <span className="admin-reference-sidebar__item is-disabled" aria-disabled="true">
+          <RepoIcon />
+          <span>{t('GitHub Repo', 'GitHub Repo')}</span>
+        </span>
         <Link
           to="/admin/sync"
           search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}
