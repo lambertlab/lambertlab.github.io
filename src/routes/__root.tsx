@@ -159,12 +159,36 @@ function RootShell({ children }: { children: React.ReactNode }) {
     select: (state) => state.location.pathname,
   })
   const isAdminRoute = pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/')
+  const isHomeRoute = pathname === '/' || pathname === '/index.html'
   const isProjectsRoute = pathname === '/projects' || pathname === '/projects/' || pathname.startsWith('/projects/')
   const isJournalRoute = pathname === '/journal' || pathname === '/journal/' || pathname.startsWith('/journal/')
   const isAboutRoute = pathname === '/about' || pathname === '/about/'
+  const isContactRoute = pathname === '/contact' || pathname === '/contact/'
+  const isStatusRoute = pathname === '/status' || pathname === '/status/'
   const statusTitle = shellCopy.systemStatus.loadingTitle[locale]
   const statusDescription = shellCopy.systemStatus.loadingDescription[locale]
   const statusSummary = locale === 'zh-CN' ? statusTitle + '：' + statusDescription : statusTitle + ': ' + statusDescription
+  const publicFooterCopy = (() => {
+    if (isHomeRoute) {
+      return locale === 'zh-CN' ? '© 2026 LAMBERTLAB · 首页' : '© 2026 LAMBERTLAB'
+    }
+    if (isProjectsRoute) {
+      return locale === 'zh-CN' ? '© 2026 LAMBERTLAB · 项目' : '© 2026 LAMBERTLAB · PROJECTS'
+    }
+    if (isJournalRoute) {
+      return locale === 'zh-CN' ? '© 2026 LAMBERTLAB · 日志' : '© 2026 LAMBERTLAB · JOURNAL'
+    }
+    if (isAboutRoute) {
+      return locale === 'zh-CN' ? '© 2026 LAMBERTLAB · 关于' : '© 2026 LAMBERTLAB · ABOUT'
+    }
+    if (isContactRoute) {
+      return locale === 'zh-CN' ? '© 2026 LAMBERTLAB · 联系' : '© 2026 LAMBERTLAB · CONTACT'
+    }
+    if (isStatusRoute) {
+      return locale === 'zh-CN' ? '© 2026 LAMBERTLAB · 状态' : '© 2026 LAMBERTLAB · STATUS'
+    }
+    return '© 2026 LAMBERTLAB'
+  })()
 
   return (
     <>
@@ -256,14 +280,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
           <footer className="ll-site-footer" data-fixed-footer="true" data-projects-footer={isProjectsRoute ? 'true' : 'false'}>
             <div className="ll-site-footer-inner">
               <div className="ll-site-footer-copy">
-                {isProjectsRoute ? (
-                  <span>© 2026 LAMBERTLAB · PROJECTS</span>
-                ) : (
-                  <>
-                    <span>{'\u00a9 2026 lambertlab'}</span>
-                    <span>{shellCopy.footer.copy[locale]}</span>
-                  </>
-                )}
+                <span>{publicFooterCopy}</span>
               </div>
               <div className="ll-site-footer-links">
                 {isProjectsRoute ? (
@@ -328,6 +345,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     </html>
   )
 }
+
+
+
+
+
 
 
 
