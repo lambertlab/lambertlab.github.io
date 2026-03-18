@@ -1,5 +1,13 @@
 @import url('/css/shared-header.css');
 
+html,
+body {
+  margin: 0 !important;
+  width: 100%;
+  height: 100%;
+  overflow: hidden !important;
+}
+
 :root {
   --admin-bg: #09111f;
   --admin-bg-soft: #0d1727;
@@ -1603,13 +1611,15 @@ body {
 }
 
 .ll-admin-shell {
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   background: #0b1120;
 }
 
 .admin-reference-shell {
-  min-height: 100vh;
-  height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   overflow: hidden;
@@ -1731,9 +1741,10 @@ body {
 
 .admin-reference-main {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background: #0f172a;
 }
@@ -1789,6 +1800,26 @@ body {
   background: #0f172a;
 }
 
+.admin-reference-main--projects,
+.admin-reference-body--projects {
+  min-height: 0;
+}
+
+.admin-reference-body--projects {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.admin-reference-body--projects > * {
+  min-height: 0;
+}
+
+.admin-reference-body--projects > .admin-projects-workspace--list {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
 .admin-reference-body > * {
   width: 100%;
 }
@@ -1810,6 +1841,113 @@ body {
 
 .admin-reference-body .admin-projects-workspace--catalog {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-projects-workspace--list {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.admin-projects-catalog {
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+  overflow: hidden;
+}
+
+.admin-projects-actions {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 10px;
+  background: #0f172a;
+}
+
+.admin-projects-actions__search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-projects-actions__buttons {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-projects-actions__buttons .admin-primary-button {
+  min-width: 168px;
+  justify-content: center;
+}
+
+.admin-projects-results {
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
+.admin-project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-project-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(71, 85, 105, 0.92);
+  border-radius: 14px;
+  background: #111827;
+}
+
+.admin-project-list-item__main {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.admin-project-list-item__main .name,
+.admin-project-list-item__main .meta,
+.admin-project-list-item__updated {
+  margin: 0;
+}
+
+.admin-project-list-item__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-project-list-item__updated {
+  color: var(--admin-text-muted);
+  font-size: 0.82rem;
+}
+
+.admin-project-list-item__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .admin-reference-body .admin-auth-card,
@@ -1960,6 +2098,29 @@ body {
 
   .admin-reference-sidebar__nav {
     grid-template-columns: 1fr;
+  }
+
+  .admin-projects-actions {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .admin-projects-actions__buttons {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .admin-projects-actions__buttons .admin-primary-button {
+    flex: 1 1 220px;
+  }
+
+  .admin-project-list-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-project-list-item__actions {
+    justify-content: flex-start;
   }
 }
 

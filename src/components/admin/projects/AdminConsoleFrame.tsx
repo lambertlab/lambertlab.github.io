@@ -71,9 +71,9 @@ export function AdminConsoleFrame({ mode, children }: Props) {
   const nextLocale = locale === 'zh-CN' ? 'en' : 'zh-CN'
 
   return (
-    <main className="admin-reference-shell" id="main-content">
+    <main className={`admin-reference-shell admin-reference-shell--${mode}`} id="main-content">
       <AdminConsoleSidebar activeMode={mode} />
-      <section className="admin-reference-main">
+      <section className={`admin-reference-main admin-reference-main--${mode}`}>
         <header className="admin-reference-header">
           <h1>{headerText}</h1>
           <div className="admin-reference-header__actions">
@@ -110,7 +110,7 @@ export function AdminConsoleFrame({ mode, children }: Props) {
             </button>
           </div>
         </header>
-        <div className="admin-reference-body">{children}</div>
+        <div className={`admin-reference-body admin-reference-body--${mode}`}>{children}</div>
       </section>
     </main>
   )

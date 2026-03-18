@@ -811,24 +811,10 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       ) : null}
 
       {ready && mode === 'projects' ? (
-        <section className="admin-projects-workspace admin-projects-workspace--catalog">
-          <section className="admin-projects-list-panel admin-projects-board">
-            <div className="admin-section-head admin-section-head--projects">
-              <div>
-                <h2>{t('Project List', 'Project List')}</h2>
-              </div>
-              <div className="admin-section-head__actions">
-                <button className="admin-primary-button" type="button" onClick={openCreatePanel}>
-                  {t('\u65b0\u5efa\u9879\u76ee', 'New Project')}
-                </button>
-                <Link className="admin-primary-button" to="/admin/sync" search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}>
-                  {t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}
-                </Link>
-              </div>
-            </div>
-
-            <div className="admin-projects-toolbar admin-projects-toolbar--single">
-              <label className="admin-search-field admin-search-field--projects">
+        <section className="admin-projects-workspace admin-projects-workspace--catalog admin-projects-workspace--list">
+          <section className="admin-projects-catalog" aria-label={t('\u9879\u76ee\u5217\u8868', 'Projects list')}>
+            <div className="admin-projects-actions" role="toolbar" aria-label={t('\u9879\u76ee\u64cd\u4f5c\u533a', 'Projects actions')}>
+              <label className="admin-search-field admin-search-field--projects admin-projects-actions__search">
                 <input
                   aria-label={t('\u641c\u7d22\u9879\u76ee', 'Search projects')}
                   type="search"
@@ -849,49 +835,56 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                   placeholder={t('Search projects...', 'Search projects...')}
                 />
               </label>
+
+              <div className="admin-projects-actions__buttons">
+                <button className="admin-primary-button" type="button" onClick={openCreatePanel}>
+                  {t('\u65b0\u5efa\u9879\u76ee', 'New Project')}
+                </button>
+                <Link className="admin-primary-button" to="/admin/sync" search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}>
+                  {t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}
+                </Link>
+              </div>
             </div>
 
-            {listStatus === 'loading' ? <div className="admin-state-card">{t('\u52a0\u8f7d\u4e2d...', 'Loading...')}</div> : null}
-            {listStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{listMessage}</p><button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('\u91cd\u8bd5', 'Retry')}</button></div> : null}
-            {listStatus === 'empty' ? (
-              <div className="admin-state-card">
-                <p>{t('\u5f53\u524d\u6ca1\u6709\u9879\u76ee\u3002\u4f60\u53ef\u4ee5\u5148\u65b0\u5efa\u9879\u76ee\uff0c\u6216\u5bfc\u5165 GitHub Repo\u3002', 'There are no projects yet. Create one first, or import a GitHub repository.')}</p>
-                <div className="admin-list-actions">
-                  <button className="admin-primary-button" type="button" onClick={openCreatePanel}>{t('\u521b\u5efa\u9996\u4e2a\u9879\u76ee', 'Create First Project')}</button>
-                  <Link className="admin-primary-button" to="/admin/sync" search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}>{t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}</Link>
-                </div>
-              </div>
-            ) : null}
-            {listStatus === 'ready' && filtered.length === 0 ? <div className="admin-state-card"><p>{t('\u6ca1\u6709\u5339\u914d\u7684\u9879\u76ee\u3002', 'No matching projects.')}</p><button className="admin-secondary-button" type="button" onClick={resetFilters}>{t('\u6e05\u7a7a\u7b5b\u9009', 'Clear Filters')}</button></div> : null}
             {surfaceFeedback ? <div className="admin-surface-feedback"><p className="admin-feedback" data-tone={surfaceFeedbackTone}>{surfaceFeedback}</p></div> : null}
 
-            {listStatus === 'ready' && filtered.length > 0 ? (
-              <>
-                <div className="admin-projects-table-head admin-projects-table-head--projects" aria-hidden="true">
-                  <span>{t('Name', 'Name')}</span>
-                  <span>{t('Status', 'Status')}</span>
-                  <span>{t('Last Updated', 'Last Updated')}</span>
-                  <span>{t('Actions', 'Actions')}</span>
+            <div className="admin-projects-results">
+              {listStatus === 'loading' ? <div className="admin-state-card">{t('\u52a0\u8f7d\u4e2d...', 'Loading...')}</div> : null}
+              {listStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{listMessage}</p><button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('\u91cd\u8bd5', 'Retry')}</button></div> : null}
+              {listStatus === 'empty' ? (
+                <div className="admin-state-card">
+                  <p>{t('\u5f53\u524d\u6ca1\u6709\u9879\u76ee\u3002\u4f60\u53ef\u4ee5\u5148\u65b0\u5efa\u9879\u76ee\uff0c\u6216\u5bfc\u5165 GitHub Repo\u3002', 'There are no projects yet. Create one first, or import a GitHub repository.')}</p>
+                  <div className="admin-list-actions">
+                    <button className="admin-primary-button" type="button" onClick={openCreatePanel}>{t('\u521b\u5efa\u9996\u4e2a\u9879\u76ee', 'Create First Project')}</button>
+                    <Link className="admin-primary-button" to="/admin/sync" search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}>{t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}</Link>
+                  </div>
                 </div>
-                <ul className="admin-projects-list admin-projects-table">
+              ) : null}
+              {listStatus === 'ready' && filtered.length === 0 ? <div className="admin-state-card"><p>{t('\u6ca1\u6709\u5339\u914d\u7684\u9879\u76ee\u3002', 'No matching projects.')}</p><button className="admin-secondary-button" type="button" onClick={resetFilters}>{t('\u6e05\u7a7a\u7b5b\u9009', 'Clear Filters')}</button></div> : null}
+
+              {listStatus === 'ready' && filtered.length > 0 ? (
+                <ul className="admin-project-list">
                   {visibleProjects.map((item) => (
-                    <li key={item.id}>
-                      <div className="admin-project-row">
+                    <li key={item.id} className="admin-project-list-item">
+                      <div className="admin-project-list-item__main">
                         <div className="admin-project-row__identity">
                           <p className="name">{item.name || item.slug || item.id}</p>
                         </div>
-                        <p className="admin-project-row__stage" data-stage={item.stage || 'unknown'}>{item.stage || '--'}</p>
-                        <p className="admin-project-row__updated">{formatTime(item.updated_at)}</p>
-                        <div className="admin-project-row__actions">
-                          <button className="admin-secondary-button" type="button" onClick={() => openEditPanel(item.id)}>{t('\u7f16\u8f91', 'Edit')}</button>
-                          <button className="admin-danger-button" type="button" onClick={() => openDeleteModal(item)}>{t('\u5220\u9664', 'Delete')}</button>
+                        <p className="meta">{item.slug || item.id}</p>
+                        <div className="admin-project-list-item__meta">
+                          <p className="admin-project-row__stage" data-stage={item.stage || 'unknown'}>{item.stage || '--'}</p>
+                          <p className="admin-project-list-item__updated">{formatTime(item.updated_at)}</p>
                         </div>
+                      </div>
+                      <div className="admin-project-list-item__actions">
+                        <button className="admin-secondary-button" type="button" onClick={() => openEditPanel(item.id)}>{t('\u7f16\u8f91', 'Edit')}</button>
+                        <button className="admin-danger-button" type="button" onClick={() => openDeleteModal(item)}>{t('\u5220\u9664', 'Delete')}</button>
                       </div>
                     </li>
                   ))}
                 </ul>
-              </>
-            ) : null}
+              ) : null}
+            </div>
           </section>
         </section>
       ) : null}
