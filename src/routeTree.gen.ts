@@ -28,7 +28,6 @@ import { Route as JournalOperationalHabitsThatStickIndexRouteImport } from './ro
 import { Route as JournalModelFirstEngineeringIndexRouteImport } from './routes/journal/model-first-engineering/index'
 import { Route as JournalAiCollaborationChecklistIndexRouteImport } from './routes/journal/ai-collaboration-checklist/index'
 import { Route as AdminSyncIndexRouteImport } from './routes/admin/sync/index'
-import { Route as AdminStatusIndexRouteImport } from './routes/admin/status/index'
 import { Route as AdminProjectsIndexRouteImport } from './routes/admin/projects/index'
 import { Route as AdminOverviewIndexRouteImport } from './routes/admin/overview/index'
 import { Route as AdminLogsIndexRouteImport } from './routes/admin/logs/index'
@@ -37,7 +36,6 @@ import { Route as JournalOperationalHabitsThatStickIndexDothtmlRouteImport } fro
 import { Route as JournalModelFirstEngineeringIndexDothtmlRouteImport } from './routes/journal/model-first-engineering/index[.]html'
 import { Route as JournalAiCollaborationChecklistIndexDothtmlRouteImport } from './routes/journal/ai-collaboration-checklist/index[.]html'
 import { Route as AdminSyncIndexDothtmlRouteImport } from './routes/admin/sync/index[.]html'
-import { Route as AdminStatusIndexDothtmlRouteImport } from './routes/admin/status/index[.]html'
 import { Route as AdminProjectsIndexDothtmlRouteImport } from './routes/admin/projects/index[.]html'
 import { Route as AdminOverviewIndexDothtmlRouteImport } from './routes/admin/overview/index[.]html'
 import { Route as AdminLogsIndexDothtmlRouteImport } from './routes/admin/logs/index[.]html'
@@ -141,11 +139,6 @@ const AdminSyncIndexRoute = AdminSyncIndexRouteImport.update({
   path: '/admin/sync/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminStatusIndexRoute = AdminStatusIndexRouteImport.update({
-  id: '/admin/status/',
-  path: '/admin/status/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminProjectsIndexRoute = AdminProjectsIndexRouteImport.update({
   id: '/admin/projects/',
   path: '/admin/projects/',
@@ -190,11 +183,6 @@ const AdminSyncIndexDothtmlRoute = AdminSyncIndexDothtmlRouteImport.update({
   path: '/admin/sync/index.html',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminStatusIndexDothtmlRoute = AdminStatusIndexDothtmlRouteImport.update({
-  id: '/admin/status/index.html',
-  path: '/admin/status/index.html',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminProjectsIndexDothtmlRoute =
   AdminProjectsIndexDothtmlRouteImport.update({
     id: '/admin/projects/index.html',
@@ -231,7 +219,6 @@ export interface FileRoutesByFullPath {
   '/admin/logs/index.html': typeof AdminLogsIndexDothtmlRoute
   '/admin/overview/index.html': typeof AdminOverviewIndexDothtmlRoute
   '/admin/projects/index.html': typeof AdminProjectsIndexDothtmlRoute
-  '/admin/status/index.html': typeof AdminStatusIndexDothtmlRoute
   '/admin/sync/index.html': typeof AdminSyncIndexDothtmlRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
@@ -240,7 +227,6 @@ export interface FileRoutesByFullPath {
   '/admin/logs/': typeof AdminLogsIndexRoute
   '/admin/overview/': typeof AdminOverviewIndexRoute
   '/admin/projects/': typeof AdminProjectsIndexRoute
-  '/admin/status/': typeof AdminStatusIndexRoute
   '/admin/sync/': typeof AdminSyncIndexRoute
   '/journal/ai-collaboration-checklist/': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering/': typeof JournalModelFirstEngineeringIndexRoute
@@ -265,7 +251,6 @@ export interface FileRoutesByTo {
   '/admin/logs/index.html': typeof AdminLogsIndexDothtmlRoute
   '/admin/overview/index.html': typeof AdminOverviewIndexDothtmlRoute
   '/admin/projects/index.html': typeof AdminProjectsIndexDothtmlRoute
-  '/admin/status/index.html': typeof AdminStatusIndexDothtmlRoute
   '/admin/sync/index.html': typeof AdminSyncIndexDothtmlRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
@@ -274,7 +259,6 @@ export interface FileRoutesByTo {
   '/admin/logs': typeof AdminLogsIndexRoute
   '/admin/overview': typeof AdminOverviewIndexRoute
   '/admin/projects': typeof AdminProjectsIndexRoute
-  '/admin/status': typeof AdminStatusIndexRoute
   '/admin/sync': typeof AdminSyncIndexRoute
   '/journal/ai-collaboration-checklist': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering': typeof JournalModelFirstEngineeringIndexRoute
@@ -300,7 +284,6 @@ export interface FileRoutesById {
   '/admin/logs/index.html': typeof AdminLogsIndexDothtmlRoute
   '/admin/overview/index.html': typeof AdminOverviewIndexDothtmlRoute
   '/admin/projects/index.html': typeof AdminProjectsIndexDothtmlRoute
-  '/admin/status/index.html': typeof AdminStatusIndexDothtmlRoute
   '/admin/sync/index.html': typeof AdminSyncIndexDothtmlRoute
   '/journal/ai-collaboration-checklist/index.html': typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   '/journal/model-first-engineering/index.html': typeof JournalModelFirstEngineeringIndexDothtmlRoute
@@ -309,7 +292,6 @@ export interface FileRoutesById {
   '/admin/logs/': typeof AdminLogsIndexRoute
   '/admin/overview/': typeof AdminOverviewIndexRoute
   '/admin/projects/': typeof AdminProjectsIndexRoute
-  '/admin/status/': typeof AdminStatusIndexRoute
   '/admin/sync/': typeof AdminSyncIndexRoute
   '/journal/ai-collaboration-checklist/': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering/': typeof JournalModelFirstEngineeringIndexRoute
@@ -336,7 +318,6 @@ export interface FileRouteTypes {
     | '/admin/logs/index.html'
     | '/admin/overview/index.html'
     | '/admin/projects/index.html'
-    | '/admin/status/index.html'
     | '/admin/sync/index.html'
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
@@ -345,7 +326,6 @@ export interface FileRouteTypes {
     | '/admin/logs/'
     | '/admin/overview/'
     | '/admin/projects/'
-    | '/admin/status/'
     | '/admin/sync/'
     | '/journal/ai-collaboration-checklist/'
     | '/journal/model-first-engineering/'
@@ -370,7 +350,6 @@ export interface FileRouteTypes {
     | '/admin/logs/index.html'
     | '/admin/overview/index.html'
     | '/admin/projects/index.html'
-    | '/admin/status/index.html'
     | '/admin/sync/index.html'
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
@@ -379,7 +358,6 @@ export interface FileRouteTypes {
     | '/admin/logs'
     | '/admin/overview'
     | '/admin/projects'
-    | '/admin/status'
     | '/admin/sync'
     | '/journal/ai-collaboration-checklist'
     | '/journal/model-first-engineering'
@@ -404,7 +382,6 @@ export interface FileRouteTypes {
     | '/admin/logs/index.html'
     | '/admin/overview/index.html'
     | '/admin/projects/index.html'
-    | '/admin/status/index.html'
     | '/admin/sync/index.html'
     | '/journal/ai-collaboration-checklist/index.html'
     | '/journal/model-first-engineering/index.html'
@@ -413,7 +390,6 @@ export interface FileRouteTypes {
     | '/admin/logs/'
     | '/admin/overview/'
     | '/admin/projects/'
-    | '/admin/status/'
     | '/admin/sync/'
     | '/journal/ai-collaboration-checklist/'
     | '/journal/model-first-engineering/'
@@ -439,7 +415,6 @@ export interface RootRouteChildren {
   AdminLogsIndexDothtmlRoute: typeof AdminLogsIndexDothtmlRoute
   AdminOverviewIndexDothtmlRoute: typeof AdminOverviewIndexDothtmlRoute
   AdminProjectsIndexDothtmlRoute: typeof AdminProjectsIndexDothtmlRoute
-  AdminStatusIndexDothtmlRoute: typeof AdminStatusIndexDothtmlRoute
   AdminSyncIndexDothtmlRoute: typeof AdminSyncIndexDothtmlRoute
   JournalAiCollaborationChecklistIndexDothtmlRoute: typeof JournalAiCollaborationChecklistIndexDothtmlRoute
   JournalModelFirstEngineeringIndexDothtmlRoute: typeof JournalModelFirstEngineeringIndexDothtmlRoute
@@ -448,7 +423,6 @@ export interface RootRouteChildren {
   AdminLogsIndexRoute: typeof AdminLogsIndexRoute
   AdminOverviewIndexRoute: typeof AdminOverviewIndexRoute
   AdminProjectsIndexRoute: typeof AdminProjectsIndexRoute
-  AdminStatusIndexRoute: typeof AdminStatusIndexRoute
   AdminSyncIndexRoute: typeof AdminSyncIndexRoute
   JournalAiCollaborationChecklistIndexRoute: typeof JournalAiCollaborationChecklistIndexRoute
   JournalModelFirstEngineeringIndexRoute: typeof JournalModelFirstEngineeringIndexRoute
@@ -591,13 +565,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSyncIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/status/': {
-      id: '/admin/status/'
-      path: '/admin/status'
-      fullPath: '/admin/status/'
-      preLoaderRoute: typeof AdminStatusIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/projects/': {
       id: '/admin/projects/'
       path: '/admin/projects'
@@ -654,13 +621,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSyncIndexDothtmlRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/status/index.html': {
-      id: '/admin/status/index.html'
-      path: '/admin/status/index.html'
-      fullPath: '/admin/status/index.html'
-      preLoaderRoute: typeof AdminStatusIndexDothtmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/projects/index.html': {
       id: '/admin/projects/index.html'
       path: '/admin/projects/index.html'
@@ -703,7 +663,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLogsIndexDothtmlRoute: AdminLogsIndexDothtmlRoute,
   AdminOverviewIndexDothtmlRoute: AdminOverviewIndexDothtmlRoute,
   AdminProjectsIndexDothtmlRoute: AdminProjectsIndexDothtmlRoute,
-  AdminStatusIndexDothtmlRoute: AdminStatusIndexDothtmlRoute,
   AdminSyncIndexDothtmlRoute: AdminSyncIndexDothtmlRoute,
   JournalAiCollaborationChecklistIndexDothtmlRoute:
     JournalAiCollaborationChecklistIndexDothtmlRoute,
@@ -715,7 +674,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLogsIndexRoute: AdminLogsIndexRoute,
   AdminOverviewIndexRoute: AdminOverviewIndexRoute,
   AdminProjectsIndexRoute: AdminProjectsIndexRoute,
-  AdminStatusIndexRoute: AdminStatusIndexRoute,
   AdminSyncIndexRoute: AdminSyncIndexRoute,
   JournalAiCollaborationChecklistIndexRoute:
     JournalAiCollaborationChecklistIndexRoute,

@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router'
+﻿import { useNavigate } from '@tanstack/react-router'
 import * as React from 'react'
 import { AdminProjectsConsolePage } from './AdminProjectsConsolePage'
 import {
@@ -17,13 +17,15 @@ export function AdminProjectsRoutePage({ from, searchState }: AdminProjectsRoute
 
   const handleSearchPatch = React.useCallback(
     (patch: Partial<AdminProjectsSearchState>) => {
-      const nextSearch = normalizeAdminProjectsSearchState({ ...searchState, ...patch } as Record<string, unknown>)
       void navigate({
         replace: true,
-        search: () => toAdminProjectsRouteSearch(nextSearch),
+        search: (prev) =>
+          toAdminProjectsRouteSearch(
+            normalizeAdminProjectsSearchState({ ...(prev as Record<string, unknown>), ...patch } as Record<string, unknown>),
+          ),
       })
     },
-    [navigate, searchState],
+    [navigate],
   )
 
   return <AdminProjectsConsolePage mode="projects" searchState={searchState} onSearchStateChange={handleSearchPatch} />

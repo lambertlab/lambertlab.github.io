@@ -1,5 +1,6 @@
 ﻿import * as React from 'react'
 import { fetchAdminOverview, type AdminOverviewSummary } from '~/lib/api/adminProjectsApi'
+import { useUiLocale } from '~/lib/uiLocale'
 import { AdminConsoleShell, useAdminConsoleAuth } from './AdminConsoleShell'
 import { formatAdminTime, mapAdminError } from './adminConsoleUtils'
 
@@ -93,11 +94,14 @@ function OverviewContent() {
 }
 
 export function AdminOverviewConsolePage() {
+  const { locale } = useUiLocale()
+  const t = React.useCallback((zh: string, en: string) => (locale === 'zh-CN' ? zh : en), [locale])
+
   return (
     <AdminConsoleShell
       mode="overview"
-      title="Control Center · 概览 | lambertlab"
-      description="二期控制台概览：核心统计与近期失败。"
+      title={t('Control Center · 概览 | lambertlab', 'Control Center · Overview | lambertlab')}
+      description={t('管理概览：项目规模、同步走势与近期失败任务。', 'Admin overview: project scale, sync trends, and recent failed jobs.')}
     >
       <OverviewContent />
     </AdminConsoleShell>

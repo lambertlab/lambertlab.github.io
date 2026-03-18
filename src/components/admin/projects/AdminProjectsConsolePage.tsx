@@ -9,7 +9,6 @@ import {
   deleteAdminProjectById,
   fetchAdminProjectById,
   fetchAdminProjects,
-  syncAdminProjectRepositories,
   updateAdminProjectById,
   verifyAdminToken,
 } from '~/lib/api/adminProjectsApi'
@@ -19,6 +18,8 @@ import {
   normalizeAdminProjectsSearchState,
   type AdminProjectsSearchState,
 } from './adminProjectsSearch'
+import { DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE } from './adminProjectSyncSearch'
+import { AdminConsoleFrame } from './AdminConsoleFrame'
 
 const TOKEN_KEY = 'll-admin-token-v1'
 const STAGES = ['building', 'active', 'maintenance', 'research', 'archived']
@@ -136,7 +137,7 @@ function toPayload(form: FormState) {
     project_type: form.project_type.trim().toLowerCase(),
     visibility: form.visibility.trim().toLowerCase(),
     is_featured: form.is_featured,
-    featured_rank: asNullableNumber(form.featured_rank),
+    featured_rank: form.is_featured ? asNullableNumber(form.featured_rank) : null,
     sort_order: asNullableNumber(form.sort_order),
     accent: form.accent.trim() || null,
   }
@@ -293,6 +294,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
   const currentSearch = normalizeAdminProjectsSearchState(
     (searchState ? { ...DEFAULT_ADMIN_PROJECTS_SEARCH_STATE, ...searchState } : localSearchState) as unknown as Record<string, unknown>,
   )
+  const [searchInput, setSearchInput] = React.useState(currentSearch.q)
 
   const patchSearch = React.useCallback(
     (patch: Partial<AdminProjectsSearchState>) => {
@@ -322,14 +324,18 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
   const [form, setForm] = React.useState<FormState | null>(null)
 
   const [saveState, setSaveState] = React.useState<OperationState>({ status: 'idle', message: '' })
-  const [syncState, setSyncState] = React.useState<OperationState>({ status: 'idle', message: '' })
   const [deleteState, setDeleteState] = React.useState<OperationState>({ status: 'idle', message: '' })
   const [createForm, setCreateForm] = React.useState<CreateFormState>(DEFAULT_CREATE_FORM)
   const [createState, setCreateState] = React.useState<OperationState>({ status: 'idle', message: '' })
+  const [deleteTarget, setDeleteTarget] = React.useState<AdminProjectRecord | null>(null)
 
   useDocumentMetadata(
-    mode === 'projects' ? t('Control Center · Projects 管理 | lambertlab', 'Control Center · Projects Admin | lambertlab') : t('Control Center · Admin 入口 | lambertlab', 'Control Center · Admin Entry | lambertlab'),
-    mode === 'projects' ? t('Projects 后台管理：列表、编辑、同步。', 'Projects admin: list, edit, sync.') : t('Control Center 管理入口，需 token 验证。', 'Control Center admin entry with token gate.'),
+    mode === 'projects'
+      ? t('Admin \u00b7 \u9879\u76ee\u7ba1\u7406 | lambertlab', 'Admin \u00b7 Projects | lambertlab')
+      : t('Admin \u00b7 Overview | lambertlab', 'Admin \u00b7 Overview | lambertlab'),
+    mode === 'projects'
+      ? t('Projects \u540e\u53f0\u7ba1\u7406\uff1a\u5217\u8868\u3001\u521b\u5efa\u3001\u7f16\u8f91\uff1b\u540c\u6b65\u5728 Projects \u5b50\u9875\u4e2d\u5904\u7406\u3002', 'Projects admin: list, create, edit; sync stays inside the Projects subpage.')
+      : t('Admin overview \u5165\u53e3\uff0c\u9700 token \u9a8c\u8bc1\u3002', 'Admin overview entry with token gate.'),
   )
 
   const invalidate = React.useCallback(
@@ -345,12 +351,12 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       setDetailProject(null)
       setForm(null)
       setSaveState({ status: 'idle', message: '' })
-      setSyncState({ status: 'idle', message: '' })
       setDeleteState({ status: 'idle', message: '' })
+      setDeleteTarget(null)
       setCreateState({ status: 'idle', message: '' })
       setCreateForm(DEFAULT_CREATE_FORM)
       if (mode === 'projects') {
-        patchSearch({ projectId: '', page: 1 })
+        patchSearch({ projectId: '', page: 1, panel: 'closed' })
       }
     },
     [mode, patchSearch, t],
@@ -406,7 +412,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         setBackendTotal(result.total)
         if (result.projects.length === 0) {
           setListStatus('empty')
-          patchSearch({ projectId: '', page: 1 })
+          patchSearch({ projectId: '', page: 1, panel: 'closed' })
           return
         }
         setListStatus('ready')
@@ -431,37 +437,40 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     return () => controller.abort()
   }, [authStatus, listNonce, loadList, mode])
 
+  React.useEffect(() => {
+    setSearchInput(currentSearch.q)
+  }, [currentSearch.q])
+
+  const commitSearchInput = React.useCallback(
+    (value: string) => {
+      if (value === currentSearch.q) return
+      patchSearch({ q: value, page: 1 })
+    },
+    [currentSearch.q, patchSearch],
+  )
+
+  React.useEffect(() => {
+    if (mode !== 'projects') return
+    if (searchInput === currentSearch.q) return
+
+    const timer = window.setTimeout(() => {
+      commitSearchInput(searchInput)
+    }, 400)
+
+    return () => window.clearTimeout(timer)
+  }, [commitSearchInput, currentSearch.q, mode, searchInput])
+
   const filtered = React.useMemo(() => {
-    const q = currentSearch.q.trim().toLowerCase()
-    const stage = currentSearch.stage.trim().toLowerCase()
-    const visibility = currentSearch.visibility.trim().toLowerCase()
+    const q = searchInput.trim().toLowerCase()
 
     return projects.filter((project) => {
-      if (stage && project.stage.trim().toLowerCase() !== stage) return false
-      if (visibility && project.visibility.trim().toLowerCase() !== visibility) return false
       if (!q) return true
       const content = [project.name, project.slug, project.headline, project.summary].join(' ').toLowerCase()
       return content.includes(q)
     })
-  }, [currentSearch.q, currentSearch.stage, currentSearch.visibility, projects])
+  }, [projects, searchInput])
 
-  const pages = Math.max(1, Math.ceil(filtered.length / currentSearch.pageSize))
-  const page = Math.min(Math.max(currentSearch.page, 1), pages)
-
-  React.useEffect(() => {
-    if (page !== currentSearch.page) {
-      patchSearch({ page })
-    }
-  }, [currentSearch.page, page, patchSearch])
-
-  React.useEffect(() => {
-    if (mode !== 'projects' || listStatus !== 'ready' || projects.length === 0) return
-    if (projects.some((item) => item.id === currentSearch.projectId)) return
-    patchSearch({ projectId: projects[0].id })
-  }, [currentSearch.projectId, listStatus, mode, patchSearch, projects])
-
-  const start = (page - 1) * currentSearch.pageSize
-  const paged = filtered.slice(start, start + currentSearch.pageSize)
+  const visibleProjects = filtered
   const selectedId = currentSearch.projectId
 
   const loadDetail = React.useCallback(
@@ -477,7 +486,6 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       setDetailStatus('loading')
       setDetailMessage('')
       setSaveState({ status: 'idle', message: '' })
-      setSyncState({ status: 'idle', message: '' })
 
       try {
         const detail = await fetchAdminProjectById(token, projectId, signal)
@@ -534,12 +542,14 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         sort_order: prev.sort_order,
       }))
 
+      setListStatus('ready')
       setProjects((prev) => [created, ...prev.filter((item) => item.id !== created.id)])
-      setBackendTotal((prev) => Math.max(prev, 1))
+      setBackendTotal((prev) => prev + 1)
       setDetailProject(created)
       setForm(toForm(created))
       setDetailStatus('ready')
       setDetailMessage('')
+      setSearchInput('')
 
       patchSearch({
         q: '',
@@ -547,6 +557,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         visibility: '',
         page: 1,
         projectId: created.id,
+        panel: 'closed',
       })
       setListNonce((prev) => prev + 1)
     }
@@ -633,7 +644,6 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     try {
       const updated = await updateAdminProjectById(token, selectedId, toPayload(form))
       setSaveState({ status: 'success', message: t('保存成功。', 'Saved.') })
-      setSyncState({ status: 'idle', message: '' })
       setDetailProject(updated)
       setDetailStatus('ready')
       setForm(toForm(updated))
@@ -648,60 +658,40 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     }
   }, [form, invalidate, selectedId, t, token])
 
-  const syncProject = React.useCallback(async () => {
-    if (!token || !selectedId) return
 
-    setSyncState({ status: 'running', message: t('正在同步仓库...', 'Syncing repositories...') })
+  const deleteProjectByRecord = React.useCallback(async (project: AdminProjectRecord) => {
+    if (!token) return
+
+    const projectId = project.id
+    const projectName = project.name || project.slug || project.id
+
+    setDeleteState({ status: 'running', message: t('\u6b63\u5728\u5220\u9664\u9879\u76ee...', 'Deleting project...') })
     try {
-      const updated = await syncAdminProjectRepositories(token, selectedId)
-      setSyncState({ status: 'success', message: t(`同步完成：${formatTime(updated.synced_at)}`, `Sync done: ${formatTime(updated.synced_at)}`) })
-      setSaveState({ status: 'idle', message: '' })
-      setDetailProject(updated)
-      setDetailStatus('ready')
-      setForm(toForm(updated))
-      setProjects((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
-    } catch (error) {
-      const mapped = errorMessage(error)
-      if (mapped.code === 'unauthorized') {
-        invalidate(mapped.message)
-        return
-      }
-      setSyncState({ status: 'error', message: mapped.message })
-    }
-  }, [invalidate, selectedId, t, token])
-
-  const deleteProject = React.useCallback(async () => {
-    if (!token || !selectedId || !detailProject) return
-
-    const projectName = detailProject.name || detailProject.slug || detailProject.id
-    const confirmed = typeof window === 'undefined' || window.confirm(
-      t(`确认删除项目「${projectName}」？此操作不可撤销。`, `Delete project "${projectName}"? This cannot be undone.`),
-    )
-    if (!confirmed) return
-
-    setDeleteState({ status: 'running', message: t('正在删除项目...', 'Deleting project...') })
-    try {
-      await deleteAdminProjectById(token, selectedId)
-      const remainingProjects = projects.filter((item) => item.id !== selectedId)
+      await deleteAdminProjectById(token, projectId)
+      const remainingProjects = projects.filter((item) => item.id !== projectId)
+      const nextSelectedId = selectedId === projectId ? remainingProjects[0]?.id || '' : selectedId
 
       setProjects(remainingProjects)
       setBackendTotal((prev) => Math.max(0, prev - 1))
       setSaveState({ status: 'idle', message: '' })
-      setSyncState({ status: 'idle', message: '' })
-      setDetailProject(null)
-      setForm(null)
-      setDetailMessage('')
-      setDetailStatus('idle')
-      setDeleteState({ status: 'success', message: t(`已删除：${projectName}`, `Deleted: ${projectName}`) })
+      setDeleteState({ status: 'success', message: t(`\u5df2\u5220\u9664\uff1a${projectName}`, `Deleted: ${projectName}`) })
+      setDeleteTarget(null)
+
+      if (selectedId === projectId) {
+        setDetailProject(null)
+        setForm(null)
+        setDetailMessage('')
+        setDetailStatus('idle')
+      }
 
       if (remainingProjects.length === 0) {
         setListStatus('empty')
-        patchSearch({ projectId: '', page: 1 })
+        patchSearch({ projectId: '', page: 1, panel: 'closed' })
         return
       }
 
       setListStatus('ready')
-      patchSearch({ projectId: remainingProjects[0].id, page: 1 })
+      patchSearch({ projectId: nextSelectedId, page: 1, panel: 'closed' })
     } catch (error) {
       const mapped = errorMessage(error)
       if (mapped.code === 'unauthorized') {
@@ -710,11 +700,30 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       }
       setDeleteState({ status: 'error', message: mapped.message })
     }
-  }, [detailProject, invalidate, patchSearch, projects, selectedId, t, token])
+  }, [invalidate, patchSearch, projects, selectedId, t, token])
 
   const ready = authStatus === 'ready'
+  const panel = currentSearch.panel
+  const selectedProjectName = detailProject?.name || detailProject?.slug || detailProject?.id || ''
+  const createModalOpen = ready && mode === 'projects' && panel === 'create'
+  const editModalOpen = ready && mode === 'projects' && panel === 'edit'
+  const deleteModalOpen = ready && mode === 'projects' && deleteTarget !== null
+  const deleteTargetName = deleteTarget?.name || deleteTarget?.slug || deleteTarget?.id || ''
+  const surfaceFeedback = !createModalOpen && !editModalOpen && !deleteModalOpen ? createState.message || deleteState.message : ''
+  const surfaceFeedbackTone = createState.message
+    ? createState.status === 'error'
+      ? 'error'
+      : createState.status === 'success'
+        ? 'success'
+        : 'info'
+    : deleteState.status === 'error'
+      ? 'error'
+      : deleteState.status === 'success'
+        ? 'success'
+        : 'info'
 
   const resetFilters = () => {
+    setSearchInput('')
     patchSearch({
       q: '',
       stage: '',
@@ -724,26 +733,39 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     })
   }
 
-  return (
-    <main className="admin-projects-shell" id="main-content">
-      <section className="admin-projects-hero">
-        <div>
-          <p className="admin-projects-kicker">Control Center · Phase 2</p>
-          <h1>{t('Projects 后台管理', 'Projects Admin')}</h1>
-          <p>{t('覆盖 token 门禁、列表筛选分页、编辑与同步，并联动二期模块导航。', 'Token gate, list filters, edit and sync with phase-2 module navigation.')}</p>
-        </div>
-        <nav className="admin-projects-tabs" aria-label="admin nav">
-          <Link to="/admin/overview" className={mode === 'overview' ? 'is-active' : ''}>/admin/overview</Link>
-          <Link to="/admin/projects" search={DEFAULT_ADMIN_PROJECTS_SEARCH_STATE} className={mode === 'projects' ? 'is-active' : ''}>/admin/projects</Link>
-          <Link to="/admin/sync">/admin/sync</Link>
-          <Link to="/admin/logs">/admin/logs</Link>
-          <Link to="/admin/status">/admin/status</Link>
-        </nav>
-      </section>
+  const closePanel = () => {
+    patchSearch({ panel: 'closed' })
+  }
 
+  const closeDeleteModal = () => {
+    if (deleteState.status === 'running') return
+    setDeleteTarget(null)
+    if (deleteState.status !== 'success') {
+      setDeleteState({ status: 'idle', message: '' })
+    }
+  }
+
+  const openCreatePanel = () => {
+    setCreateState({ status: 'idle', message: '' })
+    patchSearch({ panel: 'create' })
+  }
+
+  const openEditPanel = (projectId: string) => {
+    setSaveState({ status: 'idle', message: '' })
+    patchSearch({ projectId, panel: 'edit' })
+  }
+
+  const openDeleteModal = (project: AdminProjectRecord) => {
+    setDeleteState({ status: 'idle', message: '' })
+    setDeleteTarget(project)
+  }
+
+
+  return (
+    <AdminConsoleFrame mode={mode === 'overview' ? 'overview' : 'projects'}>
       {!ready ? (
         <section className="admin-auth-card" aria-live="polite">
-          <h2>{t('Admin Token 校验', 'Admin Token Verification')}</h2>
+          <h2>{t('Admin Token \u6821\u9a8c', 'Admin Token Verification')}</h2>
           <form
             className="admin-auth-form"
             onSubmit={(event) => {
@@ -755,7 +777,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
             <input id="admin-token" value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} type="password" autoComplete="off" />
             <div className="admin-auth-actions">
               <button className="admin-primary-button" type="submit" disabled={authStatus === 'checking' || authStatus === 'verifying'}>
-                {authStatus === 'checking' || authStatus === 'verifying' ? t('校验中...', 'Verifying...') : t('验证 Token', 'Verify Token')}
+                {authStatus === 'checking' || authStatus === 'verifying' ? t('\u6821\u9a8c\u4e2d...', 'Verifying...') : t('\u9a8c\u8bc1 Token', 'Verify Token')}
               </button>
               <button
                 className="admin-secondary-button"
@@ -767,11 +789,11 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                   setAuthMessage('')
                 }}
               >
-                {t('清空', 'Clear')}
+                {t('\u6e05\u7a7a', 'Clear')}
               </button>
             </div>
           </form>
-          {authStatus === 'checking' ? <p className="admin-feedback" data-tone="info">{t('正在检查已保存 token...', 'Checking stored token...')}</p> : null}
+          {authStatus === 'checking' ? <p className="admin-feedback" data-tone="info">{t('\u6b63\u5728\u68c0\u67e5\u5df2\u4fdd\u5b58 token...', 'Checking stored token...')}</p> : null}
           {authStatus === 'locked' && authMessage ? <p className="admin-feedback" data-tone="warn">{authMessage}</p> : null}
           {authStatus === 'error' ? <p className="admin-feedback" data-tone="error">{authMessage}</p> : null}
         </section>
@@ -781,142 +803,229 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         <section className="admin-overview-grid">
           <article>
             <p className="admin-projects-kicker">Gate</p>
-            <h3>{t('门禁已通过', 'Gate verified')}</h3>
-            <p>{t('你可以进入 /admin/projects 执行列表、编辑、同步流程。', 'You can open /admin/projects for list, edit and sync.')}</p>
-            <Link className="admin-primary-button inline" to="/admin/projects" search={DEFAULT_ADMIN_PROJECTS_SEARCH_STATE}>{t('进入项目管理', 'Open Projects Admin')}</Link>
+            <h3>{t('\u95e8\u7981\u5df2\u901a\u8fc7', 'Gate verified')}</h3>
+            <p>{t('\u4f60\u53ef\u4ee5\u8fdb\u5165 /admin/projects \u6267\u884c\u9879\u76ee\u5217\u8868\u4e0e\u7ba1\u7406\u3002', 'Use /admin/projects for the project list and management.')}</p>
+            <Link className="admin-primary-button inline" to="/admin/projects" search={DEFAULT_ADMIN_PROJECTS_SEARCH_STATE}>{t('\u8fdb\u5165\u9879\u76ee\u7ba1\u7406', 'Open Projects Admin')}</Link>
           </article>
         </section>
       ) : null}
 
       {ready && mode === 'projects' ? (
-        <section className="admin-projects-workspace">
-          <aside className="admin-projects-list-panel">
-            <h2>{t('项目列表', 'Projects List')}</h2>
-            <div className="admin-projects-controls">
-              <label>Query<input type="search" value={currentSearch.q} onChange={(event) => patchSearch({ q: event.target.value, page: 1 })} /></label>
-              <label>Stage<select value={currentSearch.stage} onChange={(event) => patchSearch({ stage: event.target.value, page: 1 })}><option value="">All</option>{STAGES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label>Visibility<select value={currentSearch.visibility} onChange={(event) => patchSearch({ visibility: event.target.value, page: 1 })}><option value="">All</option>{VISIBILITY.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-              <label>Page Size<select value={String(currentSearch.pageSize)} onChange={(event) => patchSearch({ pageSize: Number(event.target.value), page: 1 })}><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select></label>
-            </div>
-            <div className="admin-list-actions">
-              <button className="admin-secondary-button" type="button" onClick={resetFilters}>{t('重置筛选', 'Reset Filters')}</button>
-              <button className="admin-secondary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('刷新', 'Refresh')}</button>
+        <section className="admin-projects-workspace admin-projects-workspace--catalog">
+          <section className="admin-projects-list-panel admin-projects-board">
+            <div className="admin-section-head admin-section-head--projects">
+              <div>
+                <h2>{t('Project List', 'Project List')}</h2>
+              </div>
+              <div className="admin-section-head__actions">
+                <button className="admin-primary-button" type="button" onClick={openCreatePanel}>
+                  {t('\u65b0\u5efa\u9879\u76ee', 'New Project')}
+                </button>
+                <Link className="admin-primary-button" to="/admin/sync" search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}>
+                  {t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}
+                </Link>
+              </div>
             </div>
 
-            {listStatus === 'loading' ? <div className="admin-state-card">{t('加载中...', 'Loading...')}</div> : null}
+            <div className="admin-projects-toolbar admin-projects-toolbar--single">
+              <label className="admin-search-field admin-search-field--projects">
+                <input
+                  aria-label={t('\u641c\u7d22\u9879\u76ee', 'Search projects')}
+                  type="search"
+                  value={searchInput}
+                  onChange={(event) => {
+                    const nextValue = event.target.value
+                    setSearchInput(nextValue)
+                    if (nextValue === '') {
+                      commitSearchInput('')
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return
+                    event.preventDefault()
+                    commitSearchInput(searchInput)
+                  }}
+                  onBlur={() => commitSearchInput(searchInput)}
+                  placeholder={t('Search projects...', 'Search projects...')}
+                />
+              </label>
+            </div>
+
+            {listStatus === 'loading' ? <div className="admin-state-card">{t('\u52a0\u8f7d\u4e2d...', 'Loading...')}</div> : null}
             {listStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{listMessage}</p><button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('\u91cd\u8bd5', 'Retry')}</button></div> : null}
             {listStatus === 'empty' ? (
               <div className="admin-state-card">
-                <p>{t('\u5f53\u524d\u76ee\u5f55\u4e3a\u7a7a\uff08\u975e\u9519\u8bef\u6001\uff09\u3002\u53ef\u5728\u53f3\u4fa7\u521b\u5efa\u9996\u6761\u9879\u76ee\uff0c\u6216\u524d\u5f80 /admin/sync \u6267\u884c github_user=lambertlab \u5bfc\u5165\u3002', 'Catalog is empty (not an error). Create your first project in the right panel, or run github_user=lambertlab import in /admin/sync.')}</p>
+                <p>{t('\u5f53\u524d\u6ca1\u6709\u9879\u76ee\u3002\u4f60\u53ef\u4ee5\u5148\u65b0\u5efa\u9879\u76ee\uff0c\u6216\u5bfc\u5165 GitHub Repo\u3002', 'There are no projects yet. Create one first, or import a GitHub repository.')}</p>
                 <div className="admin-list-actions">
-                  <button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('\u91cd\u8bd5', 'Retry')}</button>
-                  <Link className="admin-secondary-button" to="/admin/sync">/admin/sync</Link>
+                  <button className="admin-primary-button" type="button" onClick={openCreatePanel}>{t('\u521b\u5efa\u9996\u4e2a\u9879\u76ee', 'Create First Project')}</button>
+                  <Link className="admin-primary-button" to="/admin/sync" search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}>{t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}</Link>
                 </div>
               </div>
             ) : null}
-            {listStatus === 'ready' && filtered.length === 0 ? <div className="admin-state-card"><p>{t('筛选后为空。', 'No results after filters.')}</p><button className="admin-secondary-button" type="button" onClick={resetFilters}>{t('清空筛选', 'Clear Filters')}</button></div> : null}
+            {listStatus === 'ready' && filtered.length === 0 ? <div className="admin-state-card"><p>{t('\u6ca1\u6709\u5339\u914d\u7684\u9879\u76ee\u3002', 'No matching projects.')}</p><button className="admin-secondary-button" type="button" onClick={resetFilters}>{t('\u6e05\u7a7a\u7b5b\u9009', 'Clear Filters')}</button></div> : null}
+            {surfaceFeedback ? <div className="admin-surface-feedback"><p className="admin-feedback" data-tone={surfaceFeedbackTone}>{surfaceFeedback}</p></div> : null}
 
             {listStatus === 'ready' && filtered.length > 0 ? (
               <>
-                <ul className="admin-projects-list">
-                  {paged.map((item) => (
+                <div className="admin-projects-table-head admin-projects-table-head--projects" aria-hidden="true">
+                  <span>{t('Name', 'Name')}</span>
+                  <span>{t('Status', 'Status')}</span>
+                  <span>{t('Last Updated', 'Last Updated')}</span>
+                  <span>{t('Actions', 'Actions')}</span>
+                </div>
+                <ul className="admin-projects-list admin-projects-table">
+                  {visibleProjects.map((item) => (
                     <li key={item.id}>
-                      <button type="button" className={item.id === selectedId ? 'is-selected' : ''} onClick={() => patchSearch({ projectId: item.id })}>
-                        <div>
+                      <div className="admin-project-row">
+                        <div className="admin-project-row__identity">
                           <p className="name">{item.name || item.slug || item.id}</p>
-                          <p className="meta">{item.stage || '--'} · {item.project_type || '--'}</p>
                         </div>
-                        <span className="pill">{item.visibility || '--'}</span>
-                      </button>
+                        <p className="admin-project-row__stage" data-stage={item.stage || 'unknown'}>{item.stage || '--'}</p>
+                        <p className="admin-project-row__updated">{formatTime(item.updated_at)}</p>
+                        <div className="admin-project-row__actions">
+                          <button className="admin-secondary-button" type="button" onClick={() => openEditPanel(item.id)}>{t('\u7f16\u8f91', 'Edit')}</button>
+                          <button className="admin-danger-button" type="button" onClick={() => openDeleteModal(item)}>{t('\u5220\u9664', 'Delete')}</button>
+                        </div>
+                      </div>
                     </li>
                   ))}
                 </ul>
-                <div className="admin-pagination">
-                  <button className="admin-secondary-button" type="button" disabled={page <= 1} onClick={() => patchSearch({ page: Math.max(1, page - 1) })}>{t('上一页', 'Prev')}</button>
-                  <p>{page} / {pages}</p>
-                  <button className="admin-secondary-button" type="button" disabled={page >= pages} onClick={() => patchSearch({ page: Math.min(pages, page + 1) })}>{t('下一页', 'Next')}</button>
-                </div>
-                <p className="admin-list-summary">{t(`后端 ${backendTotal} 条，筛选后 ${filtered.length} 条。`, `${backendTotal} backend, ${filtered.length} filtered.`)}</p>
               </>
             ) : null}
-          </aside>
+          </section>
+        </section>
+      ) : null}
 
-          <section className="admin-projects-detail-panel">
-            <h2>{t('\u521b\u5efa / \u7f16\u8f91 / \u540c\u6b65', 'Create / Edit / Sync')}</h2>
+      {createModalOpen ? (
+        <div className="admin-project-modal-backdrop" onClick={closePanel}>
+          <section className="admin-projects-detail-panel admin-project-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-project-modal__head">
+              <div className="admin-project-modal__titleblock">
+                <h2>{t('\u521b\u5efa\u9879\u76ee', 'Create Project')}</h2>
+                <p className="admin-project-modal__project-name">{t('\u65b0\u9879\u76ee', 'New project')}</p>
+              </div>
+              <button className="admin-modal-close" type="button" onClick={closePanel} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+            </div>
 
-            <div className="admin-state-card">
-              <h3>{t('\u521b\u5efa\u9879\u76ee', 'Create Project')}</h3>
-              <p>{t('\u5373\u4f7f\u76ee\u5f55\u4e3a\u7a7a\u4e5f\u53ef\u521b\u5efa\u9996\u6761\u9879\u76ee\u3002\u5fc5\u586b\u5b57\u6bb5\u9075\u5faa\u672c\u8f6e API \u534f\u8bae\u3002', 'Create the first project even when the catalog is empty. Required fields follow this round API contract.')}</p>
-              <form className="admin-editor-form" onSubmit={(event) => { event.preventDefault(); void createProject() }}>
+            <form className="admin-project-modal__content" onSubmit={(event) => { event.preventDefault(); void createProject() }}>
+              <div className="admin-project-modal__body admin-editor-form admin-editor-form--modal">
                 <div className="admin-editor-grid two-col">
                   <label>project_key<input type="text" value={createForm.project_key} onChange={(event) => setCreateForm((prev) => ({ ...prev, project_key: event.target.value }))} placeholder="my-first-project" /></label>
                   <label>slug<input type="text" value={createForm.slug} onChange={(event) => setCreateForm((prev) => ({ ...prev, slug: event.target.value }))} placeholder="my-first-project" /></label>
                 </div>
                 <label>name<input type="text" value={createForm.name} onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="My First Project" /></label>
-                <label>summary<textarea rows={3} value={createForm.summary} onChange={(event) => setCreateForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder={t('\u4e00\u53e5\u8bdd\u6458\u8981', 'One-line summary')} /></label>
+                <label>summary<textarea value={createForm.summary} onChange={(event) => setCreateForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder={t('\u4e00\u53e5\u8bdd\u6982\u8ff0', 'One-line summary')} /></label>
                 <div className="admin-editor-grid three-col">
                   <label>stage<select value={createForm.stage} onChange={(event) => setCreateForm((prev) => ({ ...prev, stage: event.target.value }))}>{STAGES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
                   <label>project_type<select value={createForm.project_type} onChange={(event) => setCreateForm((prev) => ({ ...prev, project_type: event.target.value }))}>{PROJECT_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
                   <label>visibility<select value={createForm.visibility} onChange={(event) => setCreateForm((prev) => ({ ...prev, visibility: event.target.value }))}>{VISIBILITY.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
                 </div>
                 <label>sort_order<input type="number" value={createForm.sort_order} onChange={(event) => setCreateForm((prev) => ({ ...prev, sort_order: event.target.value }))} /></label>
-                <div className="admin-editor-actions">
-                  <button className="admin-primary-button" type="submit" disabled={createState.status === 'running'}>{createState.status === 'running' ? t('\u521b\u5efa\u4e2d...', 'Creating...') : t('\u521b\u5efa\u9879\u76ee', 'Create Project')}</button>
-                  <Link className="admin-secondary-button" to="/admin/sync">/admin/sync</Link>
-                </div>
                 {createState.message ? <p className="admin-feedback" data-tone={createState.status === 'success' ? 'success' : createState.status === 'error' ? 'error' : 'info'}>{createState.message}</p> : null}
-              </form>
+              </div>
+              <div className="admin-project-modal__footer">
+                <button className="admin-primary-button" type="submit" disabled={createState.status === 'running'}>{createState.status === 'running' ? t('\u521b\u5efa\u4e2d...', 'Creating...') : t('\u521b\u5efa\u9879\u76ee', 'Create Project')}</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+      {editModalOpen ? (
+        <div className="admin-project-modal-backdrop" onClick={closePanel}>
+          <section className="admin-projects-detail-panel admin-project-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-project-modal__head">
+              <div className="admin-project-modal__titleblock">
+                <h2>{t('\u7f16\u8f91\u9879\u76ee', 'Edit Project')}</h2>
+                <p className="admin-project-modal__project-name">{selectedProjectName || selectedId || '--'}</p>
+              </div>
+              <button className="admin-modal-close" type="button" onClick={closePanel} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
             </div>
 
-            {!selectedId ? <div className="admin-state-card">{t('\u53ef\u76f4\u63a5\u521b\u5efa\u9879\u76ee\u3002\u521b\u5efa\u6210\u529f\u540e\u4f1a\u81ea\u52a8\u9009\u4e2d\u5e76\u8fdb\u5165\u7f16\u8f91\u6001\u3002', 'Create is ready. New project will be auto-selected for editing.')}</div> : null}
-            {selectedId && detailStatus === 'loading' ? <div className="admin-state-card">{t('\u6b63\u5728\u52a0\u8f7d\u8be6\u60c5...', 'Loading detail...')}</div> : null}
-            {selectedId && detailStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{detailMessage}</p><button className="admin-primary-button" type="button" onClick={() => void loadDetail(selectedId)}>{t('\u91cd\u8bd5\u52a0\u8f7d\u8be6\u60c5', 'Retry detail')}</button></div> : null}
+            {!selectedId ? (
+              <div className="admin-project-modal__content">
+                <div className="admin-project-modal__body">
+                  <div className="admin-state-card"><p>{t('\u8bf7\u5148\u9009\u62e9\u4e00\u4e2a\u9879\u76ee\u3002', 'Select a project first.')}</p></div>
+                </div>
+              </div>
+            ) : null}
+            {selectedId && detailStatus === 'loading' ? (
+              <div className="admin-project-modal__content">
+                <div className="admin-project-modal__body">
+                  <div className="admin-state-card"><p>{t('\u6b63\u5728\u52a0\u8f7d\u9879\u76ee\u8be6\u60c5...', 'Loading detail...')}</p></div>
+                </div>
+              </div>
+            ) : null}
+            {selectedId && detailStatus === 'error' ? (
+              <div className="admin-project-modal__content">
+                <div className="admin-project-modal__body">
+                  <div className="admin-state-card admin-state-error">
+                    <p>{detailMessage}</p>
+                    <button className="admin-primary-button" type="button" onClick={() => void loadDetail(selectedId)}>{t('\u91cd\u8bd5\u52a0\u8f7d', 'Retry detail')}</button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             {selectedId && detailStatus === 'ready' && form && detailProject ? (
-              <form className="admin-editor-form" onSubmit={(event) => { event.preventDefault(); void saveProject() }}>
-                <div className="admin-editor-grid two-col">
-                  <label>ID<input type="text" value={detailProject.id} readOnly /></label>
-                  <label>slug<input type="text" value={form.slug} onChange={(event) => setForm((prev) => (prev ? { ...prev, slug: event.target.value } : prev))} /></label>
-                </div>
-                <label>Name<input type="text" value={form.name} onChange={(event) => setForm((prev) => (prev ? { ...prev, name: event.target.value } : prev))} /></label>
-                <label>headline<input type="text" value={form.headline} onChange={(event) => setForm((prev) => (prev ? { ...prev, headline: event.target.value } : prev))} /></label>
-                <label>summary<textarea rows={3} value={form.summary} onChange={(event) => setForm((prev) => (prev ? { ...prev, summary: event.target.value } : prev))} /></label>
-                <label>overview<textarea rows={4} value={form.overview} onChange={(event) => setForm((prev) => (prev ? { ...prev, overview: event.target.value } : prev))} /></label>
-                <label>status_note<textarea rows={2} value={form.status_note} onChange={(event) => setForm((prev) => (prev ? { ...prev, status_note: event.target.value } : prev))} /></label>
+              <form className="admin-project-modal__content" onSubmit={(event) => { event.preventDefault(); void saveProject() }}>
+                <div className="admin-project-modal__body admin-editor-form admin-editor-form--modal">
+                  <div className="admin-editor-grid two-col">
+                    <label>ID<input type="text" value={detailProject.id} readOnly /></label>
+                    <label>slug<input type="text" value={form.slug} onChange={(event) => setForm((prev) => (prev ? { ...prev, slug: event.target.value } : prev))} /></label>
+                  </div>
+                  <label>Name<input type="text" value={form.name} onChange={(event) => setForm((prev) => (prev ? { ...prev, name: event.target.value } : prev))} /></label>
+                  <label>headline<input type="text" value={form.headline} onChange={(event) => setForm((prev) => (prev ? { ...prev, headline: event.target.value } : prev))} /></label>
+                  <label>summary<textarea value={form.summary} onChange={(event) => setForm((prev) => (prev ? { ...prev, summary: event.target.value } : prev))} /></label>
+                  <label>overview<textarea value={form.overview} onChange={(event) => setForm((prev) => (prev ? { ...prev, overview: event.target.value } : prev))} /></label>
+                  <label>status_note<textarea value={form.status_note} onChange={(event) => setForm((prev) => (prev ? { ...prev, status_note: event.target.value } : prev))} /></label>
 
-                <div className="admin-editor-grid three-col">
-                  <label>stage<select value={form.stage} onChange={(event) => setForm((prev) => (prev ? { ...prev, stage: event.target.value } : prev))}><option value="">--</option>{STAGES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>project_type<select value={form.project_type} onChange={(event) => setForm((prev) => (prev ? { ...prev, project_type: event.target.value } : prev))}><option value="">--</option>{PROJECT_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>visibility<select value={form.visibility} onChange={(event) => setForm((prev) => (prev ? { ...prev, visibility: event.target.value } : prev))}><option value="">--</option>{VISIBILITY.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                </div>
+                  <div className="admin-editor-grid three-col">
+                    <label>stage<select value={form.stage} onChange={(event) => setForm((prev) => (prev ? { ...prev, stage: event.target.value } : prev))}><option value="">--</option>{STAGES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                    <label>project_type<select value={form.project_type} onChange={(event) => setForm((prev) => (prev ? { ...prev, project_type: event.target.value } : prev))}><option value="">--</option>{PROJECT_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                    <label>visibility<select value={form.visibility} onChange={(event) => setForm((prev) => (prev ? { ...prev, visibility: event.target.value } : prev))}><option value="">--</option>{VISIBILITY.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                  </div>
 
-                <div className="admin-editor-grid three-col">
-                  <label>featured_rank<input type="number" value={form.featured_rank} onChange={(event) => setForm((prev) => (prev ? { ...prev, featured_rank: event.target.value } : prev))} /></label>
-                  <label>sort_order<input type="number" value={form.sort_order} onChange={(event) => setForm((prev) => (prev ? { ...prev, sort_order: event.target.value } : prev))} /></label>
-                  <label>accent<input type="text" value={form.accent} onChange={(event) => setForm((prev) => (prev ? { ...prev, accent: event.target.value } : prev))} /></label>
-                </div>
+                  <div className="admin-editor-grid two-col">
+                    <label>sort_order<input type="number" value={form.sort_order} onChange={(event) => setForm((prev) => (prev ? { ...prev, sort_order: event.target.value } : prev))} /></label>
+                    <label>accent<input type="text" value={form.accent} onChange={(event) => setForm((prev) => (prev ? { ...prev, accent: event.target.value } : prev))} /></label>
+                  </div>
 
-                <label className="admin-checkbox-row"><input type="checkbox" checked={form.is_featured} onChange={(event) => setForm((prev) => (prev ? { ...prev, is_featured: event.target.checked } : prev))} /><span>is_featured</span></label>
-                <div className="admin-editor-actions">
-                  <button className="admin-primary-button" type="submit" disabled={saveState.status === 'running' || syncState.status === 'running' || deleteState.status === 'running'}>{saveState.status === 'running' ? t('Saving...', 'Saving...') : t('Save', 'Save')}</button>
-                  <button className="admin-secondary-button" type="button" disabled={saveState.status === 'running' || syncState.status === 'running' || deleteState.status === 'running'} onClick={() => void syncProject()}>{syncState.status === 'running' ? t('Syncing...', 'Syncing...') : t('Sync Repositories', 'Sync Repositories')}</button>
-                  <button className="admin-danger-button" type="button" disabled={saveState.status === 'running' || syncState.status === 'running' || deleteState.status === 'running'} onClick={() => void deleteProject()}>{deleteState.status === 'running' ? t('\u5220\u9664\u4e2d...', 'Deleting...') : t('\u5220\u9664\u9879\u76ee', 'Delete Project')}</button>
+                  <label className="admin-checkbox-row"><input type="checkbox" checked={form.is_featured} onChange={(event) => setForm((prev) => (prev ? { ...prev, is_featured: event.target.checked, featured_rank: event.target.checked ? prev.featured_rank : '' } : prev))} /><span>is_featured</span></label>
+                  {form.is_featured ? <label>featured_rank<input type="number" value={form.featured_rank} onChange={(event) => setForm((prev) => (prev ? { ...prev, featured_rank: event.target.value } : prev))} /></label> : null}
+                  {saveState.status !== 'idle' && saveState.message ? <p className="admin-feedback" data-tone={saveState.status === 'success' ? 'success' : saveState.status === 'error' ? 'error' : 'info'}>{saveState.message}</p> : null}
                 </div>
-                {saveState.status !== 'idle' && saveState.message ? <p className="admin-feedback" data-tone={saveState.status === 'success' ? 'success' : saveState.status === 'error' ? 'error' : 'info'}>{saveState.message}</p> : null}
-                {syncState.status !== 'idle' && syncState.message ? <p className="admin-feedback" data-tone={syncState.status === 'success' ? 'success' : syncState.status === 'error' ? 'error' : 'info'}>{syncState.message}</p> : null}
-                {deleteState.status !== 'idle' && deleteState.message ? <p className="admin-feedback" data-tone={deleteState.status === 'success' ? 'success' : deleteState.status === 'error' ? 'error' : 'info'}>{deleteState.message}</p> : null}
-                <p className="admin-detail-meta">{t('Synced: ', 'Synced: ')} {formatTime(detailProject.synced_at)}</p>
-                <p className="admin-detail-meta">{t('Updated: ', 'Updated: ')} {formatTime(detailProject.updated_at)}</p>
+                <div className="admin-project-modal__footer">
+                  <button className="admin-primary-button" type="submit" disabled={saveState.status === 'running'}>{saveState.status === 'running' ? t('\u4fdd\u5b58\u4e2d...', 'Saving...') : t('\u4fdd\u5b58', 'Save')}</button>
+                </div>
               </form>
             ) : null}
           </section>
-        </section>
+        </div>
       ) : null}
-    </main>
+      {deleteModalOpen ? (
+        <div className="admin-project-modal-backdrop" onClick={closeDeleteModal}>
+          <section className="admin-projects-detail-panel admin-project-modal admin-confirm-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="admin-project-modal__head">
+              <div>
+                <h2>{t('Delete Project', 'Delete Project')}</h2>
+                <p>{t(`\u786e\u8ba4\u5220\u9664\u9879\u76ee\u300c${deleteTargetName || '--'}\u300d\uff1f`, `Delete project "${deleteTargetName || '--'}"?`)}</p>
+              </div>
+              <button className="admin-modal-close" type="button" onClick={closeDeleteModal} disabled={deleteState.status === 'running'} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+            </div>
+
+            <div className="admin-confirm-copy">
+              <p>{t('\u6b64\u64cd\u4f5c\u4e0d\u53ef\u64a4\u9500\uff0c\u9879\u76ee\u8bb0\u5f55\u5c06\u4ece\u5217\u8868\u4e2d\u79fb\u9664\u3002', 'This action cannot be undone and the project record will be removed.')}</p>
+            </div>
+            {deleteState.status !== 'idle' && deleteState.message ? <p className="admin-feedback" data-tone={deleteState.status === 'error' ? 'error' : deleteState.status === 'success' ? 'success' : 'info'}>{deleteState.message}</p> : null}
+            <div className="admin-confirm-modal__actions">
+              <button className="admin-secondary-button" type="button" onClick={closeDeleteModal} disabled={deleteState.status === 'running'}>{t('\u53d6\u6d88', 'Cancel')}</button>
+              <button className="admin-danger-button" type="button" onClick={() => deleteTarget ? void deleteProjectByRecord(deleteTarget) : undefined} disabled={deleteState.status === 'running'}>
+                {deleteState.status === 'running' ? t('\u5220\u9664\u4e2d...', 'Deleting...') : t('\u786e\u8ba4\u5220\u9664', 'Confirm Delete')}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </AdminConsoleFrame>
   )
 }
-
-
-
-
-

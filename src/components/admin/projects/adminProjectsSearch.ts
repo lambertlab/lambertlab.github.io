@@ -1,10 +1,11 @@
-﻿export interface AdminProjectsSearchState {
+export interface AdminProjectsSearchState {
   q: string
   stage: string
   visibility: string
   page: number
   pageSize: number
   projectId: string
+  panel: 'closed' | 'create' | 'edit'
 }
 
 export const DEFAULT_ADMIN_PROJECTS_SEARCH_STATE: AdminProjectsSearchState = {
@@ -14,6 +15,7 @@ export const DEFAULT_ADMIN_PROJECTS_SEARCH_STATE: AdminProjectsSearchState = {
   page: 1,
   pageSize: 10,
   projectId: '',
+  panel: 'closed',
 }
 
 function toText(value: unknown): string {
@@ -37,6 +39,14 @@ function normalizePageSize(value: unknown): number {
   return 100
 }
 
+function normalizePanel(value: unknown): 'closed' | 'create' | 'edit' {
+  const panel = toText(value)
+  if (panel === 'create' || panel === 'edit') {
+    return panel
+  }
+  return 'closed'
+}
+
 export function normalizeAdminProjectsSearchState(value: Record<string, unknown>): AdminProjectsSearchState {
   return {
     q: toText(value.q),
@@ -45,6 +55,7 @@ export function normalizeAdminProjectsSearchState(value: Record<string, unknown>
     page: toPositiveInteger(value.page, DEFAULT_ADMIN_PROJECTS_SEARCH_STATE.page),
     pageSize: normalizePageSize(value.pageSize),
     projectId: toText(value.projectId),
+    panel: normalizePanel(value.panel),
   }
 }
 
@@ -56,5 +67,6 @@ export function toAdminProjectsRouteSearch(state: AdminProjectsSearchState): Adm
     page: state.page,
     pageSize: state.pageSize,
     projectId: state.projectId,
+    panel: state.panel,
   }
 }

@@ -1,8 +1,9 @@
-/// <reference types="vite/client" />
+﻿/// <reference types="vite/client" />
 import {
   HeadContent,
   Scripts,
   createRootRoute,
+  useRouterState,
 } from '@tanstack/react-router'
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
@@ -129,67 +130,73 @@ function ThemeSwitchSkeleton({ locale }: { locale: UiLocale }) {
 
 function LocaleSwitch() {
   const { locale, setLocale } = useUiLocale()
+  const nextLocale = locale === 'zh-CN' ? 'en' : 'zh-CN'
 
   return (
-    <div className="ll-locale-switch" data-ui-locale-switch>
-      <div className="ll-locale-segmented" role="group" aria-label={shellCopy.localeSwitch.label[locale]}>
-        <span className="ll-locale-glider" aria-hidden="true"></span>
-        <button
-          type="button"
-          className="ll-locale-option"
-          data-ui-locale-option="zh-CN"
-          aria-pressed={locale === 'zh-CN'}
-          aria-label={shellCopy.localeSwitch.zh[locale]}
-          onClick={() => setLocale('zh-CN')}
-        >
-          {shellCopy.localeSwitch.zh[locale]}
-        </button>
-        <button
-          type="button"
-          className="ll-locale-option"
-          data-ui-locale-option="en"
-          aria-pressed={locale === 'en'}
-          aria-label={shellCopy.localeSwitch.en[locale]}
-          onClick={() => setLocale('en')}
-        >
-          {shellCopy.localeSwitch.en[locale]}
-        </button>
-      </div>
-    </div>
+    <button
+      type="button"
+      className="ll-locale-switch"
+      data-ui-locale-switch
+      data-active-locale={locale}
+      aria-label={shellCopy.localeSwitch.toggle[locale]}
+      title={shellCopy.localeSwitch.toggle[locale]}
+      onClick={() => setLocale(nextLocale)}
+    >
+      <span className="ll-sr-only">
+        {shellCopy.localeSwitch.label[locale]} / {shellCopy.localeSwitch.toggle[locale]}
+      </span>
+      <span className="ll-locale-emblem" aria-hidden="true">
+        <span className="ll-locale-glyph ll-locale-glyph-zh">{"\u6587"}</span>
+        <span className="ll-locale-glyph ll-locale-glyph-en">A</span>
+      </span>
+    </button>
   )
 }
 
 function RootShell({ children }: { children: React.ReactNode }) {
   const { locale } = useUiLocale()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const isAdminRoute = pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/')
+  const isProjectsRoute = pathname === '/projects' || pathname === '/projects/' || pathname.startsWith('/projects/')
+  const isJournalRoute = pathname === '/journal' || pathname === '/journal/' || pathname.startsWith('/journal/')
+  const isAboutRoute = pathname === '/about' || pathname === '/about/'
   const statusTitle = shellCopy.systemStatus.loadingTitle[locale]
   const statusDescription = shellCopy.systemStatus.loadingDescription[locale]
-  const statusSummary = locale === 'zh-CN' ? `${statusTitle}：${statusDescription}` : `${statusTitle}: ${statusDescription}`
+  const statusSummary = locale === 'zh-CN' ? statusTitle + '：' + statusDescription : statusTitle + ': ' + statusDescription
 
   return (
     <>
-      <a className="skip-link" href="#main-content">
-        {shellCopy.skipLink[locale]}
-      </a>
+      {isAdminRoute ? null : (
+        <a className="skip-link" href="#main-content">
+          {shellCopy.skipLink[locale]}
+        </a>
+      )}
 
-      <header className="ll-header">
+      <header className={isAdminRoute ? 'll-header ll-header-admin' : 'll-header'}>
         <nav className="ll-header-inner">
           <a className="ll-brand" href="/">
             <span className="ll-brand-mark">L</span>
             <span className="ll-brand-text">lambertlab</span>
           </a>
-          <div className="ll-nav">
-            <a className="ll-nav-link" href="/projects/">
-              {shellCopy.nav.projects[locale]}
-            </a>
-            <a className="ll-nav-link" href="/journal/">
-              {shellCopy.nav.journal[locale]}
-            </a>
-            <a className="ll-nav-link" href="/about/">
-              {shellCopy.nav.about[locale]}
-            </a>
-            <a className="ll-cta" href="/contact/">
-              {shellCopy.nav.contact[locale]}
-            </a>
+          <div className={isAdminRoute ? 'll-nav ll-nav-admin' : 'll-nav'}>
+            {isAdminRoute ? null : (
+              <>
+                <a className={isProjectsRoute ? 'll-nav-link ll-nav-link-projects is-active' : 'll-nav-link ll-nav-link-projects'} href="/projects/">
+                  {shellCopy.nav.projects[locale]}
+                </a>
+                <a className={isJournalRoute ? 'll-nav-link ll-nav-link-journal is-active' : 'll-nav-link ll-nav-link-journal'} href="/journal/">
+                  {shellCopy.nav.journal[locale]}
+                </a>
+                <a className={isAboutRoute ? 'll-nav-link ll-nav-link-about is-active' : 'll-nav-link ll-nav-link-about'} href="/about/">
+                  {shellCopy.nav.about[locale]}
+                </a>
+                <a className="ll-cta" href="/contact/">
+                  {shellCopy.nav.contact[locale]}
+                </a>
+              </>
+            )}
             <a
               className="system-health-nav"
               data-system-status
@@ -212,32 +219,83 @@ function RootShell({ children }: { children: React.ReactNode }) {
               </span>
             </a>
             <LocaleSwitch />
-            <ThemeSwitchSkeleton locale={locale} />
+            {isAdminRoute ? null : <ThemeSwitchSkeleton locale={locale} />}
           </div>
         </nav>
       </header>
 
-      {children}
-      <footer className="ll-site-footer">
-        <div className="ll-site-footer-inner">
-          <div className="ll-site-footer-copy">
-            <span>© 2026 lambertlab</span>
-            <span>{shellCopy.footer.copy[locale]}</span>
-          </div>
-          <div className="ll-site-footer-links">
-            <a className="ll-site-footer-link" href="/contact/">
-              {shellCopy.footer.contact[locale]}
-            </a>
-            <a className="ll-site-footer-link" href="/status/">
-              {shellCopy.footer.status[locale]}
-            </a>
-          </div>
+      {isAdminRoute ? (
+        <div className="ll-admin-shell">
+          {children}
+          <footer className="ll-site-footer ll-site-footer-admin">
+            <div className="ll-site-footer-inner">
+              <div className="ll-site-footer-copy">
+                <span>{'\u00a9 2026 lambertlab'}</span>
+                <span>{locale === 'zh-CN' ? 'Admin Console' : 'Admin Console'}</span>
+              </div>
+              <div className="ll-site-footer-links">
+                <a className="ll-site-footer-link" href="/admin/overview/">
+                  Overview
+                </a>
+                <a className="ll-site-footer-link" href="/admin/projects/">
+                  Projects
+                </a>
+                <a className="ll-site-footer-link" href="/admin/sync/">
+                  Sync Center
+                </a>
+                <a className="ll-site-footer-link" href="/status/">
+                  {shellCopy.footer.status[locale]}
+                </a>
+              </div>
+            </div>
+          </footer>
         </div>
-      </footer>
+      ) : (
+        <div className={isProjectsRoute ? 'll-public-shell ll-public-shell-projects' : 'll-public-shell'}>
+          {children}
+          <footer className="ll-site-footer" data-fixed-footer="true" data-projects-footer={isProjectsRoute ? 'true' : 'false'}>
+            <div className="ll-site-footer-inner">
+              <div className="ll-site-footer-copy">
+                {isProjectsRoute ? (
+                  <span>© 2026 LAMBERTLAB · PROJECTS</span>
+                ) : (
+                  <>
+                    <span>{'\u00a9 2026 lambertlab'}</span>
+                    <span>{shellCopy.footer.copy[locale]}</span>
+                  </>
+                )}
+              </div>
+              <div className="ll-site-footer-links">
+                {isProjectsRoute ? (
+                  <>
+                    <a className="ll-site-footer-link" href="https://github.com/lambertlab" target="_blank" rel="noreferrer">
+                      GitHub
+                    </a>
+                    <a className="ll-site-footer-link" href="/contact/">
+                      {shellCopy.footer.contact[locale]}
+                    </a>
+                    <a className="ll-site-footer-link" href="/status/">
+                      {shellCopy.footer.status[locale]}
+                    </a>
+                  </>
+                ) : (
+                  <>
+                    <a className="ll-site-footer-link" href="/contact/">
+                      {shellCopy.footer.contact[locale]}
+                    </a>
+                    <a className="ll-site-footer-link" href="/status/">
+                      {shellCopy.footer.status[locale]}
+                    </a>
+                  </>
+                )}
+              </div>
+            </div>
+          </footer>
+        </div>
+      )}
     </>
   )
 }
-
 function RootDocument({ children }: { children: React.ReactNode }) {
   useIsomorphicLayoutEffect(() => {
     if (typeof window === 'undefined') {
@@ -270,3 +328,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     </html>
   )
 }
+
+
+
+
+

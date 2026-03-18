@@ -189,13 +189,6 @@ export interface AdminLogsListResult {
   page_size: number
 }
 
-export interface AdminStatusSummary {
-  backend_health: string
-  db_health: string
-  github_health: string
-  github_rate_remaining: number | null
-}
-
 export class AdminProjectsApiError extends Error {
   status?: number
   code: AdminProjectErrorCode
@@ -651,17 +644,6 @@ function normalizeLogsList(value: unknown): AdminLogsListResult {
     total,
     page,
     page_size: pageSize,
-  }
-}
-
-function normalizeStatusSummary(value: unknown): AdminStatusSummary {
-  const payload = toRecord(value)
-
-  return {
-    backend_health: toText(payload?.backend_health) || 'unknown',
-    db_health: toText(payload?.db_health) || 'unknown',
-    github_health: toText(payload?.github_health) || 'unknown',
-    github_rate_remaining: toFiniteNumber(payload?.github_rate_remaining ?? payload?.github_rate_limit_remaining),
   }
 }
 
@@ -1259,14 +1241,3 @@ export async function fetchAdminLogs(token: string, query?: AdminLogsQuery, sign
 
   return normalizeLogsList(payload)
 }
-
-export async function fetchAdminStatus(token: string, signal?: AbortSignal): Promise<AdminStatusSummary> {
-  const payload = await requestJson<unknown>('/admin/status', {
-    token: toText(token),
-    method: 'GET',
-    signal,
-  })
-
-  return normalizeStatusSummary(payload)
-}
-

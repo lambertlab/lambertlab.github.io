@@ -1,15 +1,15 @@
-﻿import { Link } from '@tanstack/react-router'
-import * as React from 'react'
+﻿import * as React from 'react'
 import { verifyAdminToken } from '~/lib/api/adminProjectsApi'
-import { useDocumentMetadata } from '~/lib/uiLocale'
-import { DEFAULT_ADMIN_PROJECTS_SEARCH_STATE } from './adminProjectsSearch'
+import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
+import type { AdminSidebarMode } from './AdminConsoleSidebar'
+import { AdminConsoleFrame } from './AdminConsoleFrame'
 import { mapAdminError } from './adminConsoleUtils'
 
 const TOKEN_KEY = 'll-admin-token-v1'
 
 type AuthStatus = 'checking' | 'locked' | 'verifying' | 'ready' | 'error'
 
-export type AdminConsoleMode = 'overview' | 'projects' | 'sync' | 'logs' | 'status'
+export type AdminConsoleMode = AdminSidebarMode
 
 interface AuthContextValue {
   token: string
@@ -67,6 +67,9 @@ export function useAdminConsoleAuth(): AuthContextValue {
 export function AdminConsoleShell({ mode, title, description, children }: Props) {
   useDocumentMetadata(title, description)
 
+  const { locale } = useUiLocale()
+  const t = React.useCallback((zh: string, en: string) => (locale === 'zh-CN' ? zh : en), [locale])
+
   const [tokenInput, setTokenInput] = React.useState('')
   const [token, setToken] = React.useState('')
   const [authStatus, setAuthStatus] = React.useState<AuthStatus>('checking')
@@ -76,14 +79,14 @@ export function AdminConsoleShell({ mode, title, description, children }: Props)
     clearToken()
     setToken('')
     setAuthStatus('error')
-    setAuthMessage(message || 'Admin Token 已失效，请重新验证。')
-  }, [])
+    setAuthMessage(message || t('Admin Token 已失效，请重新验证。', 'Admin token expired. Please verify again.'))
+  }, [t])
 
   const verify = React.useCallback(async (candidate: string, silent = false) => {
     const value = candidate.trim()
     if (!value) {
       setAuthStatus('locked')
-      setAuthMessage('请输入 Admin Token。')
+      setAuthMessage(t('请输入 Admin Token。', 'Please input admin token.'))
       return
     }
 
@@ -102,7 +105,7 @@ export function AdminConsoleShell({ mode, title, description, children }: Props)
       setAuthStatus('error')
       setAuthMessage(mapped.message)
     }
-  }, [])
+  }, [t])
 
   React.useEffect(() => {
     const stored = readToken()
@@ -116,25 +119,10 @@ export function AdminConsoleShell({ mode, title, description, children }: Props)
   }, [verify])
 
   return (
-    <main className="admin-projects-shell" id="main-content">
-      <section className="admin-projects-hero">
-        <div>
-          <p className="admin-projects-kicker">Control Center · Phase 2</p>
-          <h1>多模块控制台与同步中心</h1>
-          <p>覆盖概览、项目管理、同步中心、操作日志、系统状态。</p>
-        </div>
-        <nav className="admin-projects-tabs" aria-label="admin nav">
-          <Link to="/admin/overview" className={mode === 'overview' ? 'is-active' : ''}>/admin/overview</Link>
-          <Link to="/admin/projects" search={DEFAULT_ADMIN_PROJECTS_SEARCH_STATE} className={mode === 'projects' ? 'is-active' : ''}>/admin/projects</Link>
-          <Link to="/admin/sync" className={mode === 'sync' ? 'is-active' : ''}>/admin/sync</Link>
-          <Link to="/admin/logs" className={mode === 'logs' ? 'is-active' : ''}>/admin/logs</Link>
-          <Link to="/admin/status" className={mode === 'status' ? 'is-active' : ''}>/admin/status</Link>
-        </nav>
-      </section>
-
+    <AdminConsoleFrame mode={mode}>
       {authStatus !== 'ready' ? (
         <section className="admin-auth-card" aria-live="polite">
-          <h2>Admin Token 校验</h2>
+          <h2>{t('Admin Token 校验', 'Admin Token Verification')}</h2>
           <form
             className="admin-auth-form"
             onSubmit={(event) => {
@@ -146,7 +134,7 @@ export function AdminConsoleShell({ mode, title, description, children }: Props)
             <input id="admin-token" value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} type="password" autoComplete="off" />
             <div className="admin-auth-actions">
               <button className="admin-primary-button" type="submit" disabled={authStatus === 'checking' || authStatus === 'verifying'}>
-                {authStatus === 'checking' || authStatus === 'verifying' ? '校验中...' : '验证 Token'}
+                {authStatus === 'checking' || authStatus === 'verifying' ? t('校验中...', 'Verifying...') : t('验证 Token', 'Verify Token')}
               </button>
               <button
                 className="admin-secondary-button"
@@ -158,17 +146,17 @@ export function AdminConsoleShell({ mode, title, description, children }: Props)
                   setAuthMessage('')
                 }}
               >
-                清空
+                {t('清空', 'Clear')}
               </button>
             </div>
           </form>
-          {authStatus === 'checking' ? <p className="admin-feedback" data-tone="info">正在检查已保存 token...</p> : null}
+          {authStatus === 'checking' ? <p className="admin-feedback" data-tone="info">{t('正在检查已保存 token...', 'Checking stored token...')}</p> : null}
           {authStatus === 'locked' && authMessage ? <p className="admin-feedback" data-tone="warn">{authMessage}</p> : null}
           {authStatus === 'error' ? <p className="admin-feedback" data-tone="error">{authMessage}</p> : null}
         </section>
       ) : (
         <AdminConsoleAuthContext.Provider value={{ token, invalidate }}>{children}</AdminConsoleAuthContext.Provider>
       )}
-    </main>
+    </AdminConsoleFrame>
   )
 }

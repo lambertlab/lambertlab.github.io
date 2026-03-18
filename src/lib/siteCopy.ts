@@ -52,7 +52,7 @@ export const shellCopy = {
       en: 'About',
     },
     contact: {
-      'zh-CN': '联系',
+      'zh-CN': '????',
       en: 'Get in touch',
     },
   },
@@ -60,6 +60,10 @@ export const shellCopy = {
     label: {
       'zh-CN': '界面语言',
       en: 'Interface language',
+    },
+    toggle: {
+      'zh-CN': '切换到英文界面',
+      en: 'Switch to Chinese interface',
     },
     zh: {
       'zh-CN': '中',
@@ -104,7 +108,7 @@ export const shellCopy = {
       en: 'Public entry points',
     },
     contact: {
-      'zh-CN': '联系',
+      'zh-CN': '????',
       en: 'Contact',
     },
     status: {
