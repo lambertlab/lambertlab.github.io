@@ -1176,10 +1176,10 @@ body {
   z-index: 180;
   display: grid;
   place-items: start center;
-  overflow: auto;
+  overflow: hidden;
   padding: 84px 20px 64px;
-  background: rgba(2, 8, 18, 0.97);
-  backdrop-filter: blur(20px);
+  background: rgba(2, 8, 18, 0.84);
+  backdrop-filter: none;
 }
 
 .admin-project-modal {
@@ -1190,10 +1190,12 @@ body {
   margin: 0;
   padding: 24px 24px 22px;
   border-radius: 32px;
-  background: linear-gradient(180deg, rgba(11, 20, 34, 0.995), rgba(9, 17, 31, 0.995));
+  background: #0b1422;
+  box-shadow: 0 20px 52px -30px rgba(0, 0, 0, 0.72);
   overflow: hidden;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  contain: layout paint;
 }
 
 .admin-project-modal::before,
@@ -1262,6 +1264,9 @@ body {
   flex: 1;
   overflow: auto;
   padding: 0 2px 8px 0;
+  overscroll-behavior: contain;
+  contain: content;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-project-modal__footer {
