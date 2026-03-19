@@ -76,20 +76,24 @@ export const shellCopy = {
   },
   theme: {
     label: {
-      'zh-CN': '颜色模式',
+      'zh-CN': '\u989c\u8272\u6a21\u5f0f',
       en: 'Color mode',
     },
-    system: {
-      'zh-CN': '跟随系统',
-      en: 'System',
-    },
     light: {
-      'zh-CN': '亮色',
+      'zh-CN': '\u4eae\u8272',
       en: 'Light',
     },
     dark: {
-      'zh-CN': '暗色',
+      'zh-CN': '\u6697\u8272',
       en: 'Dark',
+    },
+    toggleToLight: {
+      'zh-CN': '\u5207\u6362\u5230\u4eae\u8272\u6a21\u5f0f',
+      en: 'Switch to light mode',
+    },
+    toggleToDark: {
+      'zh-CN': '\u5207\u6362\u5230\u6697\u8272\u6a21\u5f0f',
+      en: 'Switch to dark mode',
     },
   },
   systemStatus: {

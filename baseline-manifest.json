@@ -48,8 +48,7 @@
     "[data-system-status-title]",
     "[data-system-status-description]",
     "[data-status-state]",
-    "[data-theme-mode-switch]",
-    "[data-theme-mode-option]"
+    "[data-theme-mode-switch]"
   ],
   "local_storage_keys": [
     "ll-color-mode-v1",
