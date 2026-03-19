@@ -1,6 +1,5 @@
 ﻿import type { UiLocale } from '~/lib/uiLocale'
 import type { ProjectCatalogRecord, ProjectsLoadStatus } from '../model/projectTypes'
-
 interface FeaturedProjectsSectionProps {
   status: ProjectsLoadStatus
   projects: ProjectCatalogRecord[]
@@ -9,7 +8,6 @@ interface FeaturedProjectsSectionProps {
   locale: UiLocale
   directoryHref?: string
 }
-
 interface FeaturedCopy {
   loadingTitle: string
   loadingSummaries: [string, string, string]
@@ -45,7 +43,6 @@ interface FeaturedCopy {
   directoryMeta: string
   retryLabel: string
 }
-
 interface FeaturedSlotModel {
   href: string
   state: 'loading' | 'ready' | 'empty' | 'error' | 'idle'
@@ -57,7 +54,6 @@ interface FeaturedSlotModel {
   source?: string | null
   busy?: boolean
 }
-
 const FEATURED_COPY: Record<UiLocale, FeaturedCopy> = {
   'zh-CN': {
     loadingTitle: 'Loading featured project',
@@ -76,7 +72,7 @@ const FEATURED_COPY: Record<UiLocale, FeaturedCopy> = {
     pendingSource: '来源待补充',
     emptyRank: '项目目录',
     emptyTitle: '暂无项目',
-    emptySummary: '当前为中性空态。可前往 /admin/projects 创建首条项目，或在 /admin/sync 使用 github_user=lambertlab 导入。',
+    emptySummary: '\u5f53\u524d\u4e3a\u4e2d\u6027\u7a7a\u6001\u3002\u53ef\u524d\u5f80 /admin/projects \u521b\u5efa\u9996\u6761\u9879\u76ee\u3002',
     emptyStage: '目录为空',
     emptyType: '可继续操作',
     emptySource: '可用收录通道',
@@ -115,7 +111,7 @@ const FEATURED_COPY: Record<UiLocale, FeaturedCopy> = {
     pendingSource: 'Source pending',
     emptyRank: 'Project Directory',
     emptyTitle: 'No projects yet',
-    emptySummary: 'This is a neutral empty state. Create in /admin/projects, or import with github_user=lambertlab in /admin/sync.',
+    emptySummary: 'This is a neutral empty state. Create in /admin/projects.',
     emptyStage: 'Empty catalog',
     emptyType: 'Action available',
     emptySource: 'Intake channels',
@@ -138,7 +134,6 @@ const FEATURED_COPY: Record<UiLocale, FeaturedCopy> = {
     retryLabel: 'Retry',
   },
 }
-
 function buildLoadingSlot(index: number, copy: FeaturedCopy): FeaturedSlotModel {
   return {
     href: '/projects/',
@@ -152,7 +147,6 @@ function buildLoadingSlot(index: number, copy: FeaturedCopy): FeaturedSlotModel 
     busy: true,
   }
 }
-
 function buildEmptySlot(copy: FeaturedCopy): FeaturedSlotModel {
   return {
     href: '/projects/',
@@ -165,7 +159,6 @@ function buildEmptySlot(copy: FeaturedCopy): FeaturedSlotModel {
     source: copy.emptySource,
   }
 }
-
 function buildErrorSlot(copy: FeaturedCopy, message?: string | null): FeaturedSlotModel {
   return {
     href: '/projects/',
@@ -178,7 +171,6 @@ function buildErrorSlot(copy: FeaturedCopy, message?: string | null): FeaturedSl
     source: copy.errorSource,
   }
 }
-
 function buildIdleSlot(copy: FeaturedCopy): FeaturedSlotModel {
   return {
     href: '/projects/',
@@ -191,7 +183,6 @@ function buildIdleSlot(copy: FeaturedCopy): FeaturedSlotModel {
     source: copy.idleSource,
   }
 }
-
 function buildReadySlot(project: ProjectCatalogRecord, index: number, copy: FeaturedCopy): FeaturedSlotModel {
   return {
     href: project.canonical_path,
@@ -205,7 +196,6 @@ function buildReadySlot(project: ProjectCatalogRecord, index: number, copy: Feat
     busy: false,
   }
 }
-
 function renderArrow() {
   return (
     <div className="featured-project-arrow" aria-hidden="true">
@@ -215,13 +205,11 @@ function renderArrow() {
     </div>
   )
 }
-
 function renderSlot(index: number, slot: FeaturedSlotModel) {
   const isHero = index === 0
   const className = isHero
     ? 'bento-card col-span-2 flex justify-between items-center group featured-project-card featured-project-card-hero'
     : 'bento-card featured-project-card'
-
   return (
     <a
       key={index}
@@ -281,7 +269,6 @@ function renderSlot(index: number, slot: FeaturedSlotModel) {
     </a>
   )
 }
-
 export function FeaturedProjectsSection({
   status,
   projects,
@@ -295,19 +282,15 @@ export function FeaturedProjectsSection({
     if (status === 'loading') {
       return buildLoadingSlot(index, copy)
     }
-
     if (status === 'error') {
       return buildErrorSlot(copy, message)
     }
-
     if (status === 'empty') {
       return buildEmptySlot(copy)
     }
-
     const project = projects[index]
     return project ? buildReadySlot(project, index, copy) : buildIdleSlot(copy)
   })
-
   return (
     <>
       <div className="panel-content-grid grid grid-cols-2 gap-4 flex-grow relative z-10" data-home-featured-projects>
@@ -321,7 +304,6 @@ export function FeaturedProjectsSection({
           </span>
         </a>
       </div>
-
       {status === 'error' && onRetry ? (
         <div className="catalog-note mt-4 flex items-center gap-3" role="status" aria-live="polite">
           <span>{message?.trim() || copy.errorSummary}</span>

@@ -36,6 +36,44 @@ export interface AdminProjectRecord {
   updated_at: string | null
 }
 
+export interface AdminRepositoryRecord {
+  id: string
+  repo_full_name: string
+  repo_owner: string
+  repo_name: string
+  repo_url: string
+  github_username: string | null
+  description: string
+  language: string
+  stargazers_count: number
+  forks_count: number
+  open_issues_count: number
+  visibility: string
+  archived: boolean
+  fork: boolean
+  source: string
+  is_active: boolean
+  mapped_projects_count: number
+  pushed_at: string | null
+  repo_created_at: string | null
+  repo_updated_at: string | null
+  synced_at: string | null
+  updated_at: string | null
+}
+
+export interface AdminRepositoriesListResult {
+  repositories: AdminRepositoryRecord[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface AdminRepositoriesQuery {
+  q?: string
+  page?: number
+  page_size?: number
+}
+
 export interface AdminProjectsListResult {
   projects: AdminProjectRecord[]
   total: number
@@ -68,10 +106,8 @@ export interface AdminProjectUpdateInput {
 }
 
 export interface CreateAdminProjectInput {
-  project_key: string
-  slug: string
   name: string
-  summary: string
+  summary?: string
   stage: string
   project_type: string
   visibility: string
@@ -322,7 +358,7 @@ function normalizeProjectId(project: Record<string, unknown>): string {
     return primaryId
   }
 
-  const fallbackFields = [project.project_key, project.slug, project.uuid]
+  const fallbackFields = [project.slug, project.uuid]
   for (const field of fallbackFields) {
     const value = toIdentifierText(field)
     if (value) {
@@ -361,6 +397,70 @@ function normalizeProjectRecord(value: unknown): AdminProjectRecord | null {
     accent: toNullableText(project.accent),
     synced_at: toNullableText(project.synced_at),
     updated_at: toNullableText(project.updated_at),
+  }
+}
+
+function normalizeRepositoryRecord(value: unknown): AdminRepositoryRecord | null {
+  const payload = toRecord(value)
+  if (!payload) {
+    return null
+  }
+
+  const id = toIdentifierText(payload.id)
+  const repoFullName = toText(payload.repo_full_name) || toText(payload.full_name)
+  if (!id || !repoFullName) {
+    return null
+  }
+
+  return {
+    id,
+    repo_full_name: repoFullName,
+    repo_owner: toText(payload.repo_owner) || repoFullName.split('/')[0] || '',
+    repo_name: toText(payload.repo_name) || repoFullName.split('/').slice(1).join('/') || '',
+    repo_url: toText(payload.repo_url) || toText(payload.html_url),
+    github_username: toNullableText(payload.github_username),
+    description: toText(payload.description),
+    language: toText(payload.language),
+    stargazers_count: toNonNegativeInteger(payload.stargazers_count, 0),
+    forks_count: toNonNegativeInteger(payload.forks_count, 0),
+    open_issues_count: toNonNegativeInteger(payload.open_issues_count, 0),
+    visibility: toText(payload.visibility),
+    archived: toBoolean(payload.archived),
+    fork: toBoolean(payload.fork),
+    source: toText(payload.source),
+    is_active: !Object.prototype.hasOwnProperty.call(payload, 'is_active') || toBoolean(payload.is_active),
+    mapped_projects_count: toNonNegativeInteger(payload.mapped_projects_count, 0),
+    pushed_at: toNullableText(payload.pushed_at),
+    repo_created_at: toNullableText(payload.repo_created_at),
+    repo_updated_at: toNullableText(payload.repo_updated_at),
+    synced_at: toNullableText(payload.synced_at),
+    updated_at: toNullableText(payload.updated_at),
+  }
+}
+
+function normalizeRepositoriesList(value: unknown): AdminRepositoriesListResult {
+  const payload = toRecord(value)
+  const rawRepositories =
+    (Array.isArray(value) ? value : null) ??
+    (Array.isArray(payload?.repositories) ? payload?.repositories : null) ??
+    (Array.isArray(payload?.items) ? payload?.items : null) ??
+    []
+
+  const repositories = rawRepositories
+    .map((entry) => normalizeRepositoryRecord(entry))
+    .filter((entry): entry is AdminRepositoryRecord => Boolean(entry))
+
+  const pagination = toRecord(payload?.pagination)
+  const total = toPositiveInteger(payload?.total ?? payload?.count ?? pagination?.total ?? repositories.length, repositories.length)
+  const page = toPositiveInteger(payload?.page ?? pagination?.page ?? 1, 1)
+  const rawPageSize = payload?.page_size ?? payload?.pageSize ?? pagination?.page_size ?? repositories.length
+  const pageSize = toPositiveInteger(rawPageSize, 20)
+
+  return {
+    repositories,
+    total,
+    page,
+    page_size: pageSize,
   }
 }
 
@@ -988,10 +1088,8 @@ function cleanUpdatePayload(input: AdminProjectUpdateInput): Record<string, unkn
 
 function cleanCreatePayload(input: CreateAdminProjectInput): Record<string, unknown> {
   const payload: Record<string, unknown> = {
-    project_key: input.project_key,
-    slug: input.slug,
     name: input.name,
-    summary: input.summary,
+    summary: input.summary ?? '',
     stage: input.stage,
     project_type: input.project_type,
     visibility: input.visibility,
@@ -1030,6 +1128,21 @@ export async function fetchAdminProjects(token: string, query?: AdminProjectsQue
   })
 
   return normalizeProjectsList(payload)
+}
+
+export async function fetchAdminRepositories(
+  token: string,
+  query?: AdminRepositoriesQuery,
+  signal?: AbortSignal,
+): Promise<AdminRepositoriesListResult> {
+  const payload = await requestJson<unknown>('/admin/repositories', {
+    token: toText(token),
+    method: 'GET',
+    signal,
+    query,
+  })
+
+  return normalizeRepositoriesList(payload)
 }
 
 export async function fetchAdminProjectById(
@@ -1090,8 +1203,6 @@ export async function createAdminProject(
   input: CreateAdminProjectInput,
   signal?: AbortSignal,
 ): Promise<AdminProjectRecord> {
-  const projectKey = toText(input.project_key)
-  const slug = toText(input.slug)
   const name = toText(input.name)
   const summary = toText(input.summary)
   const stage = toText(input.stage).toLowerCase()
@@ -1099,7 +1210,7 @@ export async function createAdminProject(
   const visibility = toText(input.visibility).toLowerCase()
   const sortOrder = toFiniteNumber(input.sort_order)
 
-  if (!projectKey || !slug || !name || !summary || !stage || !projectType || !visibility || sortOrder === null) {
+  if (!name || !stage || !projectType || !visibility || sortOrder === null || sortOrder < 1 || sortOrder > 99) {
     throw new AdminProjectsApiError('Create project payload is invalid.', { code: 'validation_failed' })
   }
 
@@ -1108,8 +1219,6 @@ export async function createAdminProject(
     method: 'POST',
     body: cleanCreatePayload({
       ...input,
-      project_key: projectKey,
-      slug,
       name,
       summary,
       stage,

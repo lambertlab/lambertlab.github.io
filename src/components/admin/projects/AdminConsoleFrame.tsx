@@ -54,7 +54,7 @@ function useMirroredSystemStatus(locale: 'zh-CN' | 'en'): MirroredStatus {
 function headerTitle(mode: AdminSidebarMode, locale: 'zh-CN' | 'en'): string {
   if (mode === 'overview') return locale === 'zh-CN' ? '系统概览' : 'Systems Overview'
   if (mode === 'projects') return locale === 'zh-CN' ? '项目管理' : 'Projects'
-  if (mode === 'sync') return locale === 'zh-CN' ? '导入 Github Repo' : 'Import Github Repo'
+  if (mode === 'repo') return locale === 'zh-CN' ? 'GitHub Repo' : 'GitHub Repo'
   if (mode === 'logs') return locale === 'zh-CN' ? '日志' : 'Logs'
   return locale === 'zh-CN' ? '设置' : 'Settings'
 }

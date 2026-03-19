@@ -438,6 +438,37 @@ body {
   color: #ffd67e;
 }
 
+.admin-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.admin-field-required {
+  color: #ff8c8c;
+  font-weight: 700;
+}
+
+.admin-field--invalid input,
+.admin-field--invalid select,
+.admin-field--invalid textarea,
+.admin-editor-form input[aria-invalid='true'],
+.admin-editor-form select[aria-invalid='true'],
+.admin-editor-form textarea[aria-invalid='true'] {
+  border-color: rgba(255, 103, 103, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(255, 103, 103, 0.18);
+}
+
+.admin-field--invalid input:focus,
+.admin-field--invalid select:focus,
+.admin-field--invalid textarea:focus,
+.admin-editor-form input[aria-invalid='true']:focus,
+.admin-editor-form select[aria-invalid='true']:focus,
+.admin-editor-form textarea[aria-invalid='true']:focus {
+  border-color: rgba(255, 103, 103, 0.96);
+  box-shadow: 0 0 0 4px rgba(255, 103, 103, 0.14);
+}
+
 .admin-overview-grid {
   display: grid;
   gap: 14px;
@@ -696,6 +727,10 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.admin-editor-grid--create-project-controls {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .admin-checkbox-row {
   display: inline-flex !important;
   align-items: center;
@@ -800,6 +835,7 @@ body {
   .admin-projects-controls,
   .admin-editor-grid.two-col,
   .admin-editor-grid.three-col,
+  .admin-editor-grid--create-project-controls,
   .admin-sync-detail-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -865,6 +901,7 @@ body {
   .admin-projects-controls,
   .admin-editor-grid.two-col,
   .admin-editor-grid.three-col,
+  .admin-editor-grid--create-project-controls,
   .admin-sync-detail-grid {
     grid-template-columns: 1fr;
   }
@@ -1950,6 +1987,95 @@ body {
   flex-wrap: wrap;
 }
 
+.admin-repository-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-repository-grid__item {
+  min-width: 0;
+}
+
+.admin-repository-card {
+  height: 100%;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(71, 85, 105, 0.92);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(24, 36, 58, 0.96) 0%, rgba(19, 31, 50, 0.98) 100%);
+}
+
+.admin-repository-card[data-visibility='public'] {
+  border-color: rgba(52, 211, 153, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.14);
+}
+
+.admin-repository-card[data-visibility='private'] {
+  border-color: rgba(251, 191, 36, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.14);
+}
+
+.admin-repository-card__main {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.admin-repository-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-repository-card__name,
+.admin-repository-card__meta,
+.admin-repository-card__description {
+  margin: 0;
+}
+
+.admin-repository-card__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--admin-text-strong);
+  word-break: break-word;
+}
+
+.admin-repository-card__meta {
+  flex: 0 0 auto;
+  color: var(--admin-text-muted);
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.admin-repository-card__description {
+  color: var(--admin-text);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: calc(1.6em * 2);
+  cursor: help;
+}
+
+.admin-repository-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
 .admin-reference-body .admin-auth-card,
 .admin-reference-body .admin-overview-grid article,
 .admin-reference-body .admin-projects-list-panel,
@@ -1960,7 +2086,7 @@ body {
 .admin-reference-body .admin-logs-table-wrap {
   border: 1px solid rgba(51, 65, 85, 0.7);
   border-radius: 14px;
-  background: #111827;
+  background: linear-gradient(180deg, rgba(24, 36, 58, 0.96) 0%, rgba(19, 31, 50, 0.98) 100%);
   box-shadow: none;
   backdrop-filter: none;
 }
@@ -2120,6 +2246,18 @@ body {
   }
 
   .admin-project-list-item__actions {
+    justify-content: flex-start;
+  }
+
+  .admin-repository-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-repository-card {
+    min-height: auto;
+  }
+
+  .admin-repository-card__actions {
     justify-content: flex-start;
   }
 }

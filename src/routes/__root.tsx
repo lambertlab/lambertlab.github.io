@@ -267,8 +267,8 @@ function RootShell({ children }: { children: React.ReactNode }) {
                 <a className="ll-site-footer-link" href="/admin/projects/">
                   Projects
                 </a>
-                <a className="ll-site-footer-link" href="/admin/sync/">
-                  Sync Center
+                <a className="ll-site-footer-link" href="/admin/repo/">
+                  GitHub Repo
                 </a>
                 <a className="ll-site-footer-link" href="/status/">
                   {shellCopy.footer.status[locale]}

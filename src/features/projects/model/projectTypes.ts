@@ -29,7 +29,6 @@ export interface ProjectSourceRefs {
 
 export interface ProjectCatalogRecord {
   id: number | string | null
-  project_key: string
   slug: string
   canonical_path: string
   name: string
@@ -75,7 +74,7 @@ export interface FetchProjectsListOptions {
 export const PROJECT_CATALOG_SORT_VALUES = ['recent', 'stars', 'name'] as const
 export const PROJECT_CATALOG_STAGE_VALUES = ['all', 'building', 'active', 'maintenance', 'research', 'archived'] as const
 export const PROJECT_CATALOG_SOURCE_VALUES = ['all', 'github', 'local', 'private', 'hybrid'] as const
-export const PROJECT_CATALOG_TYPE_VALUES = ['all', 'website', 'backend', 'tooling', 'infra', 'research', 'agent', 'data', 'library'] as const
+export const PROJECT_CATALOG_TYPE_VALUES = ['all', 'uncategorized', 'website', 'backend', 'tooling', 'infra', 'research', 'agent', 'data', 'library'] as const
 
 export type ProjectCatalogSort = (typeof PROJECT_CATALOG_SORT_VALUES)[number]
 export type ProjectCatalogStageFilter = (typeof PROJECT_CATALOG_STAGE_VALUES)[number]

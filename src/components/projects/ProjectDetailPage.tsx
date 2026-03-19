@@ -69,6 +69,7 @@ function translateProjectType(value: string, locale: UiLocale): string {
   }
 
   if (locale === 'en') {
+    if (normalized === 'uncategorized') return 'Uncategorized'
     if (normalized === 'website') return 'Website'
     if (normalized === 'backend') return 'Backend'
     if (normalized === 'tooling') return 'Tooling'
@@ -288,10 +289,6 @@ function buildSourceItems(project: ProjectDetailRecord, locale: UiLocale) {
   const primaryRepository = project.repositories.find((item) => item.is_primary) ?? project.repositories[0]
 
   return [
-    {
-      label: locale === 'zh-CN' ? '项目键' : 'Project Key',
-      value: project.project_key || (locale === 'zh-CN' ? '待补充' : 'Pending'),
-    },
     {
       label: 'Slug',
       value: project.slug || (locale === 'zh-CN' ? '待补充' : 'Pending'),

@@ -329,7 +329,6 @@ function buildStatusPublicPayload(issueMode) {
 function createMockProjects() {
   return [
     {
-      project_key: 'personal-toolbox',
       slug: 'personal-toolbox',
       canonical_path: '/projects/personal-toolbox/',
       name: 'Personal Toolbox',
@@ -373,7 +372,6 @@ function createMockProjects() {
       is_active: true,
     },
     {
-      project_key: 'ai-message-value-triage',
       slug: 'ai-message-value-triage',
       canonical_path: '/projects/ai-message-value-triage/',
       name: 'AI Message Value Triage',

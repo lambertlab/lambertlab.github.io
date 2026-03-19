@@ -70,6 +70,13 @@ const UiLocaleContext = React.createContext<{
   setLocale: (locale: UiLocale) => void
 } | null>(null)
 
+const FALLBACK_UI_LOCALE_CONTEXT = {
+  locale: DEFAULT_UI_LOCALE as UiLocale,
+  setLocale: (_locale: UiLocale) => {
+    // SSR/prerender fallback keeps rendering stable until the provider is mounted.
+  },
+}
+
 export function UiLocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = React.useState<UiLocale>(DEFAULT_UI_LOCALE)
   const hasMountedRef = React.useRef(false)
@@ -109,10 +116,7 @@ export function UiLocaleProvider({ children }: { children: React.ReactNode }) {
 
 export function useUiLocale() {
   const context = React.useContext(UiLocaleContext)
-  if (!context) {
-    throw new Error('useUiLocale must be used within UiLocaleProvider')
-  }
-  return context
+  return context ?? FALLBACK_UI_LOCALE_CONTEXT
 }
 
 export function useDocumentMetadata(title: string, description: string) {

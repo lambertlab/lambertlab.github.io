@@ -18,13 +18,32 @@ import {
   normalizeAdminProjectsSearchState,
   type AdminProjectsSearchState,
 } from './adminProjectsSearch'
-import { DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE } from './adminProjectSyncSearch'
 import { AdminConsoleFrame } from './AdminConsoleFrame'
 
 const TOKEN_KEY = 'll-admin-token-v1'
-const STAGES = ['building', 'active', 'maintenance', 'research', 'archived']
-const PROJECT_TYPES = ['website', 'backend', 'tooling', 'infra', 'research', 'agent', 'data', 'library']
-const VISIBILITY = ['public', 'private', 'internal']
+const STAGE_OPTIONS = [
+  { value: 'building', zh: '建设中', en: 'Building' },
+  { value: 'active', zh: '活跃', en: 'Active' },
+  { value: 'maintenance', zh: '维护中', en: 'Maintenance' },
+  { value: 'research', zh: '研究中', en: 'Research' },
+  { value: 'archived', zh: '已归档', en: 'Archived' },
+] as const
+const PROJECT_TYPE_OPTIONS = [
+  { value: 'uncategorized', zh: '暂不分类', en: 'Uncategorized' },
+  { value: 'website', zh: '网站', en: 'Website' },
+  { value: 'backend', zh: '后端', en: 'Backend' },
+  { value: 'tooling', zh: '工具', en: 'Tooling' },
+  { value: 'infra', zh: '基础设施', en: 'Infrastructure' },
+  { value: 'research', zh: '研究', en: 'Research' },
+  { value: 'agent', zh: '智能体', en: 'Agent' },
+  { value: 'data', zh: '数据', en: 'Data' },
+  { value: 'library', zh: '库', en: 'Library' },
+] as const
+const VISIBILITY_OPTIONS = [
+  { value: 'public', zh: '公开', en: 'Public' },
+  { value: 'private', zh: '私有', en: 'Private' },
+  { value: 'internal', zh: '内部', en: 'Internal' },
+] as const
 
 type ConsoleMode = 'overview' | 'projects'
 type AuthStatus = 'checking' | 'locked' | 'verifying' | 'ready' | 'error'
@@ -47,8 +66,6 @@ interface FormState {
 }
 
 interface CreateFormState {
-  project_key: string
-  slug: string
   name: string
   summary: string
   stage: string
@@ -144,19 +161,15 @@ function toPayload(form: FormState) {
 }
 
 const DEFAULT_CREATE_FORM: CreateFormState = {
-  project_key: '',
-  slug: '',
   name: '',
   summary: '',
-  stage: 'active',
-  project_type: 'tooling',
-  visibility: 'public',
-  sort_order: '100',
+  stage: 'building',
+  project_type: 'uncategorized',
+  visibility: 'private',
+  sort_order: '99',
 }
 
 function toCreatePayload(form: CreateFormState): CreateAdminProjectInput | null {
-  const projectKey = form.project_key.trim()
-  const slug = form.slug.trim()
   const name = form.name.trim()
   const summary = form.summary.trim()
   const stage = form.stage.trim().toLowerCase()
@@ -164,13 +177,11 @@ function toCreatePayload(form: CreateFormState): CreateAdminProjectInput | null 
   const visibility = form.visibility.trim().toLowerCase()
   const sortOrder = Number(form.sort_order.trim())
 
-  if (!projectKey || !slug || !name || !summary || !stage || !projectType || !visibility || !Number.isFinite(sortOrder)) {
+  if (!name || !stage || !projectType || !visibility || !Number.isFinite(sortOrder) || sortOrder < 1 || sortOrder > 99) {
     return null
   }
 
   return {
-    project_key: projectKey,
-    slug,
     name,
     summary,
     stage,
@@ -526,14 +537,14 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
     const payload = toCreatePayload(createForm)
     if (!payload) {
-      setCreateState({ status: 'error', message: t('\u8bf7\u586b\u5199\u5fc5\u586b\u5b57\u6bb5\uff0c\u5e76\u786e\u4fdd sort_order \u4e3a\u6570\u5b57\u3002', 'Please fill required fields and ensure sort_order is numeric.') })
+      setCreateState({ status: 'error', message: t('请填写必填字段，并确保 sort_order 在 1~99 之间。', 'Please fill required fields and keep sort_order between 1 and 99.') })
       return
     }
 
     const commitCreated = (created: AdminProjectRecord, successMessage?: string) => {
       const name = created.name || created.slug || created.id
 
-      setCreateState({ status: 'success', message: successMessage || t('\u521b\u5efa\u6210\u529f\uff1a' + name, 'Created: ' + name) })
+      setCreateState({ status: 'success', message: successMessage || t('创建成功：' + name, 'Created: ' + name) })
       setCreateForm((prev) => ({
         ...DEFAULT_CREATE_FORM,
         stage: prev.stage,
@@ -562,7 +573,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       setListNonce((prev) => prev + 1)
     }
 
-    setCreateState({ status: 'running', message: t('\u6b63\u5728\u521b\u5efa\u9879\u76ee...', 'Creating project...') })
+    setCreateState({ status: 'running', message: t('正在创建项目...', 'Creating project...') })
 
     try {
       const created = await createAdminProject(token, payload)
@@ -585,17 +596,13 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         return
       }
 
-      setCreateState({ status: 'running', message: t('\u8bf7\u6c42\u672a\u786e\u8ba4\uff0c\u6b63\u5728\u56de\u67e5\u9879\u76ee\u5217\u8868...', 'Request not confirmed. Re-checking project list...') })
+      setCreateState({ status: 'running', message: t('请求未确认，正在回查项目列表...', 'Request not confirmed. Re-checking project list...') })
 
-      const normalizedSlug = payload.slug.trim().toLowerCase()
+      const normalizedName = payload.name.trim().toLowerCase()
       const probeQueries: Array<{ q?: string; page: number; page_size: number }> = [
-        { q: payload.slug, page: 1, page_size: 100 },
+        { q: payload.name, page: 1, page_size: 100 },
         { page: 1, page_size: 200 },
       ]
-
-      if (payload.project_key.trim().toLowerCase() !== normalizedSlug) {
-        probeQueries.splice(1, 0, { q: payload.project_key, page: 1, page_size: 100 })
-      }
 
       let recovered: AdminProjectRecord | null = null
 
@@ -603,7 +610,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         for (const query of probeQueries) {
           try {
             const probe = await fetchAdminProjects(token, query)
-            recovered = probe.projects.find((item) => item.slug.trim().toLowerCase() === normalizedSlug) ?? null
+            recovered = probe.projects.find((item) => item.name.trim().toLowerCase() === normalizedName) ?? null
             if (recovered) {
               break
             }
@@ -623,19 +630,20 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
       if (recovered) {
         const name = recovered.name || recovered.slug || recovered.id
-        commitCreated(recovered, t('\u8bf7\u6c42\u4e2d\u65ad\u4f46\u9879\u76ee\u5df2\u521b\u5efa\uff1a' + name, 'Request interrupted but project was created: ' + name))
+        commitCreated(recovered, t('请求中断但项目已创建：' + name, 'Request interrupted but project was created: ' + name))
         return
       }
 
       setCreateState({
         status: 'error',
         message:
-          t('\u521b\u5efa\u8bf7\u6c42\u672a\u6210\u529f\u8fd4\u56de\uff0c\u4e14\u56de\u67e5\u672a\u53d1\u73b0\u65b0\u9879\u76ee\u3002\u8bf7\u68c0\u67e5 API_BASE\u3001CORS \u6216\u7f51\u7edc\u8fde\u63a5\u540e\u91cd\u8bd5\u3002', 'Create request did not return successfully and probe found no new project. Check API_BASE/CORS/network and retry.') +
+          t('创建请求未成功返回，且回查未发现新项目。请检查 API_BASE、CORS 或网络连接后重试。', 'Create request did not return successfully and probe found no new project. Check API_BASE/CORS/network and retry.') +
           t('；诊断：', ' | Diagnostic: ') +
           diagnosticMessage,
       })
     }
   }, [createForm, invalidate, patchSearch, t, token])
+
 
   const saveProject = React.useCallback(async () => {
     if (!token || !selectedId || !form) return
@@ -840,9 +848,6 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                 <button className="admin-primary-button" type="button" onClick={openCreatePanel}>
                   {t('\u65b0\u5efa\u9879\u76ee', 'New Project')}
                 </button>
-                <Link className="admin-primary-button" to="/admin/sync" search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}>
-                  {t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}
-                </Link>
               </div>
             </div>
 
@@ -853,10 +858,9 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
               {listStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{listMessage}</p><button className="admin-primary-button" type="button" onClick={() => setListNonce((prev) => prev + 1)}>{t('\u91cd\u8bd5', 'Retry')}</button></div> : null}
               {listStatus === 'empty' ? (
                 <div className="admin-state-card">
-                  <p>{t('\u5f53\u524d\u6ca1\u6709\u9879\u76ee\u3002\u4f60\u53ef\u4ee5\u5148\u65b0\u5efa\u9879\u76ee\uff0c\u6216\u5bfc\u5165 GitHub Repo\u3002', 'There are no projects yet. Create one first, or import a GitHub repository.')}</p>
+                  <p>{t('\u5f53\u524d\u6ca1\u6709\u9879\u76ee\u3002\u8bf7\u901a\u8fc7\u201c\u65b0\u5efa\u9879\u76ee\u201d\u6765\u521b\u5efa\u3002', 'There are no projects yet. Use New Project to create your first one.')}</p>
                   <div className="admin-list-actions">
                     <button className="admin-primary-button" type="button" onClick={openCreatePanel}>{t('\u521b\u5efa\u9996\u4e2a\u9879\u76ee', 'Create First Project')}</button>
-                    <Link className="admin-primary-button" to="/admin/sync" search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}>{t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}</Link>
                   </div>
                 </div>
               ) : null}
@@ -902,22 +906,36 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
             <form className="admin-project-modal__content" onSubmit={(event) => { event.preventDefault(); void createProject() }}>
               <div className="admin-project-modal__body admin-editor-form admin-editor-form--modal">
-                <div className="admin-editor-grid two-col">
-                  <label>project_key<input type="text" value={createForm.project_key} onChange={(event) => setCreateForm((prev) => ({ ...prev, project_key: event.target.value }))} placeholder="my-first-project" /></label>
-                  <label>slug<input type="text" value={createForm.slug} onChange={(event) => setCreateForm((prev) => ({ ...prev, slug: event.target.value }))} placeholder="my-first-project" /></label>
+                <label className="admin-field">
+                  <span className="admin-field-label">项目名称<span className="admin-field-required">*</span></span>
+                  <input type="text" value={createForm.name} onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="My First Project" required />
+                </label>
+                <label className="admin-field">
+                  <span className="admin-field-label">项目简介</span>
+                  <textarea value={createForm.summary} onChange={(event) => setCreateForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder={t('一句话概述（可选）', 'One-line summary (optional)')} />
+                </label>
+                <div className="admin-editor-grid admin-editor-grid--create-project-controls">
+                  <label className="admin-field">
+                    <span className="admin-field-label">阶段<span className="admin-field-required">*</span></span>
+                    <select value={createForm.stage} onChange={(event) => setCreateForm((prev) => ({ ...prev, stage: event.target.value }))} required>{STAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select>
+                  </label>
+                  <label className="admin-field">
+                    <span className="admin-field-label">类型<span className="admin-field-required">*</span></span>
+                    <select value={createForm.project_type} onChange={(event) => setCreateForm((prev) => ({ ...prev, project_type: event.target.value }))} required>{PROJECT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select>
+                  </label>
+                  <label className="admin-field">
+                    <span className="admin-field-label">可见性<span className="admin-field-required">*</span></span>
+                    <select value={createForm.visibility} onChange={(event) => setCreateForm((prev) => ({ ...prev, visibility: event.target.value }))} required>{VISIBILITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select>
+                  </label>
+                  <label className="admin-field">
+                    <span className="admin-field-label">序号<span className="admin-field-required">*</span></span>
+                    <input type="number" min={1} max={99} value={createForm.sort_order} onChange={(event) => setCreateForm((prev) => ({ ...prev, sort_order: event.target.value }))} required />
+                  </label>
                 </div>
-                <label>name<input type="text" value={createForm.name} onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="My First Project" /></label>
-                <label>summary<textarea value={createForm.summary} onChange={(event) => setCreateForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder={t('\u4e00\u53e5\u8bdd\u6982\u8ff0', 'One-line summary')} /></label>
-                <div className="admin-editor-grid three-col">
-                  <label>stage<select value={createForm.stage} onChange={(event) => setCreateForm((prev) => ({ ...prev, stage: event.target.value }))}>{STAGES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>project_type<select value={createForm.project_type} onChange={(event) => setCreateForm((prev) => ({ ...prev, project_type: event.target.value }))}>{PROJECT_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                  <label>visibility<select value={createForm.visibility} onChange={(event) => setCreateForm((prev) => ({ ...prev, visibility: event.target.value }))}>{VISIBILITY.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                </div>
-                <label>sort_order<input type="number" value={createForm.sort_order} onChange={(event) => setCreateForm((prev) => ({ ...prev, sort_order: event.target.value }))} /></label>
                 {createState.message ? <p className="admin-feedback" data-tone={createState.status === 'success' ? 'success' : createState.status === 'error' ? 'error' : 'info'}>{createState.message}</p> : null}
               </div>
               <div className="admin-project-modal__footer">
-                <button className="admin-primary-button" type="submit" disabled={createState.status === 'running'}>{createState.status === 'running' ? t('\u521b\u5efa\u4e2d...', 'Creating...') : t('\u521b\u5efa\u9879\u76ee', 'Create Project')}</button>
+                <button className="admin-primary-button" type="submit" disabled={createState.status === 'running'}>{createState.status === 'running' ? t('创建中...', 'Creating...') : t('创建项目', 'Create Project')}</button>
               </div>
             </form>
           </section>
@@ -973,13 +991,13 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                   <label>status_note<textarea value={form.status_note} onChange={(event) => setForm((prev) => (prev ? { ...prev, status_note: event.target.value } : prev))} /></label>
 
                   <div className="admin-editor-grid three-col">
-                    <label>stage<select value={form.stage} onChange={(event) => setForm((prev) => (prev ? { ...prev, stage: event.target.value } : prev))}><option value="">--</option>{STAGES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                    <label>project_type<select value={form.project_type} onChange={(event) => setForm((prev) => (prev ? { ...prev, project_type: event.target.value } : prev))}><option value="">--</option>{PROJECT_TYPES.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-                    <label>visibility<select value={form.visibility} onChange={(event) => setForm((prev) => (prev ? { ...prev, visibility: event.target.value } : prev))}><option value="">--</option>{VISIBILITY.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+                    <label>stage<select value={form.stage} onChange={(event) => setForm((prev) => (prev ? { ...prev, stage: event.target.value } : prev))}><option value="">--</option>{STAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select></label>
+                    <label>project_type<select value={form.project_type} onChange={(event) => setForm((prev) => (prev ? { ...prev, project_type: event.target.value } : prev))}><option value="">--</option>{PROJECT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select></label>
+                    <label>visibility<select value={form.visibility} onChange={(event) => setForm((prev) => (prev ? { ...prev, visibility: event.target.value } : prev))}><option value="">--</option>{VISIBILITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select></label>
                   </div>
 
                   <div className="admin-editor-grid two-col">
-                    <label>sort_order<input type="number" value={form.sort_order} onChange={(event) => setForm((prev) => (prev ? { ...prev, sort_order: event.target.value } : prev))} /></label>
+                    <label>sort_order<input type="number" min={1} max={99} value={form.sort_order} onChange={(event) => setForm((prev) => (prev ? { ...prev, sort_order: event.target.value } : prev))} /></label>
                     <label>accent<input type="text" value={form.accent} onChange={(event) => setForm((prev) => (prev ? { ...prev, accent: event.target.value } : prev))} /></label>
                   </div>
 
@@ -1022,3 +1040,4 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     </AdminConsoleFrame>
   )
 }
+

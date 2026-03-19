@@ -2,9 +2,8 @@
 import * as React from 'react'
 import { useUiLocale } from '~/lib/uiLocale'
 import { DEFAULT_ADMIN_PROJECTS_SEARCH_STATE } from './adminProjectsSearch'
-import { DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE } from './adminProjectSyncSearch'
 
-export type AdminSidebarMode = 'overview' | 'projects' | 'sync' | 'logs' | 'settings'
+export type AdminSidebarMode = 'overview' | 'projects' | 'repo' | 'logs' | 'settings'
 
 interface AdminConsoleSidebarProps {
   activeMode: AdminSidebarMode
@@ -24,14 +23,6 @@ function ProjectsIcon() {
       <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M9 5a2 2 0 002 2h2a2 2 0 002-2" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M9 5a2 2 0 012-2h2a2 2 0 012 2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function PipelinesIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -90,17 +81,9 @@ export function AdminConsoleSidebar({ activeMode }: AdminConsoleSidebarProps) {
           <ProjectsIcon />
           <span>{t('Projects', 'Projects')}</span>
         </Link>
-        <span className="admin-reference-sidebar__item is-disabled" aria-disabled="true">
+        <Link to="/admin/repo" className={activeMode === 'repo' ? 'admin-reference-sidebar__item is-active' : 'admin-reference-sidebar__item'}>
           <RepoIcon />
           <span>{t('GitHub Repo', 'GitHub Repo')}</span>
-        </span>
-        <Link
-          to="/admin/sync"
-          search={DEFAULT_ADMIN_PROJECT_SYNC_SEARCH_STATE}
-          className={activeMode === 'sync' ? 'admin-reference-sidebar__item is-active' : 'admin-reference-sidebar__item'}
-        >
-          <PipelinesIcon />
-          <span>{t('Sync Center', 'Sync Center')}</span>
         </Link>
         <Link to="/admin/logs" className={activeMode === 'logs' ? 'admin-reference-sidebar__item is-active' : 'admin-reference-sidebar__item'}>
           <LogsIcon />

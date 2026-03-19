@@ -442,7 +442,6 @@ export function normalizeProjectCatalogRecord(payload: Record<string, unknown>, 
 
   return {
     id: typeof payload.id === 'number' || typeof payload.id === 'string' ? payload.id : null,
-    project_key: toProjectText(payload.project_key),
     slug,
     canonical_path: normalizeProjectCanonicalPath(slug, payload.canonical_path),
     name,

@@ -24,7 +24,6 @@ interface ProjectListResponse {
   projects: Array<Record<string, unknown>>
 }
 export interface ProjectDetailRecord {
-  project_key: string
   slug: string
   canonical_path: string
   name: string
@@ -519,7 +518,6 @@ export function normalizeProjectDetail(payload: Partial<ProjectDetailRecord> & R
   const normalizedLinks = normalizeProjectLinks(payload.links, repositories)
 
   return {
-    project_key: toText(payload.project_key),
     slug,
     canonical_path: normalizeProjectCanonicalPath(slug, payload.canonical_path),
     name: toText(payload.name),

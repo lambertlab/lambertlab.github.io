@@ -19,7 +19,7 @@ const GRID_COPY = {
     primaryLink: '主入口',
     repository: '仓库',
     sourceLabels: { github: 'GitHub', local: '本地', private: '私有', hybrid: '混合' },
-    typeLabels: { website: '站点', backend: '后端', tooling: '工具', infra: '基础设施', research: '研究', agent: '智能体', data: '数据', library: '库' },
+    typeLabels: { uncategorized: '暂不分类', website: '站点', backend: '后端', tooling: '工具', infra: '基础设施', research: '研究', agent: '智能体', data: '数据', library: '库' },
     stageLabels: { active: '活跃', building: '建设中', research: '研究中', archived: '已归档', maintenance: '维护中' },
   },
   en: {
@@ -33,7 +33,7 @@ const GRID_COPY = {
     primaryLink: 'Primary Link',
     repository: 'Repository',
     sourceLabels: { github: 'GitHub', local: 'Local', private: 'Private', hybrid: 'Hybrid' },
-    typeLabels: { website: 'Website', backend: 'Backend', tooling: 'Tooling', infra: 'Infrastructure', research: 'Research', agent: 'Agent', data: 'Data', library: 'Library' },
+    typeLabels: { uncategorized: 'Uncategorized', website: 'Website', backend: 'Backend', tooling: 'Tooling', infra: 'Infrastructure', research: 'Research', agent: 'Agent', data: 'Data', library: 'Library' },
     stageLabels: { active: 'Active', building: 'Building', research: 'Research', archived: 'Archived', maintenance: 'Maintenance' },
   },
 } as const
@@ -98,7 +98,7 @@ export function ProjectsCatalogGrid({ projects, locale, hidden = false }: Projec
         const stack = project.stack.slice(0, 3)
 
         return (
-          <article key={project.project_key || project.slug || String(index)} className="project-card" data-stage={project.stage || 'unknown'}>
+          <article key={project.slug || String(project.id ?? index)} className="project-card" data-stage={project.stage || 'unknown'}>
             <div className="project-top">
               <h3 className="project-name">
                 <a href={primaryHref}>{project.name}</a>
@@ -110,12 +110,12 @@ export function ProjectsCatalogGrid({ projects, locale, hidden = false }: Projec
 
             <div className="project-tags">
               {tags.map((tag) => (
-                <span key={`tag-${project.project_key}-${tag}`} className="project-tag">
+                <span key={`tag-${project.slug || project.id || index}-${tag}`} className="project-tag">
                   {tag}
                 </span>
               ))}
               {stack.map((item) => (
-                <span key={`stack-${project.project_key}-${item}`} className="project-tag stack-tag">
+                <span key={`stack-${project.slug || project.id || index}-${item}`} className="project-tag stack-tag">
                   {item}
                 </span>
               ))}
