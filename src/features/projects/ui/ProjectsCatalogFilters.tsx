@@ -1,4 +1,5 @@
-﻿import type { UiLocale } from '~/lib/uiLocale'
+import * as React from 'react'
+import type { UiLocale } from '~/lib/uiLocale'
 import {
   PROJECT_CATALOG_SORT_VALUES,
   PROJECT_CATALOG_SOURCE_VALUES,
@@ -47,6 +48,25 @@ const FILTER_COPY = {
 
 export function ProjectsCatalogFilters({ query, onChange, onReset, locale }: ProjectsCatalogFiltersProps) {
   const copy = FILTER_COPY[locale]
+  const [searchDraft, setSearchDraft] = React.useState(query.search)
+  const deferredSearch = React.useDeferredValue(searchDraft)
+
+  React.useEffect(() => {
+    setSearchDraft(query.search)
+  }, [query.search])
+
+  React.useEffect(() => {
+    if (deferredSearch !== searchDraft || deferredSearch === query.search) {
+      return
+    }
+
+    onChange({ search: deferredSearch })
+  }, [deferredSearch, onChange, query.search, searchDraft])
+
+  const handleReset = React.useCallback(() => {
+    setSearchDraft('')
+    onReset?.()
+  }, [onReset])
 
   return (
     <section className="control-strip" aria-label="Project controls">
@@ -59,8 +79,8 @@ export function ProjectsCatalogFilters({ query, onChange, onReset, locale }: Pro
           id="project-search"
           type="search"
           placeholder={copy.searchPlaceholder}
-          value={query.search}
-          onChange={(event) => onChange({ search: event.target.value })}
+          value={searchDraft}
+          onChange={(event) => setSearchDraft(event.target.value)}
         />
       </div>
 
@@ -114,7 +134,7 @@ export function ProjectsCatalogFilters({ query, onChange, onReset, locale }: Pro
       </label>
 
       {onReset ? (
-        <button className="ghost-btn" type="button" id="clear-filters" onClick={onReset}>
+        <button className="ghost-btn" type="button" id="clear-filters" onClick={handleReset}>
           {copy.clearLabel}
         </button>
       ) : null}

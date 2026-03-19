@@ -11,8 +11,6 @@ import { NotFound } from '~/components/NotFound'
 import { rootMetadata, shellCopy } from '~/lib/siteCopy'
 import { getUiLocaleBootstrapScript, type UiLocale, UiLocaleProvider, useUiLocale } from '~/lib/uiLocale'
 
-const useIsomorphicLayoutEffect = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect
-
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -153,6 +151,17 @@ function LocaleSwitch() {
   )
 }
 
+function ensureRuntimeScript(scriptId: string, src: string) {
+  if (typeof document === 'undefined' || document.getElementById(scriptId)) {
+    return
+  }
+
+  const runtimeScript = document.createElement('script')
+  runtimeScript.id = scriptId
+  runtimeScript.src = src
+  runtimeScript.async = false
+  document.body.appendChild(runtimeScript)
+}
 function RootShell({ children }: { children: React.ReactNode }) {
   const { locale } = useUiLocale()
   const pathname = useRouterState({
@@ -165,6 +174,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
   const isAboutRoute = pathname === '/about' || pathname === '/about/'
   const isContactRoute = pathname === '/contact' || pathname === '/contact/'
   const isStatusRoute = pathname === '/status' || pathname === '/status/'
+  const useRuntimeScripts = typeof window === 'undefined' ? React.useEffect : React.useLayoutEffect
   const statusTitle = shellCopy.systemStatus.loadingTitle[locale]
   const statusDescription = shellCopy.systemStatus.loadingDescription[locale]
   const statusSummary = locale === 'zh-CN' ? statusTitle + '：' + statusDescription : statusTitle + ': ' + statusDescription
@@ -189,6 +199,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
     }
     return '© 2026 LAMBERTLAB'
   })()
+
+  useRuntimeScripts(() => {
+    ensureRuntimeScript('ll-system-status-runtime', '/js/system-status.js')
+
+    if (!isAdminRoute) {
+      ensureRuntimeScript('ll-theme-runtime', '/js/theme-runtime.js')
+    }
+  }, [isAdminRoute])
 
   return (
     <>
@@ -314,22 +332,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
   )
 }
 function RootDocument({ children }: { children: React.ReactNode }) {
-  useIsomorphicLayoutEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    if (document.getElementById('ll-main-runtime')) {
-      return
-    }
-
-    const runtimeScript = document.createElement('script')
-    runtimeScript.id = 'll-main-runtime'
-    runtimeScript.src = '/js/main.js'
-    runtimeScript.async = false
-    document.body.appendChild(runtimeScript)
-  }, [])
-
   return (
     <html lang="zh-CN" data-ui-locale="zh-CN">
       <head>
@@ -345,6 +347,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     </html>
   )
 }
+
+
 
 
 

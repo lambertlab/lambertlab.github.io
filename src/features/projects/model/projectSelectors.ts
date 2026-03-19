@@ -2,6 +2,12 @@ import type { ProjectCatalogRecord } from './projectTypes'
 import { normalizeProjectFacetValue } from './projectNormalize'
 import type { ProjectCatalogMetrics, ProjectCatalogQueryState, ProjectTagChip } from './projectTypes'
 
+export interface ProjectCatalogIndex {
+  recent: readonly ProjectCatalogRecord[]
+  stars: readonly ProjectCatalogRecord[]
+  name: readonly ProjectCatalogRecord[]
+}
+
 function compareByName(left: ProjectCatalogRecord, right: ProjectCatalogRecord): number {
   return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
 }
@@ -84,22 +90,57 @@ export function sortProjectsCatalog(
   return next
 }
 
+export function buildProjectsCatalogIndex(projects: readonly ProjectCatalogRecord[]): ProjectCatalogIndex {
+  return {
+    recent: sortProjectsCatalog(projects, 'recent'),
+    stars: sortProjectsCatalog(projects, 'stars'),
+    name: sortProjectsCatalog(projects, 'name'),
+  }
+}
+
+function getProjectsCatalogSortBucket(
+  index: ProjectCatalogIndex,
+  sortBy: ProjectCatalogQueryState['sort'],
+): readonly ProjectCatalogRecord[] {
+  if (sortBy === 'name') {
+    return index.name
+  }
+
+  if (sortBy === 'stars') {
+    return index.stars
+  }
+
+  return index.recent
+}
+
+export function selectProjectsCatalogFromIndex(
+  index: ProjectCatalogIndex,
+  query: ProjectCatalogQueryState,
+): ProjectCatalogRecord[] {
+  return filterProjectsCatalog(getProjectsCatalogSortBucket(index, query.sort), query)
+}
+
 export function selectProjectsCatalog(
   projects: readonly ProjectCatalogRecord[],
   query: ProjectCatalogQueryState,
 ): ProjectCatalogRecord[] {
-  return sortProjectsCatalog(filterProjectsCatalog(projects, query), query.sort)
+  return selectProjectsCatalogFromIndex(buildProjectsCatalogIndex(projects), query)
 }
 
 export function buildProjectsCatalogMetrics(projects: readonly ProjectCatalogRecord[]): ProjectCatalogMetrics {
   const sourceTypes = new Set<string>()
   let lastUpdatedAt: string | null = null
   let lastUpdatedScore = 0
+  let liveItems = 0
 
   projects.forEach((project) => {
     const normalizedSource = normalizeProjectFacetValue(project.source_type)
     if (normalizedSource) {
       sourceTypes.add(normalizedSource)
+    }
+
+    if (project.is_active) {
+      liveItems += 1
     }
 
     const candidate = project.updated_at ?? project.synced_at ?? project.pushed_at
@@ -116,7 +157,7 @@ export function buildProjectsCatalogMetrics(projects: readonly ProjectCatalogRec
 
   return {
     totalItems: projects.length,
-    liveItems: projects.filter((project) => project.is_active).length,
+    liveItems,
     sourceCount: sourceTypes.size,
     lastUpdatedAt,
   }
@@ -144,4 +185,3 @@ export function buildProjectsTagCloud(projects: readonly ProjectCatalogRecord[])
     }))
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }))
 }
-

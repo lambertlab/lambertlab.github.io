@@ -1,4 +1,4 @@
-import * as React from 'react'
+﻿import * as React from 'react'
 
 function syncCompactTitles(panel: Element) {
   panel.querySelectorAll('.panel-content-grid .bento-card').forEach((card) => {
@@ -48,12 +48,17 @@ export function useHomeSplitLayout(enabled: boolean) {
 
     const listeners: Array<() => void> = []
     const observers: MutationObserver[] = []
-    let lastActive = 'tech'
-    let hoverSuppressedUntil = 0
+    const resizeObservers: ResizeObserver[] = []
 
-    const hysteresis = 1
-    const transitionDurationMs = 320
-    const transitionEasing = 'cubic-bezier(0.22, 1, 0.36, 1)'
+    let lastActive: 'tech' | 'life' = 'tech'
+    let hoverSuppressedUntil = 0
+    let boundaryX = window.innerWidth / 2
+    let pointerClientX: number | null = null
+    let pointerFrameId = 0
+    let boundaryFrameId = 0
+
+    const desktopMinWidth = 1024
+    const hysteresis = 14
     const hoverResumeDelayMs = 120
 
     function on(
@@ -68,8 +73,8 @@ export function useHomeSplitLayout(enabled: boolean) {
       })
     }
 
-    function forEachCard(callback: (card: Element) => void) {
-      splitLayout.querySelectorAll('.panel-content-grid .bento-card').forEach(callback)
+    function isDesktopViewport() {
+      return window.innerWidth > desktopMinWidth
     }
 
     function observeTitleChanges(panel: Element) {
@@ -86,124 +91,83 @@ export function useHomeSplitLayout(enabled: boolean) {
       })
     }
 
-    function captureCardRects() {
-      const rects = new Map<Element, DOMRect>()
-      forEachCard((card) => {
-        rects.set(card, card.getBoundingClientRect())
-      })
-      return rects
-    }
-
-    function animateLayoutMutation(mutate: () => void) {
-      const prefersReducedMotion =
-        typeof window.matchMedia === 'function' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-      if (prefersReducedMotion) {
-        mutate()
+    function refreshBoundary() {
+      if (!isDesktopViewport()) {
+        boundaryX = window.innerWidth / 2
         return
       }
 
-      const firstRects = captureCardRects()
-      mutate()
-      syncCompactTitles(techPanel)
-      syncCompactTitles(lifePanel)
-      splitLayout.getBoundingClientRect()
+      const techRect = techPanel.getBoundingClientRect()
+      const lifeRect = lifePanel.getBoundingClientRect()
+      boundaryX = (techRect.right + lifeRect.left) / 2
+    }
 
-      forEachCard((card) => {
-        const first = firstRects.get(card)
-        if (!first) {
-          return
-        }
+    function scheduleBoundaryRefresh() {
+      if (boundaryFrameId !== 0) {
+        return
+      }
 
-        const last = card.getBoundingClientRect()
-        const deltaX = first.left - last.left
-        const deltaY = first.top - last.top
-        const scaleX = last.width > 0 ? first.width / last.width : 1
-        const scaleY = last.height > 0 ? first.height / last.height : 1
-        const noMovement =
-          Math.abs(deltaX) < 0.5 &&
-          Math.abs(deltaY) < 0.5 &&
-          Math.abs(scaleX - 1) < 0.01 &&
-          Math.abs(scaleY - 1) < 0.01
-
-        if (noMovement || typeof (card as HTMLElement).animate !== 'function') {
-          return
-        }
-
-        ;(card as HTMLElement).animate(
-          [
-            {
-              transformOrigin: 'top left',
-              transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`,
-            },
-            {
-              transformOrigin: 'top left',
-              transform: 'translate(0, 0) scale(1, 1)',
-            },
-          ],
-          {
-            duration: transitionDurationMs,
-            easing: transitionEasing,
-            fill: 'both',
-          },
-        )
+      boundaryFrameId = window.requestAnimationFrame(() => {
+        boundaryFrameId = 0
+        refreshBoundary()
       })
     }
 
-    function setActive(active: string) {
-      if (!active) {
-        return
-      }
+    function setActive(active: 'tech' | 'life') {
       if (splitLayout.getAttribute('data-active') === active) {
         lastActive = active
         return
       }
 
-      animateLayoutMutation(() => {
-        splitLayout.setAttribute('data-active', active)
-      })
+      splitLayout.setAttribute('data-active', active)
       lastActive = active
+      scheduleBoundaryRefresh()
     }
 
-    function clearActive(animate: boolean) {
+    function clearActive() {
       if (!splitLayout.hasAttribute('data-active')) {
         return
       }
 
-      if (!animate) {
-        splitLayout.removeAttribute('data-active')
-        return
-      }
-
-      animateLayoutMutation(() => {
-        splitLayout.removeAttribute('data-active')
-      })
+      splitLayout.removeAttribute('data-active')
+      scheduleBoundaryRefresh()
     }
 
     function pickActive(clientX: number) {
-      const techRect = techPanel.getBoundingClientRect()
-      const lifeRect = lifePanel.getBoundingClientRect()
-      const boundaryX = (techRect.right + lifeRect.left) / 2
-
       if (lastActive === 'tech' && clientX <= boundaryX + hysteresis) {
-        return 'tech'
+        return 'tech' as const
       }
       if (lastActive === 'life' && clientX >= boundaryX - hysteresis) {
-        return 'life'
+        return 'life' as const
       }
       return clientX <= boundaryX ? 'tech' : 'life'
     }
 
     function handlePointer(clientX: number) {
-      if (window.innerWidth <= 1024) {
-        clearActive(false)
+      if (!isDesktopViewport()) {
+        clearActive()
         return
       }
       if (Date.now() < hoverSuppressedUntil) {
         return
       }
       setActive(pickActive(clientX))
+    }
+
+    function schedulePointer(clientX: number) {
+      pointerClientX = clientX
+      if (pointerFrameId !== 0) {
+        return
+      }
+
+      pointerFrameId = window.requestAnimationFrame(() => {
+        pointerFrameId = 0
+        if (pointerClientX === null) {
+          return
+        }
+
+        handlePointer(pointerClientX)
+      })
     }
 
     function suppressHoverAfterScroll() {
@@ -214,18 +178,43 @@ export function useHomeSplitLayout(enabled: boolean) {
     syncCompactTitles(lifePanel)
     observeTitleChanges(techPanel)
     observeTitleChanges(lifePanel)
+    refreshBoundary()
 
-    on(splitLayout, 'mousemove', (event) => {
-      const pointerEvent = event as MouseEvent
-      handlePointer(pointerEvent.clientX)
-    })
+    if (typeof ResizeObserver === 'function') {
+      const resizeObserver = new ResizeObserver(() => {
+        scheduleBoundaryRefresh()
+      })
+      resizeObserver.observe(splitLayout)
+      resizeObserver.observe(techPanel)
+      resizeObserver.observe(lifePanel)
+      resizeObservers.push(resizeObserver)
+    }
+
+    on(splitLayout, 'pointermove', (event) => {
+      const pointerEvent = event as PointerEvent
+      schedulePointer(pointerEvent.clientX)
+    }, { passive: true })
+
+    on(techPanel, 'pointerenter', () => {
+      if (!isDesktopViewport() || Date.now() < hoverSuppressedUntil) {
+        return
+      }
+      setActive('tech')
+    }, { passive: true })
+
+    on(lifePanel, 'pointerenter', () => {
+      if (!isDesktopViewport() || Date.now() < hoverSuppressedUntil) {
+        return
+      }
+      setActive('life')
+    }, { passive: true })
 
     on(splitLayout, 'mouseleave', () => {
-      clearActive(true)
+      clearActive()
     })
 
     on(splitLayout, 'focusin', (event) => {
-      if (window.innerWidth <= 1024) {
+      if (!isDesktopViewport()) {
         return
       }
       const target = event.target as Node
@@ -234,8 +223,9 @@ export function useHomeSplitLayout(enabled: boolean) {
     })
 
     on(window, 'resize', () => {
-      if (window.innerWidth <= 1024) {
-        clearActive(false)
+      scheduleBoundaryRefresh()
+      if (!isDesktopViewport()) {
+        clearActive()
       }
     })
 
@@ -244,11 +234,20 @@ export function useHomeSplitLayout(enabled: boolean) {
     on(window, 'scroll', suppressHoverAfterScroll, { passive: true })
 
     return () => {
+      if (pointerFrameId !== 0) {
+        window.cancelAnimationFrame(pointerFrameId)
+      }
+      if (boundaryFrameId !== 0) {
+        window.cancelAnimationFrame(boundaryFrameId)
+      }
       for (const teardown of listeners) {
         teardown()
       }
       for (const observer of observers) {
         observer.disconnect()
+      }
+      for (const resizeObserver of resizeObservers) {
+        resizeObserver.disconnect()
       }
     }
   }, [enabled])

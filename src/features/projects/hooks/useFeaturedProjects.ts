@@ -1,6 +1,5 @@
-import * as React from 'react'
-import { fetchFeaturedProjects } from '../api/fetchProjects'
-import { selectFeaturedProjects } from '../model/projectSelectors'
+﻿import * as React from 'react'
+import { loadFeaturedProjectsSnapshot, readFeaturedProjectsSnapshot } from '~/lib/pageDataCache'
 import type { FeaturedProjectsState } from '../model/projectTypes'
 
 const INITIAL_STATE: FeaturedProjectsState = {
@@ -9,46 +8,77 @@ const INITIAL_STATE: FeaturedProjectsState = {
   message: null,
 }
 
+function buildReadyState(projects: FeaturedProjectsState['projects']): FeaturedProjectsState {
+  return {
+    status: projects.length > 0 ? 'ready' : 'empty',
+    projects,
+    message: null,
+  }
+}
+
+function buildErrorState(error: unknown): FeaturedProjectsState {
+  const message = error instanceof Error ? error.message : 'Failed to load featured projects.'
+
+  return {
+    status: 'error',
+    projects: [],
+    message,
+  }
+}
+
+function getInitialState(limit: number): FeaturedProjectsState {
+  const snapshot = readFeaturedProjectsSnapshot(limit)
+
+  if (snapshot.status === 'ready') {
+    return buildReadyState(snapshot.data ?? [])
+  }
+
+  if (snapshot.status === 'error') {
+    return buildErrorState(snapshot.error)
+  }
+
+  return INITIAL_STATE
+}
+
 export function useFeaturedProjects(limit = 3) {
-  const [state, setState] = React.useState<FeaturedProjectsState>(INITIAL_STATE)
+  const [state, setState] = React.useState<FeaturedProjectsState>(() => getInitialState(limit))
   const [reloadToken, setReloadToken] = React.useState(0)
 
   React.useEffect(() => {
-    const controller = new AbortController()
-    setState((current) => ({
-      ...current,
-      status: 'loading',
-      message: null,
-    }))
+    let cancelled = false
+    const forceReload = reloadToken > 0
+    const snapshot = readFeaturedProjectsSnapshot(limit)
 
-    fetchFeaturedProjects({ signal: controller.signal })
+    if (forceReload || snapshot.status === 'idle' || snapshot.status === 'pending') {
+      setState((current) => ({
+        ...current,
+        status: 'loading',
+        message: null,
+      }))
+    } else if (snapshot.status === 'ready') {
+      setState(buildReadyState(snapshot.data ?? []))
+    } else if (snapshot.status === 'error') {
+      setState(buildErrorState(snapshot.error))
+    }
+
+    loadFeaturedProjectsSnapshot(limit, { force: forceReload })
       .then((projects) => {
-        if (controller.signal.aborted) {
+        if (cancelled) {
           return
         }
 
-        const selectedProjects = selectFeaturedProjects(projects, limit)
-        setState({
-          status: selectedProjects.length > 0 ? 'ready' : 'empty',
-          projects: selectedProjects,
-          message: null,
-        })
+        setState(buildReadyState(projects))
       })
       .catch((error: unknown) => {
-        if (controller.signal.aborted) {
+        if (cancelled) {
           return
         }
 
-        const message = error instanceof Error ? error.message : 'Failed to load featured projects.'
-        setState({
-          status: 'error',
-          projects: [],
-          message,
-        })
+        setState(buildErrorState(error))
       })
 
     return () => {
-      controller.abort()
+      cancelled = true
     }
   }, [limit, reloadToken])
 

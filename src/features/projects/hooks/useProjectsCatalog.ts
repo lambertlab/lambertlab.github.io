@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { fetchProjectsCatalog } from '../api/fetchProjects'
+import { loadProjectsCatalogSnapshot, readProjectsCatalogSnapshot } from '~/lib/pageDataCache'
 import {
   normalizeProjectCatalogQuery,
   normalizeProjectCatalogSort,
@@ -7,7 +7,12 @@ import {
   normalizeProjectCatalogStage,
   normalizeProjectCatalogType,
 } from '../model/projectNormalize'
-import { buildProjectsCatalogMetrics, buildProjectsTagCloud, selectProjectsCatalog } from '../model/projectSelectors'
+import {
+  buildProjectsCatalogIndex,
+  buildProjectsCatalogMetrics,
+  buildProjectsTagCloud,
+  selectProjectsCatalogFromIndex,
+} from '../model/projectSelectors'
 import type { ProjectCatalogQueryState, ProjectsCatalogState } from '../model/projectTypes'
 
 const INITIAL_STATE: ProjectsCatalogState = {
@@ -84,10 +89,43 @@ function writeQueryToUrl(query: ProjectCatalogQueryState) {
   window.history.replaceState({}, '', nextUrl)
 }
 
+function buildReadyState(projects: ProjectsCatalogState['projects']): ProjectsCatalogState {
+  return {
+    status: projects.length > 0 ? 'ready' : 'empty',
+    projects,
+    message: null,
+  }
+}
+
+function buildErrorState(error: unknown): ProjectsCatalogState {
+  const message = error instanceof Error ? error.message : 'Failed to load projects catalog.'
+
+  return {
+    status: 'error',
+    projects: [],
+    message,
+  }
+}
+
+function getInitialState(): ProjectsCatalogState {
+  const snapshot = readProjectsCatalogSnapshot()
+
+  if (snapshot.status === 'ready') {
+    return buildReadyState(snapshot.data ?? [])
+  }
+
+  if (snapshot.status === 'error') {
+    return buildErrorState(snapshot.error)
+  }
+
+  return INITIAL_STATE
+}
+
 export function useProjectsCatalog(initialQuery: Partial<ProjectCatalogQueryState> = {}) {
   const initialQueryRef = React.useRef(normalizeProjectCatalogQuery({ ...readQueryFromUrl(), ...initialQuery }))
   const [query, setQuery] = React.useState(initialQueryRef.current)
-  const [state, setState] = React.useState<ProjectsCatalogState>(INITIAL_STATE)
+  const deferredQuery = React.useDeferredValue(query)
+  const [state, setState] = React.useState<ProjectsCatalogState>(() => getInitialState())
   const [reloadToken, setReloadToken] = React.useState(0)
 
   React.useEffect(() => {
@@ -114,44 +152,45 @@ export function useProjectsCatalog(initialQuery: Partial<ProjectCatalogQueryStat
   }, [])
 
   React.useEffect(() => {
-    const controller = new AbortController()
-    setState((current) => ({
-      ...current,
-      status: 'loading',
-      message: null,
-    }))
+    let cancelled = false
+    const forceReload = reloadToken > 0
+    const snapshot = readProjectsCatalogSnapshot()
 
-    fetchProjectsCatalog({ signal: controller.signal })
+    if (forceReload || snapshot.status === 'idle' || snapshot.status === 'pending') {
+      setState((current) => ({
+        ...current,
+        status: 'loading',
+        message: null,
+      }))
+    } else if (snapshot.status === 'ready') {
+      setState(buildReadyState(snapshot.data ?? []))
+    } else if (snapshot.status === 'error') {
+      setState(buildErrorState(snapshot.error))
+    }
+
+    loadProjectsCatalogSnapshot({ force: forceReload })
       .then((projects) => {
-        if (controller.signal.aborted) {
+        if (cancelled) {
           return
         }
 
-        setState({
-          status: projects.length > 0 ? 'ready' : 'empty',
-          projects,
-          message: null,
-        })
+        setState(buildReadyState(projects))
       })
       .catch((error: unknown) => {
-        if (controller.signal.aborted) {
+        if (cancelled) {
           return
         }
 
-        const message = error instanceof Error ? error.message : 'Failed to load projects catalog.'
-        setState({
-          status: 'error',
-          projects: [],
-          message,
-        })
+        setState(buildErrorState(error))
       })
 
     return () => {
-      controller.abort()
+      cancelled = true
     }
   }, [reloadToken])
 
-  const visibleProjects = React.useMemo(() => selectProjectsCatalog(state.projects, query), [query, state.projects])
+  const catalogIndex = React.useMemo(() => buildProjectsCatalogIndex(state.projects), [state.projects])
+  const visibleProjects = React.useMemo(() => selectProjectsCatalogFromIndex(catalogIndex, deferredQuery), [catalogIndex, deferredQuery])
   const metrics = React.useMemo(() => buildProjectsCatalogMetrics(state.projects), [state.projects])
   const tagCloud = React.useMemo(() => buildProjectsTagCloud(state.projects), [state.projects])
 
@@ -178,6 +217,6 @@ export function useProjectsCatalog(initialQuery: Partial<ProjectCatalogQueryStat
     retry,
     hasFilteredResults: visibleProjects.length > 0,
     hasLoadedProjects: state.projects.length > 0,
+    isFilteringPending: deferredQuery !== query,
   }
 }
-

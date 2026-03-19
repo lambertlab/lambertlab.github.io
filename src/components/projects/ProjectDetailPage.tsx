@@ -1,6 +1,7 @@
-import { Link } from '@tanstack/react-router'
+﻿import { Link } from '@tanstack/react-router'
 import * as React from 'react'
-import { ProjectApiError, type ProjectDetailRecord, fetchProjectDetail } from '~/lib/projectsApi'
+import { loadProjectDetailSnapshot, readProjectDetailSnapshot } from '~/lib/pageDataCache'
+import { ProjectApiError, type ProjectDetailRecord } from '~/lib/projectsApi'
 import { useDocumentMetadata, useUiLocale, type UiLocale } from '~/lib/uiLocale'
 
 type DetailState =
@@ -405,48 +406,80 @@ function localizeDegradedField(field: DegradedFieldKey, locale: UiLocale): strin
   return '来源类型'
 }
 
+function buildProjectDetailState(project: ProjectDetailRecord): DetailState {
+  const missingFields = collectDegradedFields(project)
+  if (missingFields.length > 0) {
+    return { status: 'degraded', project, missingFields }
+  }
+
+  return { status: 'ready', project }
+}
+
+function buildProjectDetailErrorState(error: unknown, locale: UiLocale): DetailState {
+  const fallbackMessage = locale === 'zh-CN' ? '当前无法加载项目详情。' : 'Unable to load the project detail right now.'
+  const message =
+    error instanceof ProjectApiError && error.message.trim()
+      ? localizeProjectErrorMessage(error.message, locale)
+      : fallbackMessage
+
+  if (error instanceof ProjectApiError && error.status === 404) {
+    return { status: 'not-found', message: locale === 'zh-CN' ? '未找到该项目。' : 'Project not found.' }
+  }
+
+  return { status: 'error', message }
+}
+
+function getInitialProjectDetailState(slug: string, locale: UiLocale): DetailState {
+  const snapshot = readProjectDetailSnapshot(slug)
+
+  if (snapshot.status === 'ready' && snapshot.data) {
+    return buildProjectDetailState(snapshot.data)
+  }
+
+  if (snapshot.status === 'error') {
+    return buildProjectDetailErrorState(snapshot.error, locale)
+  }
+
+  return { status: 'loading' }
+}
 export function ProjectDetailPage({ slug }: ProjectDetailPageProps) {
   const { locale } = useUiLocale()
-  const [state, setState] = React.useState<DetailState>({ status: 'loading' })
+  const [state, setState] = React.useState<DetailState>(() => getInitialProjectDetailState(slug, locale))
   const metadata = buildDetailMetadata(state, slug, locale)
 
   useDocumentMetadata(metadata.title, metadata.description)
 
-  const loadProject = React.useCallback(() => {
-    const controller = new AbortController()
-    setState({ status: 'loading' })
+  const loadProject = React.useCallback((options: { force?: boolean } = {}) => {
+    let cancelled = false
+    const forceReload = options.force === true
+    const snapshot = readProjectDetailSnapshot(slug)
 
-    fetchProjectDetail(slug, controller.signal)
+    if (forceReload || snapshot.status === 'idle' || snapshot.status === 'pending') {
+      setState({ status: 'loading' })
+    } else if (snapshot.status === 'ready' && snapshot.data) {
+      setState(buildProjectDetailState(snapshot.data))
+    } else if (snapshot.status === 'error') {
+      setState(buildProjectDetailErrorState(snapshot.error, locale))
+    }
+
+    loadProjectDetailSnapshot(slug, { force: forceReload })
       .then((project) => {
-        const missingFields = collectDegradedFields(project)
-        if (missingFields.length > 0) {
-          setState({ status: 'degraded', project, missingFields })
+        if (cancelled) {
           return
         }
 
-        setState({ status: 'ready', project })
+        setState(buildProjectDetailState(project))
       })
       .catch((error: unknown) => {
-        if (controller.signal.aborted) {
+        if (cancelled) {
           return
         }
 
-        const fallbackMessage = locale === 'zh-CN' ? '当前无法加载项目详情。' : 'Unable to load the project detail right now.'
-        const message =
-          error instanceof ProjectApiError && error.message.trim()
-            ? localizeProjectErrorMessage(error.message, locale)
-            : fallbackMessage
-
-        if (error instanceof ProjectApiError && error.status === 404) {
-          setState({ status: 'not-found', message: locale === 'zh-CN' ? '未找到该项目。' : 'Project not found.' })
-          return
-        }
-
-        setState({ status: 'error', message })
+        setState(buildProjectDetailErrorState(error, locale))
       })
 
     return () => {
-      controller.abort()
+      cancelled = true
     }
   }, [locale, slug])
 
@@ -502,7 +535,9 @@ export function ProjectDetailPage({ slug }: ProjectDetailPageProps) {
             <h1>{locale === 'zh-CN' ? '当前无法加载这个项目' : 'Unable to load this project right now'}</h1>
             <p>{state.message}</p>
             <div className="project-detail-actions">
-              <button className="project-detail-button primary" onClick={loadProject} type="button">
+              <button className="project-detail-button primary" onClick={() => {
+                loadProject({ force: true })
+              }} type="button">
                 {locale === 'zh-CN' ? '重试' : 'Retry'}
               </button>
               <Link className="project-detail-button" to="/projects">
@@ -531,7 +566,9 @@ export function ProjectDetailPage({ slug }: ProjectDetailPageProps) {
               ))}
             </ul>
             <div className="project-detail-actions">
-              <button className="project-detail-button primary" onClick={loadProject} type="button">
+              <button className="project-detail-button primary" onClick={() => {
+                loadProject({ force: true })
+              }} type="button">
                 {locale === 'zh-CN' ? '重试' : 'Retry'}
               </button>
               <Link className="project-detail-button" to="/projects">
@@ -728,3 +765,5 @@ function ProjectDetailContent({
     </div>
   )
 }
+
+
