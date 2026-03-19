@@ -7,9 +7,9 @@ import { createGateCollector } from './gate-layering.mjs'
 const outputRoot = path.resolve('.output/public')
 const preferredPort = 4202
 
-const homeRoutes = { canonical: '/', compat: '/index.html' }
-const projectsCatalogRoutes = { canonical: '/projects/', compat: '/projects/index.html' }
-const projectDetailRoutes = { canonical: '/projects/personal-toolbox/', compat: '/projects/personal-toolbox/index.html' }
+const homeRoutes = { canonical: '/', legacyHtml: '/index.html' }
+const projectsCatalogRoutes = { canonical: '/projects/', legacyHtml: '/projects/index.html' }
+const projectDetailRoutes = { canonical: '/projects/personal-toolbox/', legacyHtml: '/projects/personal-toolbox/index.html' }
 
 function ensure(condition, message) {
   if (!condition) {
@@ -549,7 +549,27 @@ async function ensureProjectsCatalogReady(page) {
   await page.waitForSelector('[data-project-catalog]', { timeout: 8000 })
 }
 
-async function testProjectsListCanonicalStatesWithCompatReplay(browser, baseUrl) {
+async function testHomeLegacyHtmlRedirect(browser, baseUrl) {
+  const context = await newContext(browser, {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'success',
+    delayMs: 0,
+  })
+
+  try {
+    const page = await context.newPage()
+    await page.goto(`${baseUrl}${homeRoutes.legacyHtml}`, { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction((expectedPath) => window.location.pathname === expectedPath, homeRoutes.canonical, { timeout: 8000 })
+    await page.waitForSelector('[data-home-featured-projects]', { timeout: 8000 })
+  } finally {
+    await context.close()
+  }
+}
+
+async function testProjectsListCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) {
+
   const state = {
     featuredMode: 'success',
     listMode: 'success',
@@ -600,7 +620,7 @@ async function testProjectsListCanonicalStatesWithCompatReplay(browser, baseUrl)
     const canonicalTitle = (await page.locator('.project-card .project-name').first().textContent())?.trim() || ''
     ensure(canonicalTitle.length > 0, 'projects list did not render card content')
 
-    await page.goto(`${baseUrl}${projectsCatalogRoutes.compat}?q=toolbox`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${baseUrl}${projectsCatalogRoutes.legacyHtml}?q=toolbox`, { waitUntil: 'domcontentloaded' })
     await ensureProjectsCatalogReady(page)
     await page.waitForFunction((expectedPath) => window.location.pathname === expectedPath, projectsCatalogRoutes.canonical, { timeout: 8000 })
     await page.waitForSelector('[data-project-grid]:not([hidden]) .project-card', { timeout: 8000 })
@@ -608,7 +628,7 @@ async function testProjectsListCanonicalStatesWithCompatReplay(browser, baseUrl)
     const replayTitle = (await page.locator('.project-card .project-name').first().textContent())?.trim() || ''
     ensure(
       replayTitle === canonicalTitle,
-      `${projectsCatalogRoutes.compat} did not replay same catalog rendering as ${projectsCatalogRoutes.canonical}`,
+      `${projectsCatalogRoutes.legacyHtml} did not replay same catalog rendering as ${projectsCatalogRoutes.canonical}`,
     )
   } finally {
     await context.close()
@@ -665,7 +685,7 @@ async function testProjectsListErrorRetry(browser, baseUrl) {
   }
 }
 
-async function testProjectDetailCanonicalStatesWithCompatReplay(browser, baseUrl) {
+async function testProjectDetailCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) {
   const successState = {
     featuredMode: 'success',
     listMode: 'success',
@@ -683,13 +703,13 @@ async function testProjectDetailCanonicalStatesWithCompatReplay(browser, baseUrl
     const canonicalTitle = (await page.locator('.project-detail-hero h1').textContent())?.trim() || ''
     ensure(canonicalTitle.length > 0, 'project detail did not render ready state')
 
-    await page.goto(`${baseUrl}${projectDetailRoutes.compat}`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${baseUrl}${projectDetailRoutes.legacyHtml}`, { waitUntil: 'domcontentloaded' })
     await page.waitForFunction((expectedPath) => window.location.pathname === expectedPath, projectDetailRoutes.canonical, { timeout: 8000 })
     await page.waitForSelector('.project-detail-layout', { timeout: 8000 })
     const replayTitle = (await page.locator('.project-detail-hero h1').textContent())?.trim() || ''
     ensure(
       replayTitle === canonicalTitle,
-      `${projectDetailRoutes.compat} did not replay same rendering as canonical path ${projectDetailRoutes.canonical}`,
+      `${projectDetailRoutes.legacyHtml} did not replay same rendering as canonical path ${projectDetailRoutes.canonical}`,
     )
   } finally {
     await context.close()
@@ -758,11 +778,12 @@ async function main() {
   let browser
   const checks = [
     { name: 'home-featured-canonical-contracts', run: () => testHomeFeaturedCanonicalContracts(browser, baseUrl) },
+    { name: 'home-legacy-index-html-redirect', run: () => testHomeLegacyHtmlRedirect(browser, baseUrl) },
     { name: 'home-life-database-contracts', run: () => testHomeLifeCardsDatabaseContracts(browser, baseUrl) },
-    { name: 'projects-list-canonical-states-with-compat-replay', run: () => testProjectsListCanonicalStatesWithCompatReplay(browser, baseUrl) },
+    { name: 'projects-list-canonical-states-with-legacy-html-redirect', run: () => testProjectsListCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) },
     { name: 'projects-list-empty-state', run: () => testProjectsListEmptyState(browser, baseUrl) },
     { name: 'projects-list-error-retry', run: () => testProjectsListErrorRetry(browser, baseUrl) },
-    { name: 'project-detail-canonical-states-with-compat-replay', run: () => testProjectDetailCanonicalStatesWithCompatReplay(browser, baseUrl) },
+    { name: 'project-detail-canonical-states-with-legacy-html-redirect', run: () => testProjectDetailCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) },
   ]
   const failures = []
 

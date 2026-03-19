@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createGateCollector } from './gate-layering.mjs'
-import { prerenderOutputFiles } from './page-registry.mjs'
+import { pageRegistry, prerenderOutputFiles } from './page-registry.mjs'
 
 const outputRoot = path.resolve('.output/public')
 const pagesToCheck = prerenderOutputFiles
@@ -17,6 +17,7 @@ const shellRequiredFragments = [
   'href="/about/"',
   'href="/contact/"',
   'href="/status/"',
+  '__llLegacyCompatRedirect__',
 ]
 
 const adminShellRequiredFragments = [
@@ -27,6 +28,7 @@ const adminShellRequiredFragments = [
   'href="/admin/overview/"',
   'href="/admin/projects/"',
   'href="/status/"',
+  '__llLegacyCompatRedirect__',
 ]
 
 const forbiddenFragments = [
@@ -85,6 +87,16 @@ const pageSpecificForbiddenFragments = {
 }
 
 const gate = createGateCollector('verify-prerender-parity')
+
+for (const entry of pageRegistry) {
+  if (Object.prototype.hasOwnProperty.call(entry, 'compatPaths') || Object.prototype.hasOwnProperty.call(entry, 'compatRole')) {
+    gate.addBlocking({
+      code: 'prerender.legacy-registry-field-present',
+      message: 'page-registry.mjs must be canonical-only. Remove legacy compat registry fields.',
+      location: entry.id,
+    })
+  }
+}
 
 for (const relativePagePath of pagesToCheck) {
   const fullPath = path.join(outputRoot, relativePagePath)

@@ -19,10 +19,10 @@
 - 临时噪音只能降级，不能永久豁免。
 - 到期或证据失效后，应优先清理规则，而不是继续堆新豁免。
 
-## 4. compat 与历史证据维护规则
-- compat 仍保留时，必须能说明消费入口与退出条件。
-- `page-registry.mjs` 的 `compatPaths` 只能作为历史证据，不能再升级为主链真值。
-- 若未来退役 compat，必须同步更新 current docs、archive 留档与最小验证口径。
+## 4. legacy URL 维护规则
+- legacy URL 只能通过统一入口层归一化到 canonical。
+- 不允许重新引入 `index[.]html.tsx`、compat adapter、compat registry 字段。
+- 若未来必须保留新的历史 URL 入口，必须同步更新 current docs、archive 留档与最小验证口径。
 
 ## 5. 文档更新规则
 - README 只放当前入口，不堆阶段术语。

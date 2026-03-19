@@ -8,17 +8,11 @@ const modelFile = path.resolve(repoRoot, 'src/content/contentModels.ts')
 
 const contentRoutes = [
   'src/routes/about/index.tsx',
-  'src/routes/about/index[.]html.tsx',
   'src/routes/contact/index.tsx',
-  'src/routes/contact/index[.]html.tsx',
   'src/routes/journal/index.tsx',
-  'src/routes/journal/index[.]html.tsx',
   'src/routes/journal/model-first-engineering/index.tsx',
-  'src/routes/journal/model-first-engineering/index[.]html.tsx',
   'src/routes/journal/ai-collaboration-checklist/index.tsx',
-  'src/routes/journal/ai-collaboration-checklist/index[.]html.tsx',
   'src/routes/journal/operational-habits-that-stick/index.tsx',
-  'src/routes/journal/operational-habits-that-stick/index[.]html.tsx',
 ]
 
 const legacyPathsToDelete = [
@@ -31,6 +25,12 @@ const legacyPathsToDelete = [
   'public/js/home-featured-projects.js',
   'public/js/projects-catalog.js',
   'public/js/projects-runtime.js',
+  'src/components/content/PublicCompatRouteAdapter.tsx',
+  'src/components/projects/ProjectsCompatRouteAdapter.tsx',
+  'src/components/admin/projects/AdminCompatRouteAdapter.tsx',
+  'src/lib/publicCompatPathNormalization.ts',
+  'src/lib/projectsCompatPathNormalization.ts',
+  'src/lib/adminCompatPathNormalization.ts',
 ]
 
 const legacyImportWhitelist = [
@@ -96,6 +96,48 @@ function verifyRouteTemplateConsumption() {
       })
     }
   }
+}
+
+function verifyCompatRouteInventory() {
+  const routesRoot = path.resolve(repoRoot, 'src/routes')
+  const actual = []
+  const stack = [routesRoot]
+
+  while (stack.length > 0) {
+    const current = stack.pop()
+    if (!current) {
+      continue
+    }
+
+    const stat = fs.statSync(current)
+    if (stat.isDirectory()) {
+      for (const child of fs.readdirSync(current)) {
+        stack.push(path.join(current, child))
+      }
+      continue
+    }
+
+    if (path.basename(current) !== 'index[.]html.tsx') {
+      continue
+    }
+
+    actual.push(path.relative(repoRoot, current).replace(/\\/g, '/'))
+  }
+
+  actual.sort()
+
+  for (const routeFile of actual) {
+    gate.addBlocking({
+      code: 'compat.route-still-present',
+      message: 'Compat route files must be fully retired. Remove index[.]html.tsx from the route tree.',
+      location: routeFile,
+    })
+  }
+
+  gate.addInfo({
+    code: 'compat.inventory-summary',
+    message: `Compat route inventory currently tracks ${actual.length} route files.`,
+  })
 }
 
 function verifyLegacySunsetGuardrail() {
@@ -169,7 +211,7 @@ function verifyNoLegacyModuleImports() {
 
     const rel = path.relative(repoRoot, current).replace(/\\/g, '/')
     const source = fs.readFileSync(current, 'utf8')
-    if (!source.includes("~/legacy/") && !source.includes("src/legacy/")) {
+    if (!source.includes("~/legacy/") && !source.includes('src/legacy/')) {
       continue
     }
 
@@ -202,13 +244,14 @@ function main() {
 
   verifyModelEntry()
   verifyRouteTemplateConsumption()
+  verifyCompatRouteInventory()
   verifyLegacySunsetGuardrail()
   verifyNoRawLegacyHtmlImport()
   verifyNoLegacyModuleImports()
 
   gate.addInfo({
     code: 'editorial.workflow-summary',
-    message: 'Checked model-first routes, legacy fallback usage, and retired asset guardrail.',
+    message: 'Checked model-first routes, zero-compat inventory, legacy fallback usage, and retired asset guardrail.',
   })
   gate.printSummary()
 

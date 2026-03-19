@@ -1,9 +1,9 @@
 # Current Red Lines
 
-## 1. 路由与兼容红线
-- 不允许把 compat route 再当成第二份页面主定义。
+## 1. 路由与历史 URL 红线
+- 不允许重新引入页面级 compat route。
 - 不允许新增页面默认复制一份 `.html` route。
-- 任何 compat 保留都必须能回答：为什么保留、谁消费、何时退出、如何验证。
+- legacy URL 如需保留，只能通过统一归一化入口实现，不能恢复第二套路由定义。
 
 ## 2. 内容主真值红线
 - 内容主真值只允许落在 `src/content/contentModels.ts`。
@@ -18,8 +18,8 @@
 
 ## 4. 页面登记红线
 - prerender、dynamic contracts、visual smoke 必须围绕 canonical 主语义组织。
-- `scripts/page-registry.mjs` 的 `compatPaths` 只能作为历史接入证据，不能被误用为主链真值来源。
-- 不允许新增“只有 compat 覆盖、canonical 不覆盖”的验证路径。
+- `scripts/page-registry.mjs` 只允许登记 canonical prerender 事实。
+- 不允许新增任何只为 `.html` 路径存在的登记、验证或路由资产。
 
 ## 5. 治理减负红线
 - 不允许为了减负直接砍掉 `npm run build:verify` 或 `npm run visual:parity:smoke`。

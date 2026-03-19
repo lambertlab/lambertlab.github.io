@@ -1,4 +1,4 @@
-﻿/// <reference types="vite/client" />
+/// <reference types="vite/client" />
 import {
   HeadContent,
   Scripts,
@@ -8,6 +8,7 @@ import {
 import * as React from 'react'
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
+import { getLegacyCompatBootstrapScript } from '~/lib/legacyCompatPaths'
 import { rootMetadata, shellCopy } from '~/lib/siteCopy'
 import { getUiLocaleBootstrapScript, type UiLocale, UiLocaleProvider, useUiLocale } from '~/lib/uiLocale'
 
@@ -55,6 +56,9 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
     ],
     scripts: [
+      {
+        children: getLegacyCompatBootstrapScript(),
+      },
       {
         children: getUiLocaleBootstrapScript(),
       },
@@ -144,7 +148,7 @@ function LocaleSwitch() {
         {shellCopy.localeSwitch.label[locale]} / {shellCopy.localeSwitch.toggle[locale]}
       </span>
       <span className="ll-locale-emblem" aria-hidden="true">
-        <span className="ll-locale-glyph ll-locale-glyph-zh">{"\u6587"}</span>
+        <span className="ll-locale-glyph ll-locale-glyph-zh">{'\u6587'}</span>
         <span className="ll-locale-glyph ll-locale-glyph-en">A</span>
       </span>
     </button>
@@ -162,13 +166,14 @@ function ensureRuntimeScript(scriptId: string, src: string) {
   runtimeScript.async = false
   document.body.appendChild(runtimeScript)
 }
+
 function RootShell({ children }: { children: React.ReactNode }) {
   const { locale } = useUiLocale()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
   const isAdminRoute = pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/')
-  const isHomeRoute = pathname === '/' || pathname === '/index.html'
+  const isHomeRoute = pathname === '/'
   const isProjectsRoute = pathname === '/projects' || pathname === '/projects/' || pathname.startsWith('/projects/')
   const isJournalRoute = pathname === '/journal' || pathname === '/journal/' || pathname.startsWith('/journal/')
   const isAboutRoute = pathname === '/about' || pathname === '/about/'
@@ -331,6 +336,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
     </>
   )
 }
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN" data-ui-locale="zh-CN">
@@ -347,15 +353,3 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     </html>
   )
 }
-
-
-
-
-
-
-
-
-
-
-
-

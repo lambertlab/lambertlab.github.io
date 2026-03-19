@@ -8,7 +8,7 @@ import {
 } from './adminProjectsSearch'
 
 type AdminProjectsRoutePageProps = {
-  from: '/admin/projects/' | '/admin/projects/index.html'
+  from: '/admin/projects/'
   searchState: AdminProjectsSearchState
 }
 
