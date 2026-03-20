@@ -15,6 +15,15 @@ export function buildProjectsCatalogHead(locale: UiLocale = 'zh-CN') {
     links: [
       {
         rel: 'stylesheet' as const,
+        href: '/css/page-project-shell.css',
+      },
+      {
+        rel: 'preload' as const,
+        href: '/css/page-project-detail.css',
+        as: 'style',
+      },
+      {
+        rel: 'stylesheet' as const,
         href: '/css/page-projects.css',
       },
       {

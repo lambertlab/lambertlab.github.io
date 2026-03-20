@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import type { UiLocale } from '~/lib/uiLocale'
 import type { ProjectCatalogRecord } from '../model/projectTypes'
 
@@ -101,7 +102,7 @@ export function ProjectsCatalogGrid({ projects, locale, hidden = false }: Projec
           <article key={project.slug || String(project.id ?? index)} className="project-card" data-stage={project.stage || 'unknown'}>
             <div className="project-top">
               <h3 className="project-name">
-                <a href={primaryHref}>{project.name}</a>
+                <Link preload="intent" to={primaryHref}>{project.name}</Link>
               </h3>
               <span className={getStageClassName(project.stage)}>{translateStage(project.stage, locale)}</span>
             </div>
@@ -137,9 +138,15 @@ export function ProjectsCatalogGrid({ projects, locale, hidden = false }: Projec
             </div>
 
             <div className="project-actions">
-              <a className="btn primary" href={primaryHref} aria-disabled={!project.canonical_path ? 'true' : undefined}>
-                {project.canonical_path ? copy.detail : copy.detailPending}
-              </a>
+              {project.canonical_path ? (
+                <Link className="btn primary" preload="intent" to={primaryHref}>
+                  {copy.detail}
+                </Link>
+              ) : (
+                <span className="btn primary" aria-disabled="true">
+                  {copy.detailPending}
+                </span>
+              )}
               {project.links.primary && project.links.primary !== primaryHref ? (
                 <a className="btn" href={project.links.primary} target="_blank" rel="noreferrer">
                   {copy.primaryLink}

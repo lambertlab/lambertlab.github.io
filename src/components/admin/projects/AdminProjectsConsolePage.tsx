@@ -1,14 +1,20 @@
-﻿import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import {
   AdminProjectsApiError,
   type AdminProjectErrorCode,
+  type AdminProjectLinkedRepositoryRecord,
   type AdminProjectRecord,
+  type AdminProjectRepositoryBindingInput,
+  type AdminRepositoryRecord,
   type CreateAdminProjectInput,
   createAdminProject,
   deleteAdminProjectById,
   fetchAdminProjectById,
   fetchAdminProjects,
+  fetchAdminRepositories,
+  replaceAdminProjectRepositories,
   updateAdminProjectById,
   verifyAdminToken,
 } from '~/lib/api/adminProjectsApi'
@@ -50,9 +56,7 @@ type AuthStatus = 'checking' | 'locked' | 'verifying' | 'ready' | 'error'
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
 
 interface FormState {
-  slug: string
   name: string
-  headline: string
   summary: string
   overview: string
   status_note: string
@@ -62,7 +66,7 @@ interface FormState {
   is_featured: boolean
   featured_rank: string
   sort_order: string
-  accent: string
+  repository_full_names: string[]
 }
 
 interface CreateFormState {
@@ -83,6 +87,173 @@ interface Props {
   mode: ConsoleMode
   searchState?: AdminProjectsSearchState
   onSearchStateChange?: (patch: Partial<AdminProjectsSearchState>) => void
+}
+
+interface AdminFormSelectOption {
+  value: string
+  zh: string
+  en: string
+}
+
+interface AdminFormSelectProps {
+  label: React.ReactNode
+  options: readonly AdminFormSelectOption[]
+  value: string
+  onChange: (value: string) => void
+  t: (zh: string, en: string) => string
+}
+
+interface AdminFormSelectMenuPosition {
+  left: number
+  top: number
+  width: number
+  maxHeight: number
+}
+
+function AdminFormSelect({ label, options, value, onChange, t }: AdminFormSelectProps) {
+  const [open, setOpen] = React.useState(false)
+  const [menuPosition, setMenuPosition] = React.useState<AdminFormSelectMenuPosition | null>(null)
+  const rootRef = React.useRef<HTMLDivElement | null>(null)
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null)
+  const listboxId = React.useId()
+  const selectedOption = options.find((option) => option.value === value) ?? options[0] ?? null
+  const currentIndex = Math.max(0, options.findIndex((option) => option.value === value))
+
+  const updateMenuPosition = React.useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+
+    const rect = trigger.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    const viewportWidth = window.innerWidth
+    const spaceBelow = viewportHeight - rect.bottom - 16
+    const spaceAbove = rect.top - 16
+    const shouldOpenUpward = spaceBelow < 240 && spaceAbove > spaceBelow
+    const maxHeight = Math.max(160, Math.min(320, shouldOpenUpward ? spaceAbove : spaceBelow))
+    const width = Math.min(rect.width, viewportWidth - 24)
+    const left = Math.min(rect.left, viewportWidth - width - 12)
+    const top = shouldOpenUpward ? Math.max(12, rect.top - maxHeight - 8) : Math.min(viewportHeight - maxHeight - 12, rect.bottom + 8)
+
+    setMenuPosition({ left, top, width, maxHeight })
+  }, [])
+
+  React.useEffect(() => {
+    if (!open) return undefined
+
+    updateMenuPosition()
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node) && !(event.target instanceof Node && document.getElementById(listboxId)?.contains(event.target))) {
+        setOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    const handleViewportChange = () => {
+      updateMenuPosition()
+    }
+
+    document.addEventListener('mousedown', handlePointerDown, true)
+    document.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown, true)
+      document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+    }
+  }, [listboxId, open, updateMenuPosition])
+
+  const selectIndex = React.useCallback((index: number) => {
+    const nextOption = options[index]
+    if (!nextOption) return
+    onChange(nextOption.value)
+    setOpen(false)
+  }, [onChange, options])
+
+  const handleTriggerKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      if (!open) {
+        setOpen(true)
+        return
+      }
+      selectIndex(Math.min(currentIndex + 1, options.length - 1))
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      if (!open) {
+        setOpen(true)
+        return
+      }
+      selectIndex(Math.max(currentIndex - 1, 0))
+      return
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      setOpen((prev) => !prev)
+    }
+  }
+
+  const menu = open && menuPosition
+    ? createPortal(
+        <div
+          className="admin-custom-select__menu admin-custom-select__menu--floating"
+          id={listboxId}
+          role="listbox"
+          style={{ left: menuPosition.left, top: menuPosition.top, width: menuPosition.width, maxHeight: menuPosition.maxHeight }}
+        >
+          {options.map((option, index) => {
+            const selected = option.value === value
+            return (
+              <button
+                aria-selected={selected}
+                className="admin-custom-select__option"
+                data-selected={selected ? 'true' : 'false'}
+                key={option.value}
+                onClick={() => selectIndex(index)}
+                role="option"
+                type="button"
+              >
+                <span>{t(option.zh, option.en)}</span>
+                {selected ? <span aria-hidden="true" className="admin-custom-select__option-mark" /> : null}
+              </button>
+            )
+          })}
+        </div>,
+        document.body,
+      )
+    : null
+
+  return (
+    <div className="admin-field admin-custom-select" ref={rootRef}>
+      <span className="admin-field-label">{label}</span>
+      <button
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="admin-custom-select__trigger"
+        onClick={() => setOpen((prev) => !prev)}
+        onKeyDown={handleTriggerKeyDown}
+        ref={triggerRef}
+        type="button"
+      >
+        <span className="admin-custom-select__value">{selectedOption ? t(selectedOption.zh, selectedOption.en) : ''}</span>
+        <span aria-hidden="true" className="admin-custom-select__chevron" />
+      </button>
+      {menu}
+    </div>
+  )
 }
 
 function toText(value: unknown): string {
@@ -118,9 +289,7 @@ function clearToken() {
 
 function toForm(project: AdminProjectRecord): FormState {
   return {
-    slug: project.slug,
     name: project.name,
-    headline: project.headline,
     summary: project.summary,
     overview: project.overview,
     status_note: project.status_note ?? '',
@@ -128,9 +297,9 @@ function toForm(project: AdminProjectRecord): FormState {
     project_type: project.project_type,
     visibility: project.visibility,
     is_featured: project.is_featured,
-    featured_rank: project.featured_rank === null ? '' : String(project.featured_rank),
-    sort_order: project.sort_order === null ? '' : String(project.sort_order),
-    accent: project.accent ?? '',
+    featured_rank: project.featured_rank == null ? '' : String(project.featured_rank),
+    sort_order: project.sort_order == null ? '' : String(project.sort_order),
+    repository_full_names: project.repositories.map((repository) => repository.repo_full_name),
   }
 }
 
@@ -144,9 +313,7 @@ function toPayload(form: FormState) {
   }
 
   return {
-    slug: form.slug.trim(),
     name: form.name.trim(),
-    headline: form.headline.trim(),
     summary: form.summary.trim(),
     overview: form.overview.trim(),
     status_note: form.status_note.trim() || null,
@@ -156,8 +323,85 @@ function toPayload(form: FormState) {
     is_featured: form.is_featured,
     featured_rank: form.is_featured ? asNullableNumber(form.featured_rank) : null,
     sort_order: asNullableNumber(form.sort_order),
-    accent: form.accent.trim() || null,
   }
+}
+
+
+function mergeSavedProjectRecord(form: FormState, updated: AdminProjectRecord): AdminProjectRecord {
+  const submitted = toPayload(form)
+  const isFeatured = updated.is_featured || form.is_featured
+
+  return {
+    ...updated,
+    is_featured: isFeatured,
+    featured_rank: isFeatured ? updated.featured_rank ?? submitted.featured_rank : null,
+    sort_order: updated.sort_order ?? submitted.sort_order,
+  }
+}
+
+function normalizeRepositoryBindingKey(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+function buildProjectRepositoryBindings(
+  form: FormState,
+  repositoryOptions: AdminRepositoryRecord[],
+  currentRepositories: AdminProjectLinkedRepositoryRecord[],
+): { bindings: AdminProjectRepositoryBindingInput[]; missing: string[] } {
+  const selectedKeys = Array.from(
+    new Set(form.repository_full_names.map((value) => normalizeRepositoryBindingKey(value)).filter(Boolean)),
+  )
+
+  const repositoryMap = new Map<string, AdminProjectRepositoryBindingInput>()
+  repositoryOptions.forEach((repository) => {
+    const normalizedKey = normalizeRepositoryBindingKey(repository.repo_full_name)
+    if (!normalizedKey) return
+    repositoryMap.set(normalizedKey, {
+      repo_full_name: repository.repo_full_name,
+      repo_url: repository.repo_url,
+      source: repository.source || 'manual',
+    })
+  })
+  currentRepositories.forEach((repository) => {
+    const normalizedKey = normalizeRepositoryBindingKey(repository.repo_full_name)
+    if (!normalizedKey || repositoryMap.has(normalizedKey)) return
+    repositoryMap.set(normalizedKey, {
+      repo_full_name: repository.repo_full_name,
+      repo_url: repository.repo_url,
+      source: repository.source || 'manual',
+    })
+  })
+
+  const currentPrimaryKey = normalizeRepositoryBindingKey(
+    currentRepositories.find((repository) => repository.is_primary)?.repo_full_name || '',
+  )
+  const primaryKey = selectedKeys.includes(currentPrimaryKey) ? currentPrimaryKey : selectedKeys[0] || ''
+
+  const bindings: AdminProjectRepositoryBindingInput[] = []
+  const missing: string[] = []
+  selectedKeys.forEach((key) => {
+    const repository = repositoryMap.get(key)
+    if (!repository || !repository.repo_url) {
+      missing.push(key)
+      return
+    }
+    bindings.push({
+      ...repository,
+      is_primary: key === primaryKey,
+    })
+  })
+
+  return { bindings, missing }
+}
+
+function isValidEditForm(form: FormState): boolean {
+  const name = form.name.trim()
+  const stage = form.stage.trim()
+  const projectType = form.project_type.trim()
+  const visibility = form.visibility.trim()
+  const sortOrder = Number(form.sort_order.trim())
+
+  return Boolean(name && stage && projectType && visibility && Number.isFinite(sortOrder) && sortOrder >= 1 && sortOrder <= 99)
 }
 
 const DEFAULT_CREATE_FORM: CreateFormState = {
@@ -332,7 +576,17 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
   const [detailStatus, setDetailStatus] = React.useState<LoadStatus>('idle')
   const [detailMessage, setDetailMessage] = React.useState('')
   const [detailProject, setDetailProject] = React.useState<AdminProjectRecord | null>(null)
+  const detailProjectRef = React.useRef<AdminProjectRecord | null>(null)
+  detailProjectRef.current = detailProject
   const [form, setForm] = React.useState<FormState | null>(null)
+  const formRef = React.useRef<FormState | null>(null)
+  formRef.current = form
+  const [repositoryOptions, setRepositoryOptions] = React.useState<AdminRepositoryRecord[]>([])
+  const repositoryOptionsRef = React.useRef<AdminRepositoryRecord[]>([])
+  repositoryOptionsRef.current = repositoryOptions
+  const [repositoryOptionsStatus, setRepositoryOptionsStatus] = React.useState<LoadStatus>('idle')
+  const [repositoryOptionsMessage, setRepositoryOptionsMessage] = React.useState('')
+  const [repositoryDialogOpen, setRepositoryDialogOpen] = React.useState(false)
 
   const [saveState, setSaveState] = React.useState<OperationState>({ status: 'idle', message: '' })
   const [deleteState, setDeleteState] = React.useState<OperationState>({ status: 'idle', message: '' })
@@ -476,13 +730,17 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
     return projects.filter((project) => {
       if (!q) return true
-      const content = [project.name, project.slug, project.headline, project.summary].join(' ').toLowerCase()
+      const content = [project.name, project.summary, project.overview].join(' ').toLowerCase()
       return content.includes(q)
     })
   }, [projects, searchInput])
 
   const visibleProjects = filtered
   const selectedId = currentSearch.projectId
+  const ready = authStatus === 'ready'
+  const panel = currentSearch.panel
+  const createModalOpen = ready && mode === 'projects' && panel === 'create'
+  const editModalOpen = ready && mode === 'projects' && panel === 'edit'
 
   const loadDetail = React.useCallback(
     async (projectId: string, signal?: AbortSignal) => {
@@ -532,6 +790,126 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     return () => controller.abort()
   }, [authStatus, loadDetail, mode, selectedId])
 
+  const loadRepositoryOptions = React.useCallback(
+    async (signal?: AbortSignal) => {
+      if (!token) {
+        setRepositoryOptions([])
+        setRepositoryOptionsStatus('idle')
+        setRepositoryOptionsMessage('')
+        return
+      }
+
+      setRepositoryOptionsStatus('loading')
+      setRepositoryOptionsMessage('')
+      try {
+        const result = await fetchAdminRepositories(token, { page: 1, page_size: 200 }, signal)
+        if (signal?.aborted) return
+        const sorted = [...result.repositories].sort((left, right) => left.repo_full_name.localeCompare(right.repo_full_name))
+        setRepositoryOptions(sorted)
+        setRepositoryOptionsStatus(sorted.length > 0 ? 'ready' : 'empty')
+      } catch (error) {
+        if (signal?.aborted) return
+        const mapped = errorMessage(error)
+        if (mapped.code === 'unauthorized') {
+          invalidate(mapped.message)
+          return
+        }
+        setRepositoryOptions([])
+        setRepositoryOptionsStatus('error')
+        setRepositoryOptionsMessage(mapped.message)
+      }
+    },
+    [invalidate, token],
+  )
+
+  React.useEffect(() => {
+    if (authStatus !== 'ready' || mode !== 'projects' || currentSearch.panel !== 'edit') return undefined
+    const controller = new AbortController()
+    void loadRepositoryOptions(controller.signal)
+    return () => controller.abort()
+  }, [authStatus, currentSearch.panel, loadRepositoryOptions, mode])
+
+  const repositoryDialogOptions = React.useMemo(() => {
+    if (!form) {
+      return [] as Array<{
+        repo_full_name: string
+        repo_name: string
+        description: string
+        visibility: string
+        missing: boolean
+      }>
+    }
+
+    const seen = new Set<string>()
+    const items: Array<{
+      repo_full_name: string
+      repo_name: string
+      description: string
+      visibility: string
+      missing: boolean
+    }> = []
+
+    repositoryOptions.forEach((repository) => {
+      const normalizedKey = normalizeRepositoryBindingKey(repository.repo_full_name)
+      if (!normalizedKey || seen.has(normalizedKey)) return
+      seen.add(normalizedKey)
+      items.push({
+        repo_full_name: repository.repo_full_name,
+        repo_name: repository.repo_name || repository.repo_full_name.split('/').pop() || repository.repo_full_name,
+        description: repository.description?.trim() || t('未提供仓库描述', 'No repository description'),
+        visibility: repository.visibility || 'public',
+        missing: false,
+      })
+    })
+
+    form.repository_full_names.forEach((fullName) => {
+      const normalizedKey = normalizeRepositoryBindingKey(fullName)
+      if (!normalizedKey || seen.has(normalizedKey)) return
+      seen.add(normalizedKey)
+      items.push({
+        repo_full_name: fullName,
+        repo_name: fullName.split('/').pop() || fullName,
+        description: t('当前未在已导入仓库列表中', 'Not in imported repository list'),
+        visibility: 'unknown',
+        missing: true,
+      })
+    })
+
+    return items
+  }, [form, repositoryOptions, t])
+
+  const repositoryDialogButtonLabel = React.useMemo(() => {
+    if (!form || form.repository_full_names.length === 0) {
+      return t('\u9009\u62e9\u4ed3\u5e93', 'Choose repositories')
+    }
+
+    if (form.repository_full_names.length === 1) {
+      return form.repository_full_names[0]
+    }
+
+    return t(`已关联 ${form.repository_full_names.length} 个仓库`, `${form.repository_full_names.length} repositories linked`)
+  }, [form, t])
+
+  const toggleRepositorySelection = React.useCallback((repoFullName: string) => {
+    setForm((prev) => {
+      if (!prev) return prev
+      const normalizedKey = normalizeRepositoryBindingKey(repoFullName)
+      const exists = prev.repository_full_names.some((value) => normalizeRepositoryBindingKey(value) === normalizedKey)
+      return {
+        ...prev,
+        repository_full_names: exists
+          ? prev.repository_full_names.filter((value) => normalizeRepositoryBindingKey(value) !== normalizedKey)
+          : [...prev.repository_full_names, repoFullName],
+      }
+    })
+  }, [])
+
+  React.useEffect(() => {
+    if (!editModalOpen) {
+      setRepositoryDialogOpen(false)
+    }
+  }, [editModalOpen])
+
   const createProject = React.useCallback(async () => {
     if (!token) return
 
@@ -542,7 +920,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     }
 
     const commitCreated = (created: AdminProjectRecord, successMessage?: string) => {
-      const name = created.name || created.slug || created.id
+      const name = created.name || t('未命名项目', 'Untitled project')
 
       setCreateState({ status: 'success', message: successMessage || t('创建成功：' + name, 'Created: ' + name) })
       setCreateForm((prev) => ({
@@ -629,7 +1007,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       }
 
       if (recovered) {
-        const name = recovered.name || recovered.slug || recovered.id
+        const name = recovered.name || t('未命名项目', 'Untitled project')
         commitCreated(recovered, t('请求中断但项目已创建：' + name, 'Request interrupted but project was created: ' + name))
         return
       }
@@ -643,19 +1021,67 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       })
     }
   }, [createForm, invalidate, patchSearch, t, token])
+  const saveProject = React.useCallback(async (closeAfterSave: boolean) => {
+    const currentForm = formRef.current
+    if (!token || !selectedId || !currentForm) return
+    if (!isValidEditForm(currentForm)) {
+      setSaveState({ status: 'error', message: t('\u8bf7\u586b\u5199\u6240\u6709\u5fc5\u586b\u9879\u3002', 'Please complete all required fields.') })
+      return
+    }
 
+    const repositoryBindings = buildProjectRepositoryBindings(
+      currentForm,
+      repositoryOptionsRef.current,
+      detailProjectRef.current?.repositories ?? [],
+    )
+    if (repositoryBindings.missing.length > 0) {
+      setSaveState({
+        status: 'error',
+        message: t('\u90e8\u5206\u4ed3\u5e93\u9009\u9879\u5c1a\u672a\u52a0\u8f7d\u5b8c\u6210\uff0c\u8bf7\u5237\u65b0\u540e\u91cd\u8bd5\u3002', 'Some repository options are not ready yet. Refresh and try again.'),
+      })
+      return
+    }
 
-  const saveProject = React.useCallback(async () => {
-    if (!token || !selectedId || !form) return
-
-    setSaveState({ status: 'running', message: t('正在保存变更...', 'Saving changes...') })
+    setSaveState({ status: 'running', message: t('\u6b63\u5728\u4fdd\u5b58\u53d8\u66f4...', 'Saving changes...') })
     try {
-      const updated = await updateAdminProjectById(token, selectedId, toPayload(form))
-      setSaveState({ status: 'success', message: t('保存成功。', 'Saved.') })
+      const patchedProject = mergeSavedProjectRecord(
+        currentForm,
+        await updateAdminProjectById(token, selectedId, toPayload(currentForm)),
+      )
+
+      let updated = patchedProject
+      try {
+        updated = mergeSavedProjectRecord(
+          currentForm,
+          await replaceAdminProjectRepositories(token, selectedId, repositoryBindings.bindings),
+        )
+      } catch (error) {
+        const mapped = errorMessage(error)
+        if (mapped.code === 'unauthorized') {
+          invalidate(mapped.message)
+          return
+        }
+        setDetailProject(patchedProject)
+        setDetailStatus('ready')
+        setForm(toForm(patchedProject))
+        setProjects((prev) => prev.map((item) => (item.id === patchedProject.id ? patchedProject : item)))
+        setSaveState({
+          status: 'error',
+          message:
+            t('\u9879\u76ee\u57fa\u672c\u4fe1\u606f\u5df2\u4fdd\u5b58\uff0c\u4f46\u4ed3\u5e93\u5173\u8054\u5931\u8d25\uff1a', 'Project fields were saved, but repository bindings failed: ') +
+            mapped.message,
+        })
+        return
+      }
+
+      setSaveState({ status: 'success', message: t('\u4fdd\u5b58\u6210\u529f\u3002', 'Saved.') })
       setDetailProject(updated)
       setDetailStatus('ready')
       setForm(toForm(updated))
       setProjects((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+      if (closeAfterSave) {
+        patchSearch({ panel: 'closed' })
+      }
     } catch (error) {
       const mapped = errorMessage(error)
       if (mapped.code === 'unauthorized') {
@@ -664,14 +1090,14 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       }
       setSaveState({ status: 'error', message: mapped.message })
     }
-  }, [form, invalidate, selectedId, t, token])
+  }, [invalidate, patchSearch, selectedId, t, token])
 
 
   const deleteProjectByRecord = React.useCallback(async (project: AdminProjectRecord) => {
     if (!token) return
 
     const projectId = project.id
-    const projectName = project.name || project.slug || project.id
+    const projectName = project.name || t('未命名项目', 'Untitled project')
 
     setDeleteState({ status: 'running', message: t('\u6b63\u5728\u5220\u9664\u9879\u76ee...', 'Deleting project...') })
     try {
@@ -710,13 +1136,9 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     }
   }, [invalidate, patchSearch, projects, selectedId, t, token])
 
-  const ready = authStatus === 'ready'
-  const panel = currentSearch.panel
-  const selectedProjectName = detailProject?.name || detailProject?.slug || detailProject?.id || ''
-  const createModalOpen = ready && mode === 'projects' && panel === 'create'
-  const editModalOpen = ready && mode === 'projects' && panel === 'edit'
+  const selectedProjectName = detailProject?.name || ''
   const deleteModalOpen = ready && mode === 'projects' && deleteTarget !== null
-  const deleteTargetName = deleteTarget?.name || deleteTarget?.slug || deleteTarget?.id || ''
+  const deleteTargetName = deleteTarget?.name || t('未命名项目', 'Untitled project')
   const surfaceFeedback = !createModalOpen && !editModalOpen && !deleteModalOpen ? createState.message || deleteState.message : ''
   const surfaceFeedbackTone = createState.message
     ? createState.status === 'error'
@@ -744,6 +1166,10 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
   const closePanel = () => {
     patchSearch({ panel: 'closed' })
   }
+  const closeEditPanel = () => {
+    setRepositoryDialogOpen(false)
+    patchSearch({ panel: 'closed' })
+  }
 
   const closeDeleteModal = () => {
     if (deleteState.status === 'running') return
@@ -760,6 +1186,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
   const openEditPanel = (projectId: string) => {
     setSaveState({ status: 'idle', message: '' })
+    setRepositoryDialogOpen(false)
     patchSearch({ projectId, panel: 'edit' })
   }
 
@@ -767,6 +1194,23 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     setDeleteState({ status: 'idle', message: '' })
     setDeleteTarget(project)
   }
+
+  React.useEffect(() => {
+    if (!editModalOpen) return undefined
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      if (repositoryDialogOpen) {
+        setRepositoryDialogOpen(false)
+        return
+      }
+      closeEditPanel()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [closeEditPanel, editModalOpen, repositoryDialogOpen])
 
 
   return (
@@ -872,9 +1316,9 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                     <li key={item.id} className="admin-project-list-item">
                       <div className="admin-project-list-item__main">
                         <div className="admin-project-row__identity">
-                          <p className="name">{item.name || item.slug || item.id}</p>
+                          <p className="name">{item.name || t('未命名项目', 'Untitled project')}</p>
                         </div>
-                        <p className="meta">{item.slug || item.id}</p>
+                        <p className="meta">{item.summary || item.overview || t('暂无简介', 'No summary yet.')}</p>
                         <div className="admin-project-list-item__meta">
                           <p className="admin-project-row__stage" data-stage={item.stage || 'unknown'}>{item.stage || '--'}</p>
                           <p className="admin-project-list-item__updated">{formatTime(item.updated_at)}</p>
@@ -915,21 +1359,30 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                   <textarea value={createForm.summary} onChange={(event) => setCreateForm((prev) => ({ ...prev, summary: event.target.value }))} placeholder={t('一句话概述（可选）', 'One-line summary (optional)')} />
                 </label>
                 <div className="admin-editor-grid admin-editor-grid--create-project-controls">
-                  <label className="admin-field">
-                    <span className="admin-field-label">阶段<span className="admin-field-required">*</span></span>
-                    <select value={createForm.stage} onChange={(event) => setCreateForm((prev) => ({ ...prev, stage: event.target.value }))} required>{STAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select>
-                  </label>
-                  <label className="admin-field">
-                    <span className="admin-field-label">类型<span className="admin-field-required">*</span></span>
-                    <select value={createForm.project_type} onChange={(event) => setCreateForm((prev) => ({ ...prev, project_type: event.target.value }))} required>{PROJECT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select>
-                  </label>
-                  <label className="admin-field">
-                    <span className="admin-field-label">可见性<span className="admin-field-required">*</span></span>
-                    <select value={createForm.visibility} onChange={(event) => setCreateForm((prev) => ({ ...prev, visibility: event.target.value }))} required>{VISIBILITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select>
-                  </label>
+                  <AdminFormSelect
+                    label={<>{'阶段'}<span className="admin-field-required">*</span></>}
+                    onChange={(value) => setCreateForm((prev) => ({ ...prev, stage: value }))}
+                    options={STAGE_OPTIONS}
+                    t={t}
+                    value={createForm.stage}
+                  />
+                  <AdminFormSelect
+                    label={<>{'类型'}<span className="admin-field-required">*</span></>}
+                    onChange={(value) => setCreateForm((prev) => ({ ...prev, project_type: value }))}
+                    options={PROJECT_TYPE_OPTIONS}
+                    t={t}
+                    value={createForm.project_type}
+                  />
+                  <AdminFormSelect
+                    label={<>{'可见性'}<span className="admin-field-required">*</span></>}
+                    onChange={(value) => setCreateForm((prev) => ({ ...prev, visibility: value }))}
+                    options={VISIBILITY_OPTIONS}
+                    t={t}
+                    value={createForm.visibility}
+                  />
                   <label className="admin-field">
                     <span className="admin-field-label">序号<span className="admin-field-required">*</span></span>
-                    <input type="number" min={1} max={99} value={createForm.sort_order} onChange={(event) => setCreateForm((prev) => ({ ...prev, sort_order: event.target.value }))} required />
+                    <input className="admin-number-input" type="number" min={1} max={99} value={createForm.sort_order} onChange={(event) => setCreateForm((prev) => ({ ...prev, sort_order: event.target.value }))} required />
                   </label>
                 </div>
                 {createState.message ? <p className="admin-feedback" data-tone={createState.status === 'success' ? 'success' : createState.status === 'error' ? 'error' : 'info'}>{createState.message}</p> : null}
@@ -942,14 +1395,14 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         </div>
       ) : null}
       {editModalOpen ? (
-        <div className="admin-project-modal-backdrop" onClick={closePanel}>
+        <div className="admin-project-modal-backdrop">
           <section className="admin-projects-detail-panel admin-project-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
             <div className="admin-project-modal__head">
               <div className="admin-project-modal__titleblock">
                 <h2>{t('\u7f16\u8f91\u9879\u76ee', 'Edit Project')}</h2>
-                <p className="admin-project-modal__project-name">{selectedProjectName || selectedId || '--'}</p>
+                <p className="admin-project-modal__project-name">{selectedProjectName || t('项目详情', 'Project detail')}</p>
               </div>
-              <button className="admin-modal-close" type="button" onClick={closePanel} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+              <button className="admin-modal-close" type="button" onClick={closeEditPanel} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
             </div>
 
             {!selectedId ? (
@@ -976,40 +1429,152 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                 </div>
               </div>
             ) : null}
-
             {selectedId && detailStatus === 'ready' && form && detailProject ? (
-              <form className="admin-project-modal__content" onSubmit={(event) => { event.preventDefault(); void saveProject() }}>
+              <form className="admin-project-modal__content" onSubmit={(event) => { event.preventDefault(); void saveProject(false) }}>
                 <div className="admin-project-modal__body admin-editor-form admin-editor-form--modal">
-                  <div className="admin-editor-grid two-col">
-                    <label>ID<input type="text" value={detailProject.id} readOnly /></label>
-                    <label>slug<input type="text" value={form.slug} onChange={(event) => setForm((prev) => (prev ? { ...prev, slug: event.target.value } : prev))} /></label>
+                  <div className="admin-field-row">
+                    <label className="admin-field admin-field-row__primary">
+                      <span className="admin-field-label">{'\u9879\u76ee\u540d\u79f0'}<span className="admin-field-required">*</span></span>
+                      <input type="text" value={form.name} onChange={(event) => setForm((prev) => (prev ? { ...prev, name: event.target.value } : prev))} required />
+                    </label>
+                    <div className="admin-field admin-field-row__aside">
+                      <span className="admin-field-label">{'\u5173\u8054\u4ed3\u5e93'}</span>
+                      <button
+                        aria-expanded={repositoryDialogOpen}
+                        aria-haspopup="dialog"
+                        className="admin-input-like-button"
+                        onClick={() => setRepositoryDialogOpen(true)}
+                        type="button"
+                      >
+                        <span className="admin-input-like-button__label">{repositoryDialogButtonLabel}</span>
+                      </button>
+                    </div>
                   </div>
-                  <label>Name<input type="text" value={form.name} onChange={(event) => setForm((prev) => (prev ? { ...prev, name: event.target.value } : prev))} /></label>
-                  <label>headline<input type="text" value={form.headline} onChange={(event) => setForm((prev) => (prev ? { ...prev, headline: event.target.value } : prev))} /></label>
-                  <label>summary<textarea value={form.summary} onChange={(event) => setForm((prev) => (prev ? { ...prev, summary: event.target.value } : prev))} /></label>
-                  <label>overview<textarea value={form.overview} onChange={(event) => setForm((prev) => (prev ? { ...prev, overview: event.target.value } : prev))} /></label>
-                  <label>status_note<textarea value={form.status_note} onChange={(event) => setForm((prev) => (prev ? { ...prev, status_note: event.target.value } : prev))} /></label>
+                  <label className="admin-field">
+                    <span className="admin-field-label">{'\u9879\u76ee\u7b80\u4ecb'}</span>
+                    <textarea value={form.summary} onChange={(event) => setForm((prev) => (prev ? { ...prev, summary: event.target.value } : prev))} placeholder={t('\u4e00\u53e5\u8bdd\u6982\u8ff0\uff08\u53ef\u9009\uff09', 'One-line summary (optional)')} />
+                  </label>
+                  <label className="admin-field">
+                    <span className="admin-field-label">{'\u9879\u76ee\u6982\u89c8'}</span>
+                    <textarea value={form.overview} onChange={(event) => setForm((prev) => (prev ? { ...prev, overview: event.target.value } : prev))} placeholder={t('\u8865\u5145\u66f4\u5b8c\u6574\u7684\u9879\u76ee\u8bf4\u660e\uff08\u53ef\u9009\uff09', 'Add a fuller project overview (optional)')} />
+                  </label>
+                  <label className="admin-field">
+                    <span className="admin-field-label">{'\u72b6\u6001\u5907\u6ce8'}</span>
+                    <textarea value={form.status_note} onChange={(event) => setForm((prev) => (prev ? { ...prev, status_note: event.target.value } : prev))} placeholder={t('\u4f8b\u5982\uff1a\u6682\u505c\u66f4\u65b0\u3001\u4ec5\u5185\u90e8\u8bd5\u9a8c\uff08\u53ef\u9009\uff09', 'For example: paused, internal-only experiment (optional)')} />
+                  </label>
 
                   <div className="admin-editor-grid three-col">
-                    <label>stage<select value={form.stage} onChange={(event) => setForm((prev) => (prev ? { ...prev, stage: event.target.value } : prev))}><option value="">--</option>{STAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select></label>
-                    <label>project_type<select value={form.project_type} onChange={(event) => setForm((prev) => (prev ? { ...prev, project_type: event.target.value } : prev))}><option value="">--</option>{PROJECT_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select></label>
-                    <label>visibility<select value={form.visibility} onChange={(event) => setForm((prev) => (prev ? { ...prev, visibility: event.target.value } : prev))}><option value="">--</option>{VISIBILITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.zh, option.en)}</option>)}</select></label>
+                    <AdminFormSelect
+                      label={<>{'\u9636\u6bb5'}<span className="admin-field-required">*</span></>}
+                      onChange={(value) => setForm((prev) => (prev ? { ...prev, stage: value } : prev))}
+                      options={STAGE_OPTIONS}
+                      t={t}
+                      value={form.stage}
+                    />
+                    <AdminFormSelect
+                      label={<>{'\u7c7b\u578b'}<span className="admin-field-required">*</span></>}
+                      onChange={(value) => setForm((prev) => (prev ? { ...prev, project_type: value } : prev))}
+                      options={PROJECT_TYPE_OPTIONS}
+                      t={t}
+                      value={form.project_type}
+                    />
+                    <AdminFormSelect
+                      label={<>{'\u53ef\u89c1\u6027'}<span className="admin-field-required">*</span></>}
+                      onChange={(value) => setForm((prev) => (prev ? { ...prev, visibility: value } : prev))}
+                      options={VISIBILITY_OPTIONS}
+                      t={t}
+                      value={form.visibility}
+                    />
                   </div>
 
-                  <div className="admin-editor-grid two-col">
-                    <label>sort_order<input type="number" min={1} max={99} value={form.sort_order} onChange={(event) => setForm((prev) => (prev ? { ...prev, sort_order: event.target.value } : prev))} /></label>
-                    <label>accent<input type="text" value={form.accent} onChange={(event) => setForm((prev) => (prev ? { ...prev, accent: event.target.value } : prev))} /></label>
+                  <div className="admin-editor-grid admin-editor-grid--project-flags">
+                    <label className="admin-field">
+                      <span className="admin-field-label">{'\u5e8f\u53f7'}<span className="admin-field-required">*</span></span>
+                      <input className="admin-number-input" type="number" min={1} max={99} value={form.sort_order} onChange={(event) => setForm((prev) => (prev ? { ...prev, sort_order: event.target.value } : prev))} required />
+                    </label>
+                    <label className="admin-field admin-field--inline-toggle">
+                      <span className="admin-field-label admin-field-label--ghost" aria-hidden="true">&nbsp;</span>
+                      <span className="admin-checkbox-row admin-checkbox-row--field">
+                        <input type="checkbox" checked={form.is_featured} onChange={(event) => setForm((prev) => (prev ? { ...prev, is_featured: event.target.checked, featured_rank: event.target.checked ? prev.featured_rank : '' } : prev))} />
+                        <span>{t('\u7cbe\u9009', 'Featured')}</span>
+                      </span>
+                    </label>
+                    {form.is_featured ? (
+                      <label className="admin-field">
+                        <span className="admin-field-label">featured_rank</span>
+                        <input className="admin-number-input" type="number" min={1} value={form.featured_rank} onChange={(event) => setForm((prev) => (prev ? { ...prev, featured_rank: event.target.value } : prev))} />
+                      </label>
+                    ) : <span aria-hidden="true" />}
                   </div>
-
-                  <label className="admin-checkbox-row"><input type="checkbox" checked={form.is_featured} onChange={(event) => setForm((prev) => (prev ? { ...prev, is_featured: event.target.checked, featured_rank: event.target.checked ? prev.featured_rank : '' } : prev))} /><span>is_featured</span></label>
-                  {form.is_featured ? <label>featured_rank<input type="number" value={form.featured_rank} onChange={(event) => setForm((prev) => (prev ? { ...prev, featured_rank: event.target.value } : prev))} /></label> : null}
-                  {saveState.status !== 'idle' && saveState.message ? <p className="admin-feedback" data-tone={saveState.status === 'success' ? 'success' : saveState.status === 'error' ? 'error' : 'info'}>{saveState.message}</p> : null}
                 </div>
                 <div className="admin-project-modal__footer">
-                  <button className="admin-primary-button" type="submit" disabled={saveState.status === 'running'}>{saveState.status === 'running' ? t('\u4fdd\u5b58\u4e2d...', 'Saving...') : t('\u4fdd\u5b58', 'Save')}</button>
+                  <div className="admin-project-modal__footer-feedback-slot" aria-live="polite">
+                    {saveState.status !== 'idle' && saveState.message ? <p className="admin-feedback admin-project-modal__footer-feedback" data-tone={saveState.status === 'success' ? 'success' : saveState.status === 'error' ? 'error' : 'info'}>{saveState.message}</p> : <span className="admin-project-modal__footer-feedback-placeholder" aria-hidden="true" />}
+                  </div>
+                  <div className="admin-project-modal__footer-actions">
+                    <button className="admin-secondary-button" type="submit" disabled={saveState.status === 'running'}>{saveState.status === 'running' ? t('\u4fdd\u5b58\u4e2d...', 'Saving...') : t('\u4fdd\u5b58', 'Save')}</button>
+                    <button className="admin-primary-button" type="button" onClick={() => void saveProject(true)} disabled={saveState.status === 'running'}>{saveState.status === 'running' ? t('\u4fdd\u5b58\u4e2d...', 'Saving...') : t('\u4fdd\u5b58\u5e76\u5173\u95ed', 'Save & Close')}</button>
+                  </div>
                 </div>
               </form>
             ) : null}
+          </section>
+        </div>
+      ) : null}
+      {editModalOpen && detailStatus === 'ready' && form && detailProject && repositoryDialogOpen ? (
+        <div className="admin-project-modal-backdrop admin-project-modal-backdrop--nested">
+          <section className="admin-projects-detail-panel admin-project-modal admin-project-modal--repository" role="dialog" aria-modal="true" aria-label={t('\u5173\u8054\u4ed3\u5e93', 'Link Repositories')} onClick={(event) => event.stopPropagation()}>
+            <div className="admin-project-modal__head admin-project-modal__head--repository">
+              <div className="admin-project-modal__titleblock">
+                <h3>{t('\u5173\u8054\u4ed3\u5e93', 'Link Repositories')}</h3>
+                <p className="admin-project-modal__project-name">{t('\u4ece\u5df2\u5bfc\u5165\u7684 GitHub \u4ed3\u5e93\u4e2d\u52fe\u9009\uff0c\u53ef\u591a\u9009\u3002', 'Choose from imported GitHub repositories. Multiple selections are supported.')}</p>
+              </div>
+              <button className="admin-modal-close" type="button" onClick={() => setRepositoryDialogOpen(false)} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+            </div>
+            <div className="admin-project-modal__content">
+              <div className="admin-project-modal__body admin-project-modal__body--repository">
+                {repositoryOptions.length > 0 || repositoryDialogOptions.length > 0 ? (
+                  <div className="admin-repository-dialog__list">
+                    {repositoryDialogOptions.map((repository) => {
+                      const isSelected = form.repository_full_names.some(
+                        (value) => normalizeRepositoryBindingKey(value) === normalizeRepositoryBindingKey(repository.repo_full_name),
+                      )
+
+                      return (
+                        <label
+                          className={`admin-repository-dialog__item ${isSelected ? 'is-selected' : ''} ${repository.missing ? 'is-missing' : ''}`.trim()}
+                          data-visibility={repository.visibility || 'unknown'}
+                          key={repository.repo_full_name}
+                        >
+                          <span className="admin-repository-dialog__copy">
+                            <span className="admin-repository-dialog__name">{repository.repo_name}</span>
+                            <span className="admin-repository-dialog__description">{repository.description}</span>
+                          </span>
+                          <input
+                            checked={isSelected}
+                            onChange={() => toggleRepositorySelection(repository.repo_full_name)}
+                            type="checkbox"
+                          />
+                        </label>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="admin-state-card">
+                    <p>
+                      {repositoryOptionsStatus === 'loading'
+                        ? t('\u6b63\u5728\u52a0\u8f7d\u4ed3\u5e93...', 'Loading repositories...')
+                        : repositoryOptionsStatus === 'error'
+                          ? repositoryOptionsMessage || t('\u4ed3\u5e93\u5217\u8868\u52a0\u8f7d\u5931\u8d25\u3002', 'Failed to load repositories.')
+                          : t('\u5f53\u524d\u6ca1\u6709\u53ef\u5173\u8054\u7684\u5df2\u5bfc\u5165\u4ed3\u5e93\u3002', 'No imported repositories are available.')}
+                    </p>
+                    {repositoryOptionsStatus === 'error' ? (
+                      <button className="admin-secondary-button inline" type="button" onClick={() => void loadRepositoryOptions()}>{t('\u91cd\u8bd5\u52a0\u8f7d', 'Retry')}</button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
           </section>
         </div>
       ) : null}

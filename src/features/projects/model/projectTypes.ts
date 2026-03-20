@@ -33,7 +33,6 @@ export interface ProjectCatalogRecord {
   canonical_path: string
   name: string
   summary: string
-  headline: string
   overview: string
   stage: string
   source_type: string

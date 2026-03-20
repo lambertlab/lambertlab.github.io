@@ -128,7 +128,7 @@ export function ProjectsCatalogFilters({ query, onChange, onReset, locale }: Pro
         </select>
       </div>
 
-      <label className="featured-only-control" htmlFor="featured-only">
+      <label className="featured-only-control" data-checked={query.featuredOnly ? 'true' : 'false'} htmlFor="featured-only">
         <input type="checkbox" id="featured-only" checked={query.featuredOnly} onChange={(event) => onChange({ featuredOnly: event.target.checked })} />
         <span>{copy.featuredOnly}</span>
       </label>

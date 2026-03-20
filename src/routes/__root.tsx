@@ -195,11 +195,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {isAdminRoute ? null : (
-        <a className="skip-link" href="#main-content">
-          {shellCopy.skipLink[locale]}
-        </a>
-      )}
 
       <header className={isAdminRoute ? 'll-header ll-header-admin' : 'll-header'}>
         <nav className="ll-header-inner">

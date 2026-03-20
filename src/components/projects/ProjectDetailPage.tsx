@@ -1,4 +1,4 @@
-﻿import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { loadProjectDetailSnapshot, readProjectDetailSnapshot } from '~/lib/pageDataCache'
 import { ProjectApiError, type ProjectDetailRecord } from '~/lib/projectsApi'
@@ -15,24 +15,16 @@ interface ProjectDetailPageProps {
   slug: string
 }
 
-type DegradedFieldKey = 'summary' | 'headline' | 'overview' | 'stage' | 'project_type' | 'source_type'
-
-interface DetailLinkItem {
-  key: string
-  label: string
-  href: string
-}
+type DegradedFieldKey = 'summary' | 'overview' | 'stage' | 'project_type' | 'source_type'
 
 interface RepositoryViewItem {
   key: string
   name: string
+  fullName: string | null
   href: string | null
   visibility: string | null
   isPrimary: boolean
-}
-
-function isExternalUrl(value: string | null): value is string {
-  return typeof value === 'string' && /^https?:\/\//i.test(value)
+  canOpen: boolean
 }
 
 function normalizeValue(value: string): string {
@@ -167,145 +159,41 @@ function formatDate(value: string | null, locale: UiLocale): string {
   })
 }
 
-function localizeLinkLabel(type: string | null, locale: UiLocale): string {
-  const normalizedType = normalizeValue(type || '')
-  if (normalizedType === 'primary' || normalizedType === 'homepage' || normalizedType === 'main' || normalizedType === 'home') {
-    return locale === 'zh-CN' ? '主入口' : 'Primary'
-  }
-
-  if (normalizedType === 'repo' || normalizedType === 'repository' || normalizedType === 'github') {
-    return locale === 'zh-CN' ? '仓库' : 'Repository'
-  }
-
-  if (normalizedType === 'demo' || normalizedType === 'preview') {
-    return 'Demo'
-  }
-
-  if (normalizedType === 'docs' || normalizedType === 'documentation') {
-    return 'Docs'
-  }
-
-  if (normalizedType === 'notes' || normalizedType === 'note') {
-    return locale === 'zh-CN' ? '备注' : 'Notes'
-  }
-
-  return locale === 'zh-CN' ? '链接' : 'Link'
-}
-
 function buildMetaItems(project: ProjectDetailRecord, locale: UiLocale) {
   return [
     {
-      label: locale === 'zh-CN' ? '阶段' : 'Stage',
+      label: locale === 'zh-CN' ? '\u9636\u6bb5' : 'Stage',
       value: translateStage(project.stage, locale),
     },
     {
-      label: locale === 'zh-CN' ? '项目类型' : 'Project Type',
+      label: locale === 'zh-CN' ? '\u9879\u76ee\u7c7b\u578b' : 'Project Type',
       value: translateProjectType(project.project_type, locale),
     },
     {
-      label: locale === 'zh-CN' ? '来源类型' : 'Source Type',
-      value: translateSourceType(project.source_type, locale),
-    },
-    {
-      label: locale === 'zh-CN' ? '精选排序' : 'Featured Rank',
-      value: project.featured_rank ? `#${project.featured_rank}` : locale === 'zh-CN' ? '未精选' : 'Not featured',
-    },
-    {
-      label: locale === 'zh-CN' ? '规范路径' : 'Canonical Path',
-      value: project.canonical_path || `/projects/${project.slug}/`,
-    },
-    {
-      label: locale === 'zh-CN' ? '更新时间' : 'Updated',
+      label: locale === 'zh-CN' ? '\u66f4\u65b0\u65f6\u95f4' : 'Updated',
       value: formatDate(project.updated_at, locale),
     },
   ]
-}
-
-function buildLinkItems(project: ProjectDetailRecord, locale: UiLocale): DetailLinkItem[] {
-  const allLinkItems: DetailLinkItem[] = []
-
-  project.link_items.forEach((item, index) => {
-    const href = item.href.trim()
-    if (!href) {
-      return
-    }
-
-    allLinkItems.push({
-      key: `${item.key}-${index}`,
-      label: item.label || localizeLinkLabel(item.type, locale),
-      href,
-    })
-  })
-
-  const fallbackLinks: Array<{ key: string; href: string | null; label: string }> = [
-    { key: 'legacy-primary', href: project.links.primary, label: locale === 'zh-CN' ? '主入口' : 'Primary' },
-    { key: 'legacy-repo', href: project.links.repo, label: locale === 'zh-CN' ? '仓库' : 'Repository' },
-    { key: 'legacy-demo', href: project.links.demo, label: 'Demo' },
-    { key: 'legacy-docs', href: project.links.docs, label: 'Docs' },
-    { key: 'legacy-notes', href: project.links.notes, label: locale === 'zh-CN' ? '备注' : 'Notes' },
-  ]
-
-  fallbackLinks.forEach((item) => {
-    const href = item.href?.trim()
-    if (!href) {
-      return
-    }
-
-    allLinkItems.push({
-      key: item.key,
-      label: item.label,
-      href,
-    })
-  })
-
-  const dedupe = new Set<string>()
-  return allLinkItems.filter((item) => {
-    const key = item.href.toLowerCase()
-    if (dedupe.has(key)) {
-      return false
-    }
-
-    dedupe.add(key)
-    return true
-  })
 }
 
 function buildRepositoryItems(project: ProjectDetailRecord): RepositoryViewItem[] {
   return project.repositories.map((repository, index) => {
     const name =
       repository.name || repository.full_name || repository.url || `${project.slug || 'project'}-repository-${index + 1}`
+    const fullName = repository.full_name || null
+    const href = repository.url || null
+    const visibility = normalizeValue(repository.visibility || 'public') || 'public'
 
     return {
       key: `${repository.full_name || repository.url || repository.name || 'repo'}-${index}`,
       name,
-      href: repository.url,
-      visibility: repository.visibility,
+      fullName,
+      href,
+      visibility,
       isPrimary: repository.is_primary,
+      canOpen: visibility === 'public' && Boolean(href),
     }
   })
-}
-
-function buildSourceItems(project: ProjectDetailRecord, locale: UiLocale) {
-  const primaryRepository = project.repositories.find((item) => item.is_primary) ?? project.repositories[0]
-
-  return [
-    {
-      label: 'Slug',
-      value: project.slug || (locale === 'zh-CN' ? '待补充' : 'Pending'),
-    },
-    {
-      label: locale === 'zh-CN' ? '仓库' : 'Repository',
-      value:
-        project.source_refs.repo_full_name ||
-        primaryRepository?.full_name ||
-        primaryRepository?.name ||
-        (locale === 'zh-CN' ? '待补充' : 'Pending'),
-    },
-    {
-      label: locale === 'zh-CN' ? '可见性' : 'Visibility',
-      value: translateVisibility(project.source_refs.visibility || primaryRepository?.visibility || '', locale),
-    },
-  ]
 }
 
 function buildDetailMetadata(state: DetailState, slug: string, locale: UiLocale) {
@@ -314,7 +202,6 @@ function buildDetailMetadata(state: DetailState, slug: string, locale: UiLocale)
       state.project.name || state.project.slug || (locale === 'zh-CN' ? '未命名项目' : 'Untitled Project')
     const projectSummary =
       state.project.summary ||
-      state.project.headline ||
       (locale === 'zh-CN'
         ? '基于统一 Projects 合同提供的项目详情页。'
         : 'Project detail powered by the unified Projects contract.')
@@ -376,7 +263,6 @@ function collectDegradedFields(project: ProjectDetailRecord): DegradedFieldKey[]
   const missingFields: DegradedFieldKey[] = []
 
   if (!project.summary) missingFields.push('summary')
-  if (!project.headline) missingFields.push('headline')
   if (!project.overview) missingFields.push('overview')
   if (!project.stage) missingFields.push('stage')
   if (!project.project_type) missingFields.push('project_type')
@@ -388,7 +274,6 @@ function collectDegradedFields(project: ProjectDetailRecord): DegradedFieldKey[]
 function localizeDegradedField(field: DegradedFieldKey, locale: UiLocale): string {
   if (locale === 'en') {
     if (field === 'summary') return 'summary'
-    if (field === 'headline') return 'headline'
     if (field === 'overview') return 'overview'
     if (field === 'stage') return 'stage'
     if (field === 'project_type') return 'project type'
@@ -396,7 +281,6 @@ function localizeDegradedField(field: DegradedFieldKey, locale: UiLocale): strin
   }
 
   if (field === 'summary') return '摘要'
-  if (field === 'headline') return 'headline'
   if (field === 'overview') return '概览'
   if (field === 'stage') return '阶段'
   if (field === 'project_type') return '项目类型'
@@ -488,10 +372,11 @@ export function ProjectDetailPage({ slug }: ProjectDetailPageProps) {
   return (
     <main className="project-detail-shell" id="main-content">
       <div className="project-detail-container">
-        <div className="project-detail-breadcrumbs">
-          <Link to="/projects">{locale === 'zh-CN' ? '项目目录' : 'Projects'}</Link>
-          <span>/</span>
-          <span>{slug}</span>
+
+        <div className="project-detail-toolbar">
+          <Link className="project-detail-button" preload="intent" to="/projects">
+            {locale === 'zh-CN' ? '\u8fd4\u56de\u9879\u76ee\u5217\u8868' : 'Back to Projects'}
+          </Link>
         </div>
 
         {state.status === 'loading' ? (
@@ -591,72 +476,29 @@ function ProjectDetailContent({
   project: ProjectDetailRecord
 }) {
   const metaItems = buildMetaItems(project, locale)
-  const linkItems = buildLinkItems(project, locale)
-  const sourceItems = buildSourceItems(project, locale)
   const repositoryItems = buildRepositoryItems(project)
 
   return (
     <div className="project-detail-layout">
       <section className="project-detail-panel project-detail-hero">
-        <div className="project-detail-hero-copy">
-          <p className="project-detail-kicker">
-            {project.featured_rank
-              ? locale === 'zh-CN'
-                ? `精选 #${project.featured_rank}`
-                : `Featured #${project.featured_rank}`
-              : locale === 'zh-CN'
-                ? '项目详情'
-                : 'Project Detail'}
-          </p>
-          <h1>{project.name || project.slug || (locale === 'zh-CN' ? '未命名项目' : 'Untitled Project')}</h1>
-          <p className="project-detail-summary">
-            {project.summary || (locale === 'zh-CN' ? '暂未提供摘要。' : 'No summary provided.')}
-          </p>
-          <p className="project-detail-headline">
-            {project.headline ||
-              (locale === 'zh-CN'
-                ? '项目注册表尚未补充 headline。'
-                : 'Headline is pending from the project registry.')}
-          </p>
-        </div>
-
-        <div className="project-detail-actions">
-          {linkItems.length > 0 ? (
-            linkItems.map((item, index) => (
-              <a
-                key={item.key}
-                className={`project-detail-button ${index === 0 ? 'primary' : ''}`}
-                href={item.href}
-                target={isExternalUrl(item.href) ? '_blank' : undefined}
-                rel={isExternalUrl(item.href) ? 'noreferrer' : undefined}
-              >
-                {item.label}
-              </a>
-            ))
-          ) : (
-            <Link className="project-detail-button primary" to="/projects">
-              {locale === 'zh-CN' ? '返回项目目录' : 'Back to Projects'}
-            </Link>
-          )}
-        </div>
-      </section>
-
-      <section className="project-detail-panel">
         <div className="project-detail-section-head">
-          <p className="project-detail-kicker">{locale === 'zh-CN' ? '概览' : 'Overview'}</p>
-          <h2>{locale === 'zh-CN' ? '这个项目是什么' : 'What this project is'}</h2>
+          <h2>{locale === 'zh-CN' ? '\u9879\u76ee\u8be6\u60c5' : 'Project Detail'}</h2>
         </div>
-        <p className="project-detail-prose">
-          {project.overview || (locale === 'zh-CN' ? '后端合同尚未补充概览。' : 'Overview is pending from the backend contract.')}
-        </p>
+
+        <div className="project-detail-hero-top">
+          <div className="project-detail-hero-copy">
+            <p className="project-detail-summary">
+              {project.summary || (locale === 'zh-CN' ? '\u6682\u672a\u63d0\u4f9b\u6458\u8981\u3002' : 'No summary provided.')}
+            </p>
+          </div>
+
+          <div className="project-detail-hero-title">
+            <h1>{project.name || project.slug || (locale === 'zh-CN' ? '\u672a\u547d\u540d\u9879\u76ee' : 'Untitled Project')}</h1>
+          </div>
+        </div>
+
         {project.status_note ? <p className="project-detail-status-note">{project.status_note}</p> : null}
-      </section>
 
-      <section className="project-detail-panel">
-        <div className="project-detail-section-head">
-          <p className="project-detail-kicker">{locale === 'zh-CN' ? '核心字段' : 'Core fields'}</p>
-          <h2>{locale === 'zh-CN' ? '共享目录详情' : 'Shared catalog detail'}</h2>
-        </div>
         <div className="project-detail-meta-grid">
           {metaItems.map((item) => (
             <article className="project-detail-meta-card" key={item.label}>
@@ -669,64 +511,58 @@ function ProjectDetailContent({
 
       <section className="project-detail-panel">
         <div className="project-detail-section-head">
-          <p className="project-detail-kicker">{locale === 'zh-CN' ? '亮点' : 'Highlights'}</p>
-          <h2>{locale === 'zh-CN' ? '当前要点' : 'Current takeaways'}</h2>
-        </div>
-        {project.highlights.length > 0 ? (
-          <ul className="project-detail-highlights">
-            {project.highlights.map((item, index) => (
-              <li key={`${item}-${index}`}>{item}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="project-detail-prose">
-            {locale === 'zh-CN' ? '这个项目暂时还没有亮点摘要。' : 'Highlights are not available yet for this project.'}
-          </p>
-        )}
-      </section>
-
-      <section className="project-detail-panel">
-        <div className="project-detail-section-head">
-          <p className="project-detail-kicker">{locale === 'zh-CN' ? '仓库绑定' : 'Repositories'}</p>
-          <h2>{locale === 'zh-CN' ? '关联仓库' : 'Linked repositories'}</h2>
+          <h2>{locale === 'zh-CN' ? '\u4ed3\u5e93' : 'Repositories'}</h2>
         </div>
         {repositoryItems.length > 0 ? (
-          <ul className="project-detail-repository-list">
+          <ul className="project-detail-repository-grid">
             {repositoryItems.map((repository) => (
-              <li key={repository.key}>
-                {repository.href ? (
-                  <a href={repository.href} target="_blank" rel="noreferrer">
-                    {repository.name}
-                  </a>
-                ) : (
-                  <span>{repository.name}</span>
-                )}
-                <span className="project-detail-repository-meta">
-                  {repository.isPrimary
-                    ? locale === 'zh-CN'
-                      ? '主仓库'
-                      : 'Primary'
-                    : locale === 'zh-CN'
-                      ? '附属仓库'
-                      : 'Secondary'}
-                  {repository.visibility
-                    ? ` · ${translateVisibility(repository.visibility, locale)}`
-                    : ''}
-                </span>
+              <li key={repository.key} className="project-detail-repository-grid__item">
+                <article className="project-detail-repository-card" data-visibility={repository.visibility || 'unknown'}>
+                  <div className="project-detail-repository-card__main">
+                    <div className="project-detail-repository-card__header">
+                      <div className="project-detail-repository-card__heading">
+                        <p className="project-detail-repository-card__name">{repository.name}</p>
+                        {repository.fullName ? <p className="project-detail-repository-card__full-name">{repository.fullName}</p> : null}
+                      </div>
+                      <span className="project-detail-repository-card__role">
+                        {repository.isPrimary
+                          ? locale === 'zh-CN'
+                            ? '\u4e3b\u4ed3\u5e93'
+                            : 'Primary'
+                          : locale === 'zh-CN'
+                            ? '\u5173\u8054\u4ed3\u5e93'
+                            : 'Linked'}
+                      </span>
+                    </div>
+
+                    <div className="project-detail-chip-row project-detail-repository-card__chips">
+                      <span className="project-detail-chip">
+                        {translateVisibility(repository.visibility || 'public', locale)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="project-detail-repository-card__actions">
+                    {repository.canOpen ? (
+                      <a className="project-detail-button" href={repository.href || undefined} target="_blank" rel="noreferrer">
+                        {locale === 'zh-CN' ? '\u6253\u5f00 Repo' : 'Open Repo'}
+                      </a>
+                    ) : null}
+                  </div>
+                </article>
               </li>
             ))}
           </ul>
         ) : (
           <p className="project-detail-prose">
-            {locale === 'zh-CN' ? '当前未绑定仓库，项目仍可正常展示。' : 'No repositories are linked yet, and the project remains readable.'}
+            {locale === 'zh-CN' ? '\u5f53\u524d\u672a\u7ed1\u5b9a\u4ed3\u5e93\uff0c\u9879\u76ee\u4ecd\u53ef\u6b63\u5e38\u5c55\u793a\u3002' : 'No repositories are linked yet, and the project remains readable.'}
           </p>
         )}
       </section>
 
       <section className="project-detail-panel">
         <div className="project-detail-section-head">
-          <p className="project-detail-kicker">{locale === 'zh-CN' ? '技术栈与标签' : 'Stack & tags'}</p>
-          <h2>{locale === 'zh-CN' ? '技术身份' : 'Technical identity'}</h2>
+          <h2>{locale === 'zh-CN' ? '\u6280\u672f\u6808' : 'Technology stack'}</h2>
         </div>
         <div className="project-detail-chip-row">
           {project.stack.length > 0 ? (
@@ -736,31 +572,10 @@ function ProjectDetailContent({
               </span>
             ))
           ) : (
-            <span className="project-detail-chip muted">{locale === 'zh-CN' ? '技术栈待补充' : 'Stack pending'}</span>
+            <span className="project-detail-chip muted">{locale === 'zh-CN' ? '\u6280\u672f\u6808\u5f85\u8865\u5145' : 'Stack pending'}</span>
           )}
         </div>
-        <div className="project-detail-chip-row">
-          {project.tags.length > 0 ? (
-            project.tags.map((tag) => (
-              <span className="project-detail-chip" key={`tag-${tag}`}>
-                {tag}
-              </span>
-            ))
-          ) : (
-            <span className="project-detail-chip muted">{locale === 'zh-CN' ? '标签待补充' : 'Tags pending'}</span>
-          )}
-        </div>
-        <dl className="project-detail-source-list">
-          {sourceItems.map((item) => (
-            <div key={item.label}>
-              <dt>{item.label}</dt>
-              <dd>{item.value}</dd>
-            </div>
-          ))}
-        </dl>
       </section>
     </div>
   )
 }
-
-

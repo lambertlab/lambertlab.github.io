@@ -17,7 +17,25 @@ export function buildProjectDetailHead(locale: UiLocale = 'zh-CN') {
     links: [
       {
         rel: 'stylesheet' as const,
+        href: '/css/page-project-shell.css',
+      },
+      {
+        rel: 'preload' as const,
         href: '/css/page-project-detail.css',
+        as: 'style',
+      },
+      {
+        rel: 'preload' as const,
+        href: '/css/page-projects.css',
+        as: 'style',
+      },
+      {
+        rel: 'stylesheet' as const,
+        href: '/css/page-project-detail.css',
+      },
+      {
+        rel: 'stylesheet' as const,
+        href: '/css/theme-system.css',
       },
     ],
   }

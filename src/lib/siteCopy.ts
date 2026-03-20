@@ -34,10 +34,6 @@ export const errorBoundaryMetadata: LocalizedMetadata = {
 }
 
 export const shellCopy = {
-  skipLink: {
-    'zh-CN': '跳到主要内容',
-    en: 'Skip to main content',
-  },
   nav: {
     projects: {
       'zh-CN': '项目',

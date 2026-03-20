@@ -28,7 +28,6 @@ export interface ProjectDetailRecord {
   canonical_path: string
   name: string
   summary: string
-  headline: string
   overview: string
   stage: string
   source_type: string
@@ -522,7 +521,6 @@ export function normalizeProjectDetail(payload: Partial<ProjectDetailRecord> & R
     canonical_path: normalizeProjectCanonicalPath(slug, payload.canonical_path),
     name: toText(payload.name),
     summary: toText(payload.summary),
-    headline: toText(payload.headline),
     overview: toText(payload.overview),
     stage: toText(payload.stage),
     source_type: toText(payload.source_type),

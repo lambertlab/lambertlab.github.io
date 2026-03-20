@@ -1,4 +1,4 @@
-﻿export type AdminProjectErrorCode =
+export type AdminProjectErrorCode =
   | 'unauthorized'
   | 'validation_failed'
   | 'project_not_found'
@@ -17,11 +17,24 @@
   | 'network_failed'
   | 'unknown'
 
+export interface AdminProjectLinkedRepositoryRecord {
+  id: string
+  repo_full_name: string
+  repo_name: string
+  repo_url: string
+  visibility: string | null
+  is_primary: boolean
+  source: string
+  description: string
+  language: string
+  stargazers_count: number
+  forks_count: number
+}
+
 export interface AdminProjectRecord {
   id: string
   slug: string
   name: string
-  headline: string
   summary: string
   overview: string
   status_note: string | null
@@ -31,7 +44,7 @@ export interface AdminProjectRecord {
   is_featured: boolean
   featured_rank: number | null
   sort_order: number | null
-  accent: string | null
+  repositories: AdminProjectLinkedRepositoryRecord[]
   synced_at: string | null
   updated_at: string | null
 }
@@ -90,9 +103,7 @@ export interface AdminProjectsQuery {
 }
 
 export interface AdminProjectUpdateInput {
-  slug?: string
   name?: string
-  headline?: string
   summary?: string
   overview?: string
   status_note?: string | null
@@ -102,7 +113,6 @@ export interface AdminProjectUpdateInput {
   is_featured?: boolean
   featured_rank?: number | null
   sort_order?: number | null
-  accent?: string | null
 }
 
 export interface CreateAdminProjectInput {
@@ -112,12 +122,17 @@ export interface CreateAdminProjectInput {
   project_type: string
   visibility: string
   sort_order: number
-  headline?: string
   overview?: string
   status_note?: string | null
   is_featured?: boolean
   featured_rank?: number | null
-  accent?: string | null
+}
+
+export interface AdminProjectRepositoryBindingInput {
+  repo_full_name: string
+  repo_url: string
+  is_primary?: boolean
+  source?: string
 }
 
 export interface AdminOverviewFailure {
@@ -369,6 +384,33 @@ function normalizeProjectId(project: Record<string, unknown>): string {
   return ''
 }
 
+function normalizeProjectLinkedRepositoryRecord(value: unknown): AdminProjectLinkedRepositoryRecord | null {
+  const payload = toRecord(value)
+  if (!payload) {
+    return null
+  }
+
+  const id = toIdentifierText(payload.id) || toIdentifierText(payload.project_repository_id)
+  const repoFullName = toText(payload.repo_full_name) || toText(payload.full_name)
+  if (!id || !repoFullName) {
+    return null
+  }
+
+  return {
+    id,
+    repo_full_name: repoFullName,
+    repo_name: toText(payload.repo_name) || repoFullName.split('/').slice(1).join('/') || repoFullName,
+    repo_url: toText(payload.repo_url) || toText(payload.url) || toText(payload.html_url),
+    visibility: toNullableText(payload.visibility),
+    is_primary: toBoolean(payload.is_primary ?? payload.primary),
+    source: toText(payload.source) || 'manual',
+    description: toText(payload.description),
+    language: toText(payload.language),
+    stargazers_count: toNonNegativeInteger(payload.stargazers_count, 0),
+    forks_count: toNonNegativeInteger(payload.forks_count, 0),
+  }
+}
+
 function normalizeProjectRecord(value: unknown): AdminProjectRecord | null {
   const project = toRecord(value)
   if (!project) {
@@ -384,7 +426,6 @@ function normalizeProjectRecord(value: unknown): AdminProjectRecord | null {
     id,
     slug: toText(project.slug),
     name: toText(project.name),
-    headline: toText(project.headline),
     summary: toText(project.summary),
     overview: toText(project.overview),
     status_note: toNullableText(project.status_note),
@@ -392,9 +433,11 @@ function normalizeProjectRecord(value: unknown): AdminProjectRecord | null {
     project_type: toText(project.project_type),
     visibility: toText(project.visibility),
     is_featured: toBoolean(project.is_featured),
-    featured_rank: toFiniteNumber(project.featured_rank),
-    sort_order: toFiniteNumber(project.sort_order),
-    accent: toNullableText(project.accent),
+    featured_rank: toFiniteNumber(project.featured_rank ?? project.featuredRank),
+    sort_order: toFiniteNumber(project.sort_order ?? project.sortOrder),
+    repositories: toArray(project.repositories)
+      .map((entry) => normalizeProjectLinkedRepositoryRecord(entry))
+      .filter((entry): entry is AdminProjectLinkedRepositoryRecord => Boolean(entry)),
     synced_at: toNullableText(project.synced_at),
     updated_at: toNullableText(project.updated_at),
   }
@@ -1060,9 +1103,7 @@ function cleanUpdatePayload(input: AdminProjectUpdateInput): Record<string, unkn
   const payload: Record<string, unknown> = {}
 
   const fieldNames: Array<keyof AdminProjectUpdateInput> = [
-    'slug',
     'name',
-    'headline',
     'summary',
     'overview',
     'status_note',
@@ -1072,7 +1113,6 @@ function cleanUpdatePayload(input: AdminProjectUpdateInput): Record<string, unkn
     'is_featured',
     'featured_rank',
     'sort_order',
-    'accent',
   ]
 
   for (const field of fieldNames) {
@@ -1096,12 +1136,10 @@ function cleanCreatePayload(input: CreateAdminProjectInput): Record<string, unkn
     sort_order: input.sort_order,
   }
 
-  if (input.headline !== undefined) payload.headline = input.headline
   if (input.overview !== undefined) payload.overview = input.overview
   if (input.status_note !== undefined) payload.status_note = input.status_note
   if (input.is_featured !== undefined) payload.is_featured = input.is_featured
   if (input.featured_rank !== undefined) payload.featured_rank = input.featured_rank
-  if (input.accent !== undefined) payload.accent = input.accent
 
   return payload
 }
@@ -1179,6 +1217,34 @@ export async function updateAdminProjectById(
     token: toText(token),
     method: 'PATCH',
     body: cleanUpdatePayload(input),
+    signal,
+  })
+
+  return normalizeProjectDetail(payload)
+}
+
+export async function replaceAdminProjectRepositories(
+  token: string,
+  projectId: string,
+  repositories: AdminProjectRepositoryBindingInput[],
+  signal?: AbortSignal,
+): Promise<AdminProjectRecord> {
+  const normalizedProjectId = toIdentifierText(projectId)
+  if (!normalizedProjectId) {
+    throw new AdminProjectsApiError('Project id is required.')
+  }
+
+  const payload = await requestJson<unknown>(`/admin/projects/${encodeURIComponent(normalizedProjectId)}/repositories`, {
+    token: toText(token),
+    method: 'PUT',
+    body: {
+      repositories: repositories.map((repository) => ({
+        repo_full_name: toText(repository.repo_full_name),
+        repo_url: toText(repository.repo_url),
+        is_primary: repository.is_primary === true,
+        source: toText(repository.source) || 'manual',
+      })),
+    },
     signal,
   })
 

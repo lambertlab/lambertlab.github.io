@@ -297,6 +297,18 @@ body {
 .ll-public-shell {
   min-height: 100vh;
   padding-bottom: 76px;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(37, 99, 235, 0.2), transparent 34%),
+    radial-gradient(circle at 86% 10%, rgba(16, 185, 129, 0.1), transparent 28%),
+    linear-gradient(150deg, #eef3ff, #f9fbff);
+  background-attachment: fixed;
+}
+
+:root[data-resolved-theme="dark"] .ll-public-shell {
+  background:
+    radial-gradient(circle at 18% -8%, rgba(111, 40, 24, 0.22), transparent 34%),
+    radial-gradient(circle at 82% -12%, rgba(163, 58, 31, 0.26), transparent 42%),
+    linear-gradient(160deg, #120907 0%, #170b08 56%, #0f0706 100%);
 }
 
 .ll-site-footer {
