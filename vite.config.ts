@@ -7,7 +7,7 @@ import { prerenderRoutePaths } from './scripts/page-registry.mjs'
 
 export default defineConfig({
   server: {
-    port: 3000,
+    port: 8821,
   },
   plugins: [
     tsConfigPaths({
