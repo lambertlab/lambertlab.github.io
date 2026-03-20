@@ -1,7 +1,7 @@
 # LambertLab 前端仓库
 
 ## 快速开始
-```bash
+```powershell
 npm install
 npm run dev
 ```
@@ -64,7 +64,7 @@ npm run dev
 ## AI 工作流入口
 - 先读工作区 `AGENTS.md`
 - 再读本仓 `AGENTS.md`
-- 非 trivial 任务使用 `control/live/<task-slug>/MISSION.md`
+- 非 trivial 任务使用 `control/live/active/<task-slug>/MISSION.md`
 - 只有在需要查看详细附录时，再读 `control/README.md` 或 `control/REFERENCE.md`
 - 默认不要读取归档材料或无关参考文档
 
