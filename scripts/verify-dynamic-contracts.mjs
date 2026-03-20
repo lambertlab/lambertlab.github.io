@@ -125,7 +125,6 @@ function createMockProjects() {
       canonical_path: '/projects/personal-toolbox/',
       name: 'Personal Toolbox',
       summary: 'A compact personal tooling workspace for recurring execution loops.',
-      headline: 'A stable toolbox surface for recurring work and utilities.',
       overview: 'This project consolidates helpers, repeatable commands, and lightweight automation.',
       stage: 'active',
       source_type: 'github',
@@ -168,7 +167,6 @@ function createMockProjects() {
       canonical_path: '/projects/ai-message-value-triage/',
       name: 'AI Message Value Triage',
       summary: 'Evaluate message quality with reusable triage heuristics.',
-      headline: 'Message analysis with lightweight operational scoring.',
       overview: 'The project explores message review workflows and repeatable signal extraction.',
       stage: 'research',
       source_type: 'github',
@@ -374,7 +372,6 @@ async function installRoutes(context, state) {
           project: {
             ...project,
             summary: '',
-            headline: '',
             overview: '',
             status_note: null,
             highlights: [],
