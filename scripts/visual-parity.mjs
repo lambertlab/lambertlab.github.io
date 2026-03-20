@@ -34,6 +34,7 @@ const reportRoot = path.resolve(__dirname, '..', 'qa', 'visual-parity')
 const runId = new Date().toISOString().replace(/[:.]/g, '-')
 const runDir = path.join(reportRoot, runId)
 const latestDir = path.join(reportRoot, 'latest')
+const runHistoryLimit = 2
 const expectedDiffCategories = new Set(['intentional-change', 'suspected-regression'])
 
 const shellKeyAreas = [
@@ -173,6 +174,20 @@ function writeJson(filePath, payload) {
 function writeText(filePath, payload) {
   ensureDir(path.dirname(filePath))
   fs.writeFileSync(filePath, payload, 'utf8')
+}
+
+function pruneHistoricalRuns(rootDir, keepCount) {
+  if (!fs.existsSync(rootDir)) {
+    return
+  }
+  const historicalRuns = fs.readdirSync(rootDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== 'latest')
+    .map((entry) => entry.name)
+    .sort((left, right) => right.localeCompare(left))
+
+  for (const staleRun of historicalRuns.slice(keepCount)) {
+    fs.rmSync(path.join(rootDir, staleRun), { recursive: true, force: true })
+  }
 }
 
 function copyDirectory(sourceDir, targetDir) {
@@ -1050,6 +1065,7 @@ async function main() {
       fs.rmSync(latestDir, { recursive: true, force: true })
     }
     copyDirectory(runDir, latestDir)
+    pruneHistoricalRuns(reportRoot, runHistoryLimit)
 
     if (failedCases > 0 || !headerStability.pass) {
       console.error('[visual-parity] failed')
@@ -1070,4 +1086,3 @@ main().catch((error) => {
   console.error(error)
   process.exitCode = 1
 })
-
