@@ -98,21 +98,6 @@ export function normalizeProjectHighlightArray(value: unknown): string[] {
   return normalizeProjectTextArray(value, ['text', 'title', 'content', 'summary', 'name'])
 }
 
-function normalizeLinkType(value: unknown): string | null {
-  const normalized = toProjectText(value).toLowerCase().replace(/[_\s]+/g, '-')
-  return normalized || null
-}
-
-function buildDefaultLinkLabel(type: string | null): string {
-  if (!type) return 'Link'
-  if (type === 'primary' || type === 'homepage' || type === 'main' || type === 'home') return 'Primary'
-  if (type === 'repo' || type === 'repository' || type === 'github') return 'Repository'
-  if (type === 'demo' || type === 'preview') return 'Demo'
-  if (type === 'docs' || type === 'documentation') return 'Docs'
-  if (type === 'notes' || type === 'note') return 'Notes'
-  return type
-}
-
 export function normalizeProjectRepositories(value: unknown): ProjectRepository[] {
   const payloadRecord = toProjectRecord(value)
   const rawItems: unknown[] = []
@@ -172,140 +157,56 @@ export function normalizeProjectRepositories(value: unknown): ProjectRepository[
     })
   })
 
-
   return repositories
+}
+const PROJECT_LINK_KEYS = ['primary', 'repo', 'demo', 'docs', 'notes'] as const
+
+type ProjectLinkKey = (typeof PROJECT_LINK_KEYS)[number]
+
+const PROJECT_LINK_LABELS: Record<ProjectLinkKey, string> = {
+  primary: 'Primary',
+  repo: 'Repository',
+  demo: 'Demo',
+  docs: 'Docs',
+  notes: 'Notes',
+}
+
+function buildProjectLinkItem(type: ProjectLinkKey, href: string): ProjectLinkItem {
+  return {
+    key: type,
+    label: PROJECT_LINK_LABELS[type],
+    href,
+    type,
+  }
 }
 
 export function normalizeProjectLinkItems(value: unknown): ProjectLinkItem[] {
-  const linksRecord = toProjectRecord(value)
-  const rawItems: unknown[] = []
+  const linksRecord = toProjectRecord(value) ?? {}
 
-  if (Array.isArray(value)) {
-    rawItems.push(...value)
-  }
-
-  if (linksRecord) {
-    if (Array.isArray(linksRecord.items)) {
-      rawItems.push(...linksRecord.items)
-    }
-
-    if (Array.isArray(linksRecord.links)) {
-      rawItems.push(...linksRecord.links)
-    }
-
-    const legacyKeys: Array<{ type: string; key: keyof ProjectLinks }> = [
-      { type: 'primary', key: 'primary' },
-      { type: 'repo', key: 'repo' },
-      { type: 'demo', key: 'demo' },
-      { type: 'docs', key: 'docs' },
-      { type: 'notes', key: 'notes' },
-    ]
-
-    legacyKeys.forEach(({ type, key }) => {
-      const href = normalizeNullableProjectText(linksRecord[key])
-      if (!href) {
-        return
-      }
-
-      rawItems.push({ type, href })
-    })
-  }
-
-  const dedupeKeys = new Set<string>()
-  const normalizedItems: ProjectLinkItem[] = []
-
-  rawItems.forEach((entry, index) => {
-    if (typeof entry === 'string') {
-      const href = normalizeNullableProjectText(entry)
-      if (!href) {
-        return
-      }
-
-      const dedupeKey = href.toLowerCase()
-      if (dedupeKeys.has(dedupeKey)) {
-        return
-      }
-
-      dedupeKeys.add(dedupeKey)
-      normalizedItems.push({
-        key: `link-${index}`,
-        label: 'Link',
-        href,
-        type: null,
-      })
-      return
-    }
-
-    const record = toProjectRecord(entry)
-    if (!record) {
-      return
-    }
-
-    const href = normalizeNullableProjectText(record.href ?? record.url ?? record.link ?? record.value)
+  return PROJECT_LINK_KEYS.reduce<ProjectLinkItem[]>((items, key) => {
+    const href = normalizeNullableProjectText(linksRecord[key])
     if (!href) {
-      return
+      return items
     }
 
-    const dedupeKey = href.toLowerCase()
-    if (dedupeKeys.has(dedupeKey)) {
-      return
-    }
-
-    dedupeKeys.add(dedupeKey)
-    const type = normalizeLinkType(record.type)
-    const label = toProjectText(record.label ?? record.title ?? record.name) || buildDefaultLinkLabel(type)
-
-    normalizedItems.push({
-      key: `${type || 'link'}-${index}`,
-      label,
-      href,
-      type,
-    })
-  })
-
-  return normalizedItems
-}
-
-function pickLinkByType(items: ProjectLinkItem[], types: string[]): string | null {
-  const acceptedTypes = new Set(types)
-  const matched = items.find((item) => item.type && acceptedTypes.has(item.type))
-  return matched?.href ?? null
+    items.push(buildProjectLinkItem(key, href))
+    return items
+  }, [])
 }
 
 export function normalizeProjectLinks(value: unknown): { links: ProjectLinks; items: ProjectLinkItem[] } {
   const linksRecord = toProjectRecord(value) ?? {}
-  const items = normalizeProjectLinkItems(value)
-
-  let primary = normalizeNullableProjectText(linksRecord.primary)
-  let repo = normalizeNullableProjectText(linksRecord.repo)
-  let demo = normalizeNullableProjectText(linksRecord.demo)
-  let docs = normalizeNullableProjectText(linksRecord.docs)
-  let notes = normalizeNullableProjectText(linksRecord.notes)
-
-  if (!primary) {
-    primary = pickLinkByType(items, ['primary', 'homepage', 'home', 'main', 'default'])
+  const links: ProjectLinks = {
+    primary: normalizeNullableProjectText(linksRecord.primary),
+    repo: normalizeNullableProjectText(linksRecord.repo),
+    demo: normalizeNullableProjectText(linksRecord.demo),
+    docs: normalizeNullableProjectText(linksRecord.docs),
+    notes: normalizeNullableProjectText(linksRecord.notes),
   }
-
-  if (!repo) {
-    repo = pickLinkByType(items, ['repo', 'repository', 'github'])
-  }
-
-  if (!demo) {
-    demo = pickLinkByType(items, ['demo', 'preview'])
-  }
-
-  if (!docs) {
-    docs = pickLinkByType(items, ['docs', 'documentation'])
-  }
-
-  if (!notes) {
-    notes = pickLinkByType(items, ['notes', 'note'])
-  }
-
 
   return {
-    links: { primary, repo, demo, docs, notes },
-    items,
+    links,
+    items: normalizeProjectLinkItems(linksRecord),
   }
 }
 
