@@ -55,9 +55,7 @@ function headerTitle(mode: AdminSidebarMode, locale: 'zh-CN' | 'en'): string {
   if (mode === 'overview') return locale === 'zh-CN' ? '系统概览' : 'Systems Overview'
   if (mode === 'projects') return locale === 'zh-CN' ? '项目管理' : 'Projects'
   if (mode === 'repositories') return locale === 'zh-CN' ? '仓库管理' : 'Repositories'
-  if (mode === 'sync') return locale === 'zh-CN' ? '同步任务' : 'Sync Jobs'
   if (mode === 'logs') return locale === 'zh-CN' ? '日志' : 'Logs'
-  if (mode === 'status') return locale === 'zh-CN' ? '依赖状态' : 'Dependency Status'
   return locale === 'zh-CN' ? '首页 Life 面板' : 'Home Life Panel'
 }
 

@@ -270,6 +270,16 @@ export interface AdminStatusSummary {
   github_rate_remaining: number | null
 }
 
+export type AdminStatusProbeTarget = 'backend' | 'db' | 'github'
+
+export interface AdminStatusProbeResult {
+  target: AdminStatusProbeTarget | 'all'
+  backend_health: string | null
+  db_health: string | null
+  github_health: string | null
+  github_rate_remaining: number | null
+}
+
 export interface AdminHomeLifeCardRecord {
   id: string
   panel: string
@@ -908,6 +918,21 @@ function normalizeAdminStatusSummary(value: unknown): AdminStatusSummary {
     db_health: toText(payload?.db_health) || 'unknown',
     github_health: toText(payload?.github_health) || 'unknown',
     github_rate_remaining: toFiniteNumber(payload?.github_rate_remaining),
+  }
+}
+
+function normalizeAdminStatusProbeResult(
+  value: unknown,
+  target: AdminStatusProbeTarget,
+): AdminStatusProbeResult {
+  const payload = toRecord(value)
+
+  return {
+    target,
+    backend_health: target === 'backend' ? toNullableText(payload?.backend_health) || 'unknown' : null,
+    db_health: target === 'db' ? toNullableText(payload?.db_health) || 'unknown' : null,
+    github_health: target === 'github' ? toNullableText(payload?.github_health) || 'unknown' : null,
+    github_rate_remaining: target === 'github' ? toFiniteNumber(payload?.github_rate_remaining) : null,
   }
 }
 
@@ -1621,6 +1646,23 @@ export async function fetchAdminStatus(token: string, signal?: AbortSignal): Pro
   })
 
   return normalizeAdminStatusSummary(payload)
+}
+
+export async function fetchAdminStatusProbe(
+  token: string,
+  target: AdminStatusProbeTarget,
+  signal?: AbortSignal,
+): Promise<AdminStatusProbeResult> {
+  const payload = await requestJson<unknown>('/admin/status', {
+    token: toText(token),
+    method: 'GET',
+    query: {
+      target,
+    },
+    signal,
+  })
+
+  return normalizeAdminStatusProbeResult(payload, target)
 }
 
 export async function fetchAdminHomeLifePanel(

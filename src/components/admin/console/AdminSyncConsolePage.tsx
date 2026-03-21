@@ -1,6 +1,5 @@
 import * as React from 'react'
 import {
-  createAdminSyncJob,
   fetchAdminSyncJobById,
   fetchAdminSyncJobs,
   retryAdminSyncJob,
@@ -9,8 +8,7 @@ import {
   type AdminSyncResultSummary,
 } from '~/lib/api/adminConsoleApi'
 import { useUiLocale } from '~/lib/uiLocale'
-import { AdminConsoleShell, useAdminConsoleAuth } from './AdminConsoleShell'
-import type { AdminProjectSyncSearchState } from '../projects/adminProjectSyncSearch'
+import { useAdminConsoleAuth } from './AdminConsoleShell'
 import { formatAdminTime, mapAdminError } from './adminConsoleUtils'
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
@@ -41,48 +39,6 @@ function summarizeSyncResult(
   ].join(' | ')
 }
 
-function describeCreatedGithubSyncJobOutcome(
-  job: Pick<AdminSyncJobRecord, 'job_id' | 'state' | 'error_message' | 'result'>,
-  t: (zh: string, en: string) => string,
-): { status: 'success' | 'error'; message: string } {
-  const summaryText = summarizeSyncResult(job.result, t)
-  if (job.state === 'failed') {
-    const reason = job.error_message || t('同步失败。', 'Sync failed.')
-    return {
-      status: 'error',
-      message: summaryText
-        ? t(`任务 #${job.job_id} 失败：${reason}。${summaryText}`, `Job #${job.job_id} failed: ${reason}. ${summaryText}`)
-        : t(`任务 #${job.job_id} 失败：${reason}`, `Job #${job.job_id} failed: ${reason}`),
-    }
-  }
-  return {
-    status: 'success',
-    message: summaryText
-      ? t(`任务 #${job.job_id} 已创建。${summaryText}`, `Job #${job.job_id} created. ${summaryText}`)
-      : t(`任务 #${job.job_id} 已创建。`, `Job #${job.job_id} created.`),
-  }
-}
-
-function describeRecoveredGithubSyncJobOutcome(
-  job: Pick<AdminSyncJobRecord, 'job_id' | 'state' | 'error_message' | 'result'>,
-  t: (zh: string, en: string) => string,
-): { status: 'success' | 'error'; message: string } {
-  const summaryText = summarizeSyncResult(job.result, t)
-  if (job.state === 'failed') {
-    const reason = job.error_message || t('同步失败。', 'Sync failed.')
-    return {
-      status: 'error',
-      message: summaryText
-        ? t(`请求超时，但任务 #${job.job_id} 已失败：${reason}。${summaryText}`, `Request timed out, but job #${job.job_id} failed: ${reason}. ${summaryText}`)
-        : t(`请求超时，但任务 #${job.job_id} 已失败：${reason}`, `Request timed out, but job #${job.job_id} failed: ${reason}`),
-    }
-  }
-  return {
-    status: 'success',
-    message: t(`请求超时，但任务 #${job.job_id} 已受理，请到 Logs 查看详情。`, `Request timed out, but job #${job.job_id} was accepted. Check Logs for details.`),
-  }
-}
-
 function describeSyncJobTarget(
   job: Pick<AdminSyncJobRecord, 'mode' | 'project_id' | 'github_username'>,
   t: (zh: string, en: string) => string,
@@ -108,114 +64,8 @@ function describeSyncJobFailureReason(
   return job.error_message || t('同步失败。', 'Sync failed.')
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    globalThis.setTimeout(resolve, ms)
-  })
-}
-
-function isRecentJob(createdAt: string | null, now: number, windowMs: number): boolean {
-  if (!createdAt) return true
-  const parsed = Date.parse(createdAt)
-  if (Number.isNaN(parsed)) return true
-  return now - parsed <= windowMs
-}
-
 function resolveJobDisplayTime(job: Pick<AdminSyncJobRecord, 'finished_at' | 'created_at'>): string | null {
   return job.finished_at ?? job.created_at
-}
-
-function ImportGithubRepoContent() {
-  const { token, invalidate } = useAdminConsoleAuth()
-  const { locale } = useUiLocale()
-  const t = React.useCallback((zh: string, en: string) => (locale === 'zh-CN' ? zh : en), [locale])
-  const [createState, setCreateState] = React.useState<{ status: 'idle' | 'running' | 'success' | 'error'; message: string }>({ status: 'idle', message: '' })
-
-  const createJob = React.useCallback(async () => {
-    setCreateState({ status: 'running', message: t('导入中...', 'Importing...') })
-
-    try {
-      const result = await createAdminSyncJob(token, {
-        mode: 'github_user',
-        github_username: 'lambertlab',
-      })
-
-      setCreateState(describeCreatedGithubSyncJobOutcome(result, t))
-    } catch (error) {
-      const mapped = mapAdminError(error)
-      if (mapped.code === 'unauthorized') {
-        invalidate(mapped.message)
-        return
-      }
-
-      if (mapped.code !== 'request_timeout') {
-        setCreateState({ status: 'error', message: mapped.message })
-        return
-      }
-
-      setCreateState({ status: 'running', message: t('请求超时，正在检查最近导入任务...', 'Request timed out. Checking recent import jobs...') })
-
-      const now = Date.now()
-      let recovered: AdminSyncJobRecord | null = null
-
-      for (let attempt = 0; attempt < 4; attempt += 1) {
-        try {
-          const jobsResult = await fetchAdminSyncJobs(token, { page: 1, page_size: JOBS_PAGE_SIZE })
-          recovered =
-            jobsResult.jobs.find((job) => {
-              if (job.mode !== 'github_user') return false
-              if ((job.github_username || '').trim().toLowerCase() !== 'lambertlab') return false
-              return isRecentJob(job.created_at, now, 20 * 60 * 1000)
-            }) ?? null
-
-          if (recovered) {
-            break
-          }
-        } catch (recoverError) {
-          const recoverMapped = mapAdminError(recoverError)
-          if (recoverMapped.code === 'unauthorized') {
-            invalidate(recoverMapped.message)
-            return
-          }
-        }
-
-        await sleep(800 + attempt * 500)
-      }
-
-      if (!recovered) {
-        setCreateState({
-          status: 'error',
-          message: t('请求超时，暂未发现匹配任务，请稍后到 Logs 查看。', 'Request timed out. No matching job found yet, please check Logs later.'),
-        })
-        return
-      }
-
-      setCreateState(describeRecoveredGithubSyncJobOutcome(recovered, t))
-    }
-  }, [invalidate, t, token])
-
-  return (
-    <section className="admin-projects-workspace admin-projects-workspace--catalog admin-sync-import-shell">
-      <div className="admin-sync-import-shell__inner">
-        <button
-          className="admin-primary-button admin-sync-import-shell__button"
-          type="button"
-          disabled={createState.status === 'running'}
-          aria-busy={createState.status === 'running'}
-          onClick={() => void createJob()}
-        >
-          {t('\u5bfc\u5165 Github Repo', 'Import Github Repo')}
-        </button>
-        {createState.message ? (
-          <div className="admin-surface-feedback">
-            <p className="admin-feedback" data-tone={createState.status === 'error' ? 'error' : createState.status === 'success' ? 'success' : 'info'}>
-              {createState.message}
-            </p>
-          </div>
-        ) : null}
-      </div>
-    </section>
-  )
 }
 
 export function AdminSyncJobLogsPanels() {
@@ -457,20 +307,5 @@ export function AdminSyncJobLogsPanels() {
         ) : null}
       </section>
     </section>
-  )
-}
-
-export function AdminSyncConsolePage({ searchState: _searchState }: { searchState?: AdminProjectSyncSearchState }) {
-  const { locale } = useUiLocale()
-  const t = React.useCallback((zh: string, en: string) => (locale === 'zh-CN' ? zh : en), [locale])
-
-  return (
-    <AdminConsoleShell
-      mode="sync"
-      title={t('Lambert Lab Admin · Sync Jobs | lambertlab', 'Lambert Lab Admin · Sync Jobs | lambertlab')}
-      description={t('Sync Jobs 页面用于触发同步并查看任务状态。', 'Sync Jobs is used to trigger synchronization and inspect job status.')}
-    >
-      <ImportGithubRepoContent />
-    </AdminConsoleShell>
   )
 }

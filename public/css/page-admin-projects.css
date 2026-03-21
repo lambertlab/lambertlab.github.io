@@ -2548,6 +2548,74 @@ body {
   color: #94a3b8;
 }
 
+.admin-overview-status-panel {
+  grid-column: 1 / -1;
+}
+
+.admin-overview-status-panel .admin-detail-meta {
+  margin-top: 6px;
+}
+
+.admin-overview-status-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.admin-status-observation-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 196px;
+}
+
+.admin-status-observation-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-status-observation-card__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-status-observation-card__action {
+  min-width: 84px;
+  flex-shrink: 0;
+}
+
+.admin-status-hint {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(71, 85, 105, 0.92);
+  background: #0f172a;
+  color: #93c5fd;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: help;
+}
+
+.admin-status-observation-card h3[data-tone='ok'] {
+  color: #e2f9ec;
+}
+
+.admin-status-observation-card h3[data-tone='warn'] {
+  color: #fde68a;
+}
+
+.admin-status-observation-card h3[data-tone='error'] {
+  color: #fecaca;
+}
+
 .admin-reference-body .admin-project-row__stage,
 .admin-reference-body .admin-projects-list .pill,
 .admin-reference-body .admin-health-badge {
@@ -2586,6 +2654,10 @@ body {
   .admin-reference-main {
     height: auto;
     min-height: 0;
+  }
+
+  .admin-overview-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2643,6 +2715,10 @@ body {
 
   .admin-repository-card__actions {
     justify-content: flex-start;
+  }
+
+  .admin-overview-status-grid {
+    grid-template-columns: 1fr;
   }
 }
 
