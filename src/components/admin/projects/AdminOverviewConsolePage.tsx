@@ -6,6 +6,16 @@ import { formatAdminTime, mapAdminError } from './adminConsoleUtils'
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
+function formatFailureSummary(summary: AdminOverviewSummary['latest_failures'][number]['summary']): string {
+  if (!summary) {
+    return ''
+  }
+  if (summary.project_id || summary.failed > 0) {
+    return ['同步=' + summary.synced, '失败=' + summary.failed].join(' | ')
+  }
+  return ['抓取=' + summary.fetched, '新增=' + summary.created, '更新=' + summary.updated, '下线=' + summary.deactivated].join(' | ')
+}
+
 function OverviewContent() {
   const { token, invalidate } = useAdminConsoleAuth()
   const [status, setStatus] = React.useState<LoadStatus>('idle')
@@ -83,6 +93,7 @@ function OverviewContent() {
               <li key={`${item.job_id}-${item.failed_at || ''}`}>
                 <p><strong>#{item.job_id}</strong>{item.project_name ? ` · ${item.project_name}` : ''}</p>
                 <p>{item.reason || '无错误详情'}</p>
+                {item.summary ? <p className="admin-detail-meta">{formatFailureSummary(item.summary)}</p> : null}
                 <p className="admin-detail-meta">{formatAdminTime(item.failed_at)}</p>
               </li>
             ))}

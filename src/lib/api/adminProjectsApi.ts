@@ -159,6 +159,7 @@ export interface AdminOverviewFailure {
   project_name: string
   reason: string
   failed_at: string | null
+  summary: AdminSyncResultSummary | null
 }
 
 export interface AdminOverviewSummary {
@@ -616,6 +617,7 @@ function normalizeOverviewFailure(value: unknown): AdminOverviewFailure | null {
     project_name: projectName,
     reason,
     failed_at: failedAt,
+    summary: normalizeSyncResultSummary(payload.summary ?? payload.error_details),
   }
 }
 
