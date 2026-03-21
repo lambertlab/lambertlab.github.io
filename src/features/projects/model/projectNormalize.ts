@@ -54,7 +54,7 @@ export function parseProjectTimeScore(value: unknown): number {
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
-export function normalizeProjectTextArray(value: unknown, objectKeys: string[] = []): string[] {
+export function normalizeProjectTextArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return []
   }
@@ -62,19 +62,7 @@ export function normalizeProjectTextArray(value: unknown, objectKeys: string[] =
   const uniqueTexts = new Set<string>()
 
   value.forEach((entry) => {
-    let text = toProjectText(entry)
-    if (!text) {
-      const record = toProjectRecord(entry)
-      if (record) {
-        for (const key of objectKeys) {
-          text = toProjectText(record[key])
-          if (text) {
-            break
-          }
-        }
-      }
-    }
-
+    const text = toProjectText(entry)
     if (!text) {
       return
     }
@@ -90,11 +78,11 @@ export function normalizeProjectStringArray(value: unknown): string[] {
 }
 
 export function normalizeProjectTagArray(value: unknown): string[] {
-  return normalizeProjectTextArray(value, ['name', 'label', 'tag', 'slug', 'value'])
+  return normalizeProjectTextArray(value)
 }
 
 export function normalizeProjectHighlightArray(value: unknown): string[] {
-  return normalizeProjectTextArray(value, ['text', 'title', 'content', 'summary', 'name'])
+  return normalizeProjectTextArray(value)
 }
 
 export function normalizeProjectRepositories(value: unknown): ProjectRepository[] {
