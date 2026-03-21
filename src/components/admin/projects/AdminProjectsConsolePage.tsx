@@ -5,6 +5,7 @@ import {
   AdminProjectsApiError,
   type AdminProjectErrorCode,
   type AdminProjectLinkedRepositoryRecord,
+  type AdminProjectLinksRecord,
   type AdminProjectRecord,
   type AdminProjectRepositoryBindingInput,
   type AdminRepositoryRecord,
@@ -14,6 +15,7 @@ import {
   fetchAdminProjectById,
   fetchAdminProjects,
   fetchAdminRepositories,
+  replaceAdminProjectLinks,
   replaceAdminProjectRepositories,
   updateAdminProjectById,
   verifyAdminToken,
@@ -68,6 +70,7 @@ interface FormState {
   sort_order: string
   repository_full_names: string[]
   primary_repository_full_name: string
+  explicit_repo_link: string
 }
 
 interface CreateFormState {
@@ -307,6 +310,7 @@ function toForm(project: AdminProjectRecord): FormState {
       repositoryFullNames,
       project.repositories.find((repository) => repository.is_primary)?.repo_full_name || '',
     ),
+    explicit_repo_link: project.stored_links.repo ?? '',
   }
 }
 
@@ -417,6 +421,23 @@ function buildProjectRepositoryBindings(
   })
 
   return { bindings, missing }
+}
+
+function buildProjectLinksPayload(form: FormState, currentProject: AdminProjectRecord): AdminProjectLinksRecord {
+  return {
+    ...currentProject.stored_links,
+    repo: normalizeComparableLink(form.explicit_repo_link) || null,
+  }
+}
+
+function projectLinksEqual(left: AdminProjectLinksRecord, right: AdminProjectLinksRecord): boolean {
+  return (
+    normalizeComparableLink(left.primary) === normalizeComparableLink(right.primary) &&
+    normalizeComparableLink(left.repo) === normalizeComparableLink(right.repo) &&
+    normalizeComparableLink(left.demo) === normalizeComparableLink(right.demo) &&
+    normalizeComparableLink(left.docs) === normalizeComparableLink(right.docs) &&
+    normalizeComparableLink(left.notes) === normalizeComparableLink(right.notes)
+  )
 }
 
 function isValidEditForm(form: FormState): boolean {
@@ -925,7 +946,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       return null
     }
 
-    const explicitRepoLink = normalizeComparableLink(detailProject.stored_links.repo) || null
+    const explicitRepoLink = normalizeComparableLink(form?.explicit_repo_link) || null
     const currentEffectiveRepoLink = normalizeComparableLink(detailProject.links.repo) || null
     const pendingPrimaryRepository = repositoryBindingPreview.bindings.find((repository) => repository.is_primary)
     const pendingPrimaryRepoLink = normalizeComparableLink(pendingPrimaryRepository?.repo_url) || null
@@ -1166,11 +1187,14 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       return
     }
 
+    const currentDetailProject = detailProjectRef.current
     const repositoryBindings = buildProjectRepositoryBindings(
       currentForm,
       repositoryOptionsRef.current,
-      detailProjectRef.current?.repositories ?? [],
+      currentDetailProject?.repositories ?? [],
     )
+    const nextLinks = currentDetailProject ? buildProjectLinksPayload(currentForm, currentDetailProject) : null
+    const shouldSaveLinks = currentDetailProject && nextLinks ? !projectLinksEqual(nextLinks, currentDetailProject.stored_links) : false
     if (repositoryBindings.missing.length > 0) {
       setSaveState({
         status: 'error',
@@ -1220,6 +1244,32 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
             mapped.message,
         })
         return
+      }
+
+      if (shouldSaveLinks && nextLinks) {
+        try {
+          updated = mergeSavedProjectRecord(
+            currentForm,
+            await replaceAdminProjectLinks(token, selectedId, nextLinks),
+          )
+        } catch (error) {
+          const mapped = errorMessage(error)
+          if (mapped.code === 'unauthorized') {
+            invalidate(mapped.message)
+            return
+          }
+          setDetailProject(updated)
+          setDetailStatus('ready')
+          setForm({ ...currentForm })
+          setProjects((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+          setSaveState({
+            status: 'error',
+            message:
+              t('\u9879\u76ee\u57fa\u672c\u4fe1\u606f\u4e0e\u4ed3\u5e93\u5173\u8054\u5df2\u4fdd\u5b58\uff0c\u4f46 Repo link \u5199\u5165\u5931\u8d25\uff1a', 'Project fields and repository bindings were saved, but Repo link save failed: ') +
+              mapped.message,
+          })
+          return
+        }
       }
 
       setSaveState({ status: 'success', message: t('\u4fdd\u5b58\u6210\u529f\u3002', 'Saved.') })
@@ -1610,6 +1660,26 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                             )}
                           </p>
                           <p className="admin-field-note">{repoLinkPreviewMessage}</p>
+                          <label className="admin-field admin-project-link-semantics__field">
+                            <span className="admin-field-label">{t('\u663e\u5f0f Repo Link\uff08\u53ef\u9009\uff09', 'Explicit Repo Link (optional)')}</span>
+                            <input
+                              type="url"
+                              value={form.explicit_repo_link}
+                              onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_repo_link: event.target.value } : prev))}
+                              placeholder={t('\u7559\u7a7a\u5219\u8ddf\u968f\u4e3b\u4ed3\u6d3e\u751f', 'Leave empty to follow the primary repository')}
+                            />
+                          </label>
+                          <p className="admin-field-note">{t('\u8fd9\u91cc\u53ea\u4f1a\u5199\u5165 stored_links.repo\uff1b\u7559\u7a7a\u4e0d\u4f1a\u8986\u76d6\u5176\u4ed6 links \u5b57\u6bb5\u3002', 'This only writes stored_links.repo. Leaving it empty will not overwrite the other links fields.')}</p>
+                          <div className="admin-project-link-semantics__actions">
+                            <button
+                              className="admin-secondary-button inline"
+                              type="button"
+                              onClick={() => setForm((prev) => (prev ? { ...prev, explicit_repo_link: '' } : prev))}
+                              disabled={!form.explicit_repo_link.trim()}
+                            >
+                              {t('\u6e05\u7a7a\u663e\u5f0f\u503c', 'Clear explicit value')}
+                            </button>
+                          </div>
                         </div>
                       ) : null}
                     </div>

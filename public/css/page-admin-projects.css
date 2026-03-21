@@ -991,6 +991,15 @@ body {
   text-underline-offset: 3px;
 }
 
+.admin-project-link-semantics__field {
+  margin-top: 4px;
+}
+
+.admin-project-link-semantics__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .admin-logs-page {
   max-width: 1320px;
   margin: 0 auto;

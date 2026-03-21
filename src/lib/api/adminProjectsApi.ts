@@ -1265,6 +1265,35 @@ export async function updateAdminProjectById(
   return normalizeProjectDetail(payload)
 }
 
+export async function replaceAdminProjectLinks(
+  token: string,
+  projectId: string,
+  links: AdminProjectLinksRecord,
+  signal?: AbortSignal,
+): Promise<AdminProjectRecord> {
+  const normalizedProjectId = toIdentifierText(projectId)
+  if (!normalizedProjectId) {
+    throw new AdminProjectsApiError('Project id is required.')
+  }
+
+  const payload = await requestJson<unknown>(`/admin/projects/${encodeURIComponent(normalizedProjectId)}/links`, {
+    token: toText(token),
+    method: 'PUT',
+    body: {
+      links: {
+        primary: links.primary,
+        repo: links.repo,
+        demo: links.demo,
+        docs: links.docs,
+        notes: links.notes,
+      },
+    },
+    signal,
+  })
+
+  return normalizeProjectDetail(payload)
+}
+
 export async function replaceAdminProjectRepositories(
   token: string,
   projectId: string,
