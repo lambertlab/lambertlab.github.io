@@ -70,7 +70,11 @@ interface FormState {
   sort_order: string
   repository_full_names: string[]
   primary_repository_full_name: string
+  explicit_primary_link: string
   explicit_repo_link: string
+  explicit_demo_link: string
+  explicit_docs_link: string
+  explicit_notes_link: string
 }
 
 interface CreateFormState {
@@ -310,7 +314,11 @@ function toForm(project: AdminProjectRecord): FormState {
       repositoryFullNames,
       project.repositories.find((repository) => repository.is_primary)?.repo_full_name || '',
     ),
+    explicit_primary_link: project.stored_links.primary ?? '',
     explicit_repo_link: project.stored_links.repo ?? '',
+    explicit_demo_link: project.stored_links.demo ?? '',
+    explicit_docs_link: project.stored_links.docs ?? '',
+    explicit_notes_link: project.stored_links.notes ?? '',
   }
 }
 
@@ -356,6 +364,15 @@ function normalizeRepositoryBindingKey(value: string): string {
 
 function normalizeComparableLink(value: string | null | undefined): string {
   return (value || '').trim()
+}
+
+function resolveProjectCanonicalPath(slug: string): string | null {
+  const normalizedSlug = toText(slug)
+  if (!normalizedSlug) {
+    return null
+  }
+
+  return `/projects/${encodeURIComponent(normalizedSlug)}/`
 }
 
 function resolvePrimaryRepositoryFullName(
@@ -423,10 +440,13 @@ function buildProjectRepositoryBindings(
   return { bindings, missing }
 }
 
-function buildProjectLinksPayload(form: FormState, currentProject: AdminProjectRecord): AdminProjectLinksRecord {
+function buildProjectLinksPayload(form: FormState): AdminProjectLinksRecord {
   return {
-    ...currentProject.stored_links,
+    primary: normalizeComparableLink(form.explicit_primary_link) || null,
     repo: normalizeComparableLink(form.explicit_repo_link) || null,
+    demo: normalizeComparableLink(form.explicit_demo_link) || null,
+    docs: normalizeComparableLink(form.explicit_docs_link) || null,
+    notes: normalizeComparableLink(form.explicit_notes_link) || null,
   }
 }
 
@@ -941,6 +961,105 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     return buildProjectRepositoryBindings(form, repositoryOptions, detailProject.repositories)
   }, [detailProject, form, repositoryOptions])
 
+  const pendingPrimaryRepoLink = React.useMemo(() => {
+    const pendingPrimaryRepository = repositoryBindingPreview.bindings.find((repository) => repository.is_primary)
+    return normalizeComparableLink(pendingPrimaryRepository?.repo_url) || null
+  }, [repositoryBindingPreview])
+
+  const projectCanonicalLink = React.useMemo(() => {
+    if (!detailProject) {
+      return null
+    }
+
+    return resolveProjectCanonicalPath(detailProject.slug)
+  }, [detailProject])
+
+  const primaryLinkPreview = React.useMemo(() => {
+    if (!detailProject) {
+      return null
+    }
+
+    const explicitPrimaryLink = normalizeComparableLink(form?.explicit_primary_link) || null
+    const currentEffectivePrimaryLink = normalizeComparableLink(detailProject.links.primary) || null
+    const pendingEffectivePrimaryLink = explicitPrimaryLink || pendingPrimaryRepoLink || projectCanonicalLink || null
+    const sourceKind = explicitPrimaryLink
+      ? 'explicit'
+      : pendingPrimaryRepoLink
+        ? 'primary_repository'
+        : projectCanonicalLink
+          ? 'canonical'
+          : 'none'
+
+    return {
+      currentEffectivePrimaryLink,
+      pendingEffectivePrimaryLink,
+      sourceKind,
+      willChange: normalizeComparableLink(currentEffectivePrimaryLink) !== normalizeComparableLink(pendingEffectivePrimaryLink),
+    } as const
+  }, [detailProject, form, pendingPrimaryRepoLink, projectCanonicalLink])
+
+  const primaryLinkPreviewSourceLabel = React.useMemo(() => {
+    if (!primaryLinkPreview) {
+      return ''
+    }
+
+    if (primaryLinkPreview.sourceKind === 'explicit') {
+      return t('显式 link', 'Explicit link')
+    }
+
+    if (primaryLinkPreview.sourceKind === 'primary_repository') {
+      return t('主仓派生', 'Primary-derived')
+    }
+
+    if (primaryLinkPreview.sourceKind === 'canonical') {
+      return t('详情页回退', 'Detail fallback')
+    }
+
+    return t('未提供', 'None')
+  }, [primaryLinkPreview, t])
+
+  const primaryLinkPreviewMessage = React.useMemo(() => {
+    if (!primaryLinkPreview) {
+      return ''
+    }
+
+    if (primaryLinkPreview.sourceKind === 'explicit') {
+      return t(
+        '保存后公开 Primary 链接将使用显式值；后续修改主仓不会影响它。',
+        'After saving, the public Primary link will use the explicit value and future primary repository changes will not affect it.',
+      )
+    }
+
+    if (primaryLinkPreview.sourceKind === 'primary_repository') {
+      return primaryLinkPreview.willChange
+        ? t(
+            '保存后公开 Primary 链接会跟随主仓 URL 更新。',
+            'After saving, the public Primary link will update to the primary repository URL.',
+          )
+        : t(
+            '当前公开 Primary 链接会跟随主仓 URL。',
+            'The public Primary link follows the primary repository URL.',
+          )
+    }
+
+    if (primaryLinkPreview.sourceKind === 'canonical') {
+      return primaryLinkPreview.willChange
+        ? t(
+            '保存后公开 Primary 链接会回退到项目详情页。',
+            'After saving, the public Primary link will fall back to the project detail page.',
+          )
+        : t(
+            '当前公开 Primary 链接会回退到项目详情页。',
+            'The public Primary link falls back to the project detail page.',
+          )
+    }
+
+    return t(
+      '当前无法推导公开 Primary 链接。',
+      'The public Primary link cannot be derived right now.',
+    )
+  }, [primaryLinkPreview, t])
+
   const repoLinkPreview = React.useMemo(() => {
     if (!detailProject) {
       return null
@@ -948,8 +1067,6 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
     const explicitRepoLink = normalizeComparableLink(form?.explicit_repo_link) || null
     const currentEffectiveRepoLink = normalizeComparableLink(detailProject.links.repo) || null
-    const pendingPrimaryRepository = repositoryBindingPreview.bindings.find((repository) => repository.is_primary)
-    const pendingPrimaryRepoLink = normalizeComparableLink(pendingPrimaryRepository?.repo_url) || null
     const pendingEffectiveRepoLink = explicitRepoLink || pendingPrimaryRepoLink || null
     const sourceKind = explicitRepoLink ? 'explicit' : pendingPrimaryRepoLink ? 'primary_repository' : 'none'
 
@@ -959,7 +1076,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       sourceKind,
       willChange: normalizeComparableLink(currentEffectiveRepoLink) !== normalizeComparableLink(pendingEffectiveRepoLink),
     } as const
-  }, [detailProject, repositoryBindingPreview])
+  }, [detailProject, form, pendingPrimaryRepoLink])
 
   const repoLinkPreviewSourceLabel = React.useMemo(() => {
     if (!repoLinkPreview) {
@@ -984,20 +1101,20 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
     if (repoLinkPreview.sourceKind === 'explicit') {
       return t(
-        '当前已配置显式 repo link；修改主仓不会改变公开 Repo 链接。',
-        'An explicit repo link is configured, so changing the primary repository will not change the public Repo link.',
+        '保存后公开 Repo 链接将使用显式值；后续修改主仓不会影响它。',
+        'After saving, the public Repo link will use the explicit value and future primary repository changes will not affect it.',
       )
     }
 
     if (repoLinkPreview.sourceKind === 'primary_repository') {
       return repoLinkPreview.willChange
         ? t(
-            '当前未单独配置 repo link；保存后公开 Repo 链接会跟随主仓 URL 更新。',
-            'No explicit repo link is configured. After saving, the public Repo link will update to the primary repository URL.',
+            '保存后公开 Repo 链接会跟随主仓 URL 更新。',
+            'After saving, the public Repo link will update to the primary repository URL.',
           )
         : t(
-            '当前未单独配置 repo link；公开 Repo 链接会跟随主仓 URL。',
-            'No explicit repo link is configured. The public Repo link follows the primary repository URL.',
+            '当前公开 Repo 链接会跟随主仓 URL。',
+            'The public Repo link follows the primary repository URL.',
           )
     }
 
@@ -1193,7 +1310,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       repositoryOptionsRef.current,
       currentDetailProject?.repositories ?? [],
     )
-    const nextLinks = currentDetailProject ? buildProjectLinksPayload(currentForm, currentDetailProject) : null
+    const nextLinks = currentDetailProject ? buildProjectLinksPayload(currentForm) : null
     const shouldSaveLinks = currentDetailProject && nextLinks ? !projectLinksEqual(nextLinks, currentDetailProject.stored_links) : false
     if (repositoryBindings.missing.length > 0) {
       setSaveState({
@@ -1265,7 +1382,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
           setSaveState({
             status: 'error',
             message:
-              t('\u9879\u76ee\u57fa\u672c\u4fe1\u606f\u4e0e\u4ed3\u5e93\u5173\u8054\u5df2\u4fdd\u5b58\uff0c\u4f46 Repo link \u5199\u5165\u5931\u8d25\uff1a', 'Project fields and repository bindings were saved, but Repo link save failed: ') +
+              t('项目基本信息与仓库关联已保存，但 links 写入失败：', 'Project fields and repository bindings were saved, but links save failed: ') +
               mapped.message,
           })
           return
@@ -1646,42 +1763,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                       >
                         <span className="admin-input-like-button__label">{repositoryDialogButtonLabel}</span>
                       </button>
-                      {repoLinkPreview ? (
-                        <div className="admin-project-link-semantics">
-                          <div className="admin-project-link-semantics__head">
-                            <span className="admin-project-link-semantics__title">{t('\u516c\u5f00 Repo \u94fe\u63a5', 'Public Repo Link')}</span>
-                            <span className="admin-project-link-semantics__badge" data-source={repoLinkPreview.sourceKind}>{repoLinkPreviewSourceLabel}</span>
-                          </div>
-                          <p className="admin-project-link-semantics__url" data-empty={repoLinkPreview.pendingEffectiveRepoLink ? 'false' : 'true'}>
-                            {repoLinkPreview.pendingEffectiveRepoLink ? (
-                              <a href={repoLinkPreview.pendingEffectiveRepoLink} rel="noreferrer" target="_blank">{repoLinkPreview.pendingEffectiveRepoLink}</a>
-                            ) : (
-                              t('\u5f53\u524d\u4e0d\u4f1a\u8f93\u51fa Repo \u94fe\u63a5', 'No public Repo link currently')
-                            )}
-                          </p>
-                          <p className="admin-field-note">{repoLinkPreviewMessage}</p>
-                          <label className="admin-field admin-project-link-semantics__field">
-                            <span className="admin-field-label">{t('\u663e\u5f0f Repo Link\uff08\u53ef\u9009\uff09', 'Explicit Repo Link (optional)')}</span>
-                            <input
-                              type="url"
-                              value={form.explicit_repo_link}
-                              onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_repo_link: event.target.value } : prev))}
-                              placeholder={t('\u7559\u7a7a\u5219\u8ddf\u968f\u4e3b\u4ed3\u6d3e\u751f', 'Leave empty to follow the primary repository')}
-                            />
-                          </label>
-                          <p className="admin-field-note">{t('\u8fd9\u91cc\u53ea\u4f1a\u5199\u5165 stored_links.repo\uff1b\u7559\u7a7a\u4e0d\u4f1a\u8986\u76d6\u5176\u4ed6 links \u5b57\u6bb5\u3002', 'This only writes stored_links.repo. Leaving it empty will not overwrite the other links fields.')}</p>
-                          <div className="admin-project-link-semantics__actions">
-                            <button
-                              className="admin-secondary-button inline"
-                              type="button"
-                              onClick={() => setForm((prev) => (prev ? { ...prev, explicit_repo_link: '' } : prev))}
-                              disabled={!form.explicit_repo_link.trim()}
-                            >
-                              {t('\u6e05\u7a7a\u663e\u5f0f\u503c', 'Clear explicit value')}
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
+                      <p className="admin-field-note">{t('公开 links 预览与显式值编辑在下方 Links 区域完成。', 'Review public link previews and edit explicit values in the Links section below.')}</p>
                     </div>
                   </div>
                   <label className="admin-field">
@@ -1696,6 +1778,155 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                     <span className="admin-field-label">{'\u72b6\u6001\u5907\u6ce8'}</span>
                     <textarea value={form.status_note} onChange={(event) => setForm((prev) => (prev ? { ...prev, status_note: event.target.value } : prev))} placeholder={t('\u4f8b\u5982\uff1a\u6682\u505c\u66f4\u65b0\u3001\u4ec5\u5185\u90e8\u8bd5\u9a8c\uff08\u53ef\u9009\uff09', 'For example: paused, internal-only experiment (optional)')} />
                   </label>
+                  <div className="admin-project-links-editor">
+                    <div className="admin-project-links-editor__head">
+                      <h3>{t('Links', 'Links')}</h3>
+                      <p>{t('这里写入 stored_links.*。公开 primary / repo 仍会按既有 fallback 规则投影；Demo / Docs / Notes 直接使用这里的显式值。', 'This section writes stored_links.*. Public primary / repo still follow the existing fallback projection rules, while Demo / Docs / Notes use these explicit values directly.')}</p>
+                    </div>
+                    <div className="admin-project-links-editor__preview-grid">
+                      {primaryLinkPreview ? (
+                        <div className="admin-project-link-semantics">
+                          <div className="admin-project-link-semantics__head">
+                            <span className="admin-project-link-semantics__title">{t('公开 Primary 链接预览', 'Public Primary Link Preview')}</span>
+                            <span className="admin-project-link-semantics__badge" data-source={primaryLinkPreview.sourceKind}>{primaryLinkPreviewSourceLabel}</span>
+                          </div>
+                          <p className="admin-project-link-semantics__url" data-empty={primaryLinkPreview.pendingEffectivePrimaryLink ? 'false' : 'true'}>
+                            {primaryLinkPreview.pendingEffectivePrimaryLink ? (
+                              <a href={primaryLinkPreview.pendingEffectivePrimaryLink} rel="noreferrer" target="_blank">{primaryLinkPreview.pendingEffectivePrimaryLink}</a>
+                            ) : (
+                              t('当前不会输出 Primary 链接', 'No public Primary link currently')
+                            )}
+                          </p>
+                          <p className="admin-field-note">{primaryLinkPreviewMessage}</p>
+                        </div>
+                      ) : null}
+                      {repoLinkPreview ? (
+                        <div className="admin-project-link-semantics">
+                          <div className="admin-project-link-semantics__head">
+                            <span className="admin-project-link-semantics__title">{t('公开 Repo 链接预览', 'Public Repo Link Preview')}</span>
+                            <span className="admin-project-link-semantics__badge" data-source={repoLinkPreview.sourceKind}>{repoLinkPreviewSourceLabel}</span>
+                          </div>
+                          <p className="admin-project-link-semantics__url" data-empty={repoLinkPreview.pendingEffectiveRepoLink ? 'false' : 'true'}>
+                            {repoLinkPreview.pendingEffectiveRepoLink ? (
+                              <a href={repoLinkPreview.pendingEffectiveRepoLink} rel="noreferrer" target="_blank">{repoLinkPreview.pendingEffectiveRepoLink}</a>
+                            ) : (
+                              t('当前不会输出 Repo 链接', 'No public Repo link currently')
+                            )}
+                          </p>
+                          <p className="admin-field-note">{repoLinkPreviewMessage}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="admin-editor-grid two-col admin-project-links-editor__grid">
+                      <div className="admin-project-links-editor__field">
+                        <label className="admin-field">
+                          <span className="admin-field-label">{t('显式 Primary Link（可选）', 'Explicit Primary Link (optional)')}</span>
+                          <input
+                            type="url"
+                            value={form.explicit_primary_link}
+                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_primary_link: event.target.value } : prev))}
+                            placeholder={t('留空则回退到主仓 URL 或项目详情页', 'Leave empty to fall back to the primary repository URL or project detail page')}
+                          />
+                        </label>
+                        <p className="admin-field-note">{t('这里只写入 stored_links.primary。留空后，公开 Primary 链接会优先跟随主仓，没有主仓时回退到项目详情页。', 'This only writes stored_links.primary. When empty, the public Primary link prefers the primary repository and falls back to the project detail page when no primary repository is available.')}</p>
+                        <div className="admin-project-links-editor__field-actions">
+                          <button
+                            className="admin-secondary-button inline"
+                            type="button"
+                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_primary_link: '' } : prev))}
+                            disabled={!form.explicit_primary_link.trim()}
+                          >
+                            {t('清空显式值', 'Clear explicit value')}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="admin-project-links-editor__field">
+                        <label className="admin-field">
+                          <span className="admin-field-label">{t('显式 Repo Link（可选）', 'Explicit Repo Link (optional)')}</span>
+                          <input
+                            type="url"
+                            value={form.explicit_repo_link}
+                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_repo_link: event.target.value } : prev))}
+                            placeholder={t('留空则跟随主仓 URL', 'Leave empty to follow the primary repository URL')}
+                          />
+                        </label>
+                        <p className="admin-field-note">{t('这里只写入 stored_links.repo。留空后，公开 Repo 链接会跟随主仓 URL。', 'This only writes stored_links.repo. When empty, the public Repo link follows the primary repository URL.')}</p>
+                        <div className="admin-project-links-editor__field-actions">
+                          <button
+                            className="admin-secondary-button inline"
+                            type="button"
+                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_repo_link: '' } : prev))}
+                            disabled={!form.explicit_repo_link.trim()}
+                          >
+                            {t('清空显式值', 'Clear explicit value')}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="admin-project-links-editor__field">
+                        <label className="admin-field">
+                          <span className="admin-field-label">{t('Demo Link（可选）', 'Demo Link (optional)')}</span>
+                          <input
+                            type="url"
+                            value={form.explicit_demo_link}
+                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_demo_link: event.target.value } : prev))}
+                            placeholder="https://example.com/demo"
+                          />
+                        </label>
+                        <div className="admin-project-links-editor__field-actions">
+                          <button
+                            className="admin-secondary-button inline"
+                            type="button"
+                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_demo_link: '' } : prev))}
+                            disabled={!form.explicit_demo_link.trim()}
+                          >
+                            {t('清空显式值', 'Clear explicit value')}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="admin-project-links-editor__field">
+                        <label className="admin-field">
+                          <span className="admin-field-label">{t('Docs Link（可选）', 'Docs Link (optional)')}</span>
+                          <input
+                            type="url"
+                            value={form.explicit_docs_link}
+                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_docs_link: event.target.value } : prev))}
+                            placeholder="https://example.com/docs"
+                          />
+                        </label>
+                        <div className="admin-project-links-editor__field-actions">
+                          <button
+                            className="admin-secondary-button inline"
+                            type="button"
+                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_docs_link: '' } : prev))}
+                            disabled={!form.explicit_docs_link.trim()}
+                          >
+                            {t('清空显式值', 'Clear explicit value')}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="admin-project-links-editor__field admin-project-links-editor__field--span">
+                        <label className="admin-field">
+                          <span className="admin-field-label">{t('Notes Link（可选）', 'Notes Link (optional)')}</span>
+                          <input
+                            type="url"
+                            value={form.explicit_notes_link}
+                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_notes_link: event.target.value } : prev))}
+                            placeholder="https://example.com/notes"
+                          />
+                        </label>
+                        <div className="admin-project-links-editor__field-actions">
+                          <button
+                            className="admin-secondary-button inline"
+                            type="button"
+                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_notes_link: '' } : prev))}
+                            disabled={!form.explicit_notes_link.trim()}
+                          >
+                            {t('清空显式值', 'Clear explicit value')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="admin-editor-grid three-col">
                     <AdminFormSelect
@@ -1877,4 +2108,3 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     </AdminConsoleFrame>
   )
 }
-
