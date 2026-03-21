@@ -207,8 +207,255 @@ function createMockProjects() {
   ]
 }
 
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value))
+}
+
+function normalizeAdminLinkValue(value) {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const text = value.trim()
+  return text || null
+}
+
+function createMockAdminRepositories() {
+  return [
+    {
+      id: 'repo-1',
+      repo_full_name: 'lambertlab/personal-toolbox',
+      repo_owner: 'lambertlab',
+      repo_name: 'personal-toolbox',
+      repo_url: 'https://github.com/lambertlab/personal-toolbox',
+      github_username: 'lambertlab',
+      description: 'A compact personal tooling workspace for recurring execution loops.',
+      language: 'TypeScript',
+      stargazers_count: 42,
+      forks_count: 7,
+      open_issues_count: 1,
+      visibility: 'public',
+      archived: false,
+      fork: false,
+      source: 'github',
+      is_active: true,
+      mapped_projects_count: 1,
+      pushed_at: '2026-03-12T00:00:00Z',
+      repo_created_at: '2026-01-01T00:00:00Z',
+      repo_updated_at: '2026-03-12T00:00:00Z',
+      synced_at: '2026-03-12T00:00:00Z',
+      updated_at: '2026-03-12T00:00:00Z',
+    },
+  ]
+}
+
+function createAdminLinkedRepository(repository, options = {}) {
+  return {
+    id: options.id || `binding-${repository.id}`,
+    repo_full_name: repository.repo_full_name,
+    repo_name: repository.repo_name,
+    repo_url: repository.repo_url,
+    visibility: repository.visibility,
+    is_primary: options.is_primary === true,
+    source: options.source || repository.source || 'manual',
+    description: repository.description || '',
+    language: repository.language || '',
+    stargazers_count: repository.stargazers_count || 0,
+    forks_count: repository.forks_count || 0,
+  }
+}
+
+function getAdminPrimaryRepository(project) {
+  return project.repositories.find((repository) => repository.is_primary) || null
+}
+
+function resolveAdminProjectSourceRefs(project) {
+  const primaryRepository = getAdminPrimaryRepository(project)
+  return {
+    repo_full_name: primaryRepository?.repo_full_name || null,
+    repo_url: primaryRepository?.repo_url || null,
+    visibility: primaryRepository?.visibility || null,
+  }
+}
+
+function resolveAdminProjectLinks(project) {
+  const primaryRepository = getAdminPrimaryRepository(project)
+  const primaryRepoUrl = String(primaryRepository?.repo_url || '').trim()
+  const storedLinks = {
+    primary: normalizeAdminLinkValue(project.stored_links?.primary),
+    repo: normalizeAdminLinkValue(project.stored_links?.repo),
+    demo: normalizeAdminLinkValue(project.stored_links?.demo),
+    docs: normalizeAdminLinkValue(project.stored_links?.docs),
+    notes: normalizeAdminLinkValue(project.stored_links?.notes),
+  }
+
+  return {
+    primary: storedLinks.primary || primaryRepoUrl || `/projects/${encodeURIComponent(project.slug)}/`,
+    repo: storedLinks.repo || primaryRepoUrl || null,
+    demo: storedLinks.demo,
+    docs: storedLinks.docs,
+    notes: storedLinks.notes,
+  }
+}
+
+function serializeAdminProject(project) {
+  const payload = cloneJson(project)
+  payload.links = resolveAdminProjectLinks(project)
+  payload.stored_links = {
+    primary: normalizeAdminLinkValue(project.stored_links?.primary),
+    repo: normalizeAdminLinkValue(project.stored_links?.repo),
+    demo: normalizeAdminLinkValue(project.stored_links?.demo),
+    docs: normalizeAdminLinkValue(project.stored_links?.docs),
+    notes: normalizeAdminLinkValue(project.stored_links?.notes),
+  }
+  payload.source_refs = resolveAdminProjectSourceRefs(project)
+  return payload
+}
+
+function serializeAdminProjects(admin) {
+  return admin.projects.map((project) => serializeAdminProject(project))
+}
+
+function createMockAdminProjects(repositories) {
+  const primaryRepository = repositories[0]
+  return [
+    {
+      id: 'project-1',
+      slug: 'personal-toolbox',
+      name: 'Personal Toolbox',
+      summary: 'A compact personal tooling workspace for recurring execution loops.',
+      overview: 'This project consolidates helpers, repeatable commands, and lightweight automation.',
+      status_note: 'Actively iterating.',
+      stage: 'active',
+      project_type: 'tooling',
+      visibility: 'public',
+      is_featured: true,
+      featured_rank: 1,
+      sort_order: 1,
+      stored_links: {
+        primary: null,
+        repo: null,
+        demo: null,
+        docs: null,
+        notes: null,
+      },
+      source_refs: {
+        repo_full_name: primaryRepository.repo_full_name,
+        repo_url: primaryRepository.repo_url,
+        visibility: primaryRepository.visibility,
+      },
+      repositories: [createAdminLinkedRepository(primaryRepository, { id: 'binding-1', is_primary: true })],
+      synced_at: '2026-03-12T00:00:00Z',
+      updated_at: '2026-03-12T00:00:00Z',
+    },
+  ]
+}
+
+function createMockAdminState() {
+  const repositories = createMockAdminRepositories()
+  const projects = createMockAdminProjects(repositories)
+  return {
+    token: 'test-admin-token',
+    repositories,
+    projects,
+    lastLinksPayload: null,
+  }
+}
+
+function parseJsonBody(request) {
+  const body = request.postData() || ''
+  if (!body) {
+    return null
+  }
+
+  try {
+    return JSON.parse(body)
+  } catch {
+    return null
+  }
+}
+
+function findAdminProject(admin, projectId) {
+  return admin.projects.find((project) => project.id === projectId) || null
+}
+
+function createAdminError(status, code, message) {
+  return {
+    status,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      detail: {
+        code,
+        message,
+      },
+    }),
+  }
+}
+
+function mergeAdminProjectPatch(project, patch) {
+  const fields = [
+    'name',
+    'summary',
+    'overview',
+    'status_note',
+    'stage',
+    'project_type',
+    'visibility',
+    'is_featured',
+    'featured_rank',
+    'sort_order',
+  ]
+
+  for (const field of fields) {
+    if (Object.prototype.hasOwnProperty.call(patch, field)) {
+      project[field] = patch[field]
+    }
+  }
+
+  project.updated_at = '2026-03-21T00:00:00Z'
+}
+
+function replaceAdminProjectRepositoriesInState(admin, project, bindings) {
+  const nextRepositories = bindings.map((binding, index) => {
+    const matched = admin.repositories.find((repository) => repository.repo_full_name === binding.repo_full_name)
+    const fallback = {
+      id: `mock-${binding.repo_full_name}`,
+      repo_full_name: binding.repo_full_name,
+      repo_name: binding.repo_full_name.split('/').pop() || binding.repo_full_name,
+      repo_url: binding.repo_url,
+      visibility: 'public',
+      source: binding.source || 'manual',
+      description: '',
+      language: '',
+      stargazers_count: 0,
+      forks_count: 0,
+    }
+    return createAdminLinkedRepository(matched || fallback, {
+      id: `binding-${project.id}-${index + 1}`,
+      is_primary: binding.is_primary === true,
+      source: binding.source || matched?.source || 'manual',
+    })
+  })
+
+  project.repositories = nextRepositories
+  project.source_refs = resolveAdminProjectSourceRefs(project)
+  project.updated_at = '2026-03-21T00:00:00Z'
+}
+
+function replaceAdminProjectLinksInState(admin, project, links) {
+  project.stored_links = {
+    primary: normalizeAdminLinkValue(links?.primary),
+    repo: normalizeAdminLinkValue(links?.repo),
+    demo: normalizeAdminLinkValue(links?.demo),
+    docs: normalizeAdminLinkValue(links?.docs),
+    notes: normalizeAdminLinkValue(links?.notes),
+  }
+  project.updated_at = '2026-03-21T00:00:00Z'
+  admin.lastLinksPayload = cloneJson(project.stored_links)
+}
 async function installRoutes(context, state) {
   const projects = createMockProjects()
+  const admin = state.admin || createMockAdminState()
 
   await context.route('https://cdn.tailwindcss.com/**', async (route) => {
     await route.fulfill({
@@ -254,6 +501,125 @@ async function installRoutes(context, state) {
     if (!(requestType === 'fetch' || requestType === 'xhr')) {
       await route.continue()
       return
+    }
+
+    if (pathname.startsWith('/admin')) {
+      if (state.delayMs > 0) {
+        await wait(state.delayMs)
+      }
+
+      const token = request.headers()['x-admin-token'] || ''
+      const requireAuthorized = pathname !== '/admin/auth/verify'
+      if (requireAuthorized && token !== admin.token) {
+        await route.fulfill(createAdminError(401, 'unauthorized', 'unauthorized'))
+        return
+      }
+
+      if (pathname === '/admin/auth/verify') {
+        if (token !== admin.token) {
+          await route.fulfill(createAdminError(401, 'unauthorized', 'unauthorized'))
+          return
+        }
+
+        await route.fulfill({ status: 204, body: '' })
+        return
+      }
+
+      if (pathname === '/admin/projects' && request.method() === 'GET') {
+        const list = serializeAdminProjects(admin)
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            projects: list,
+            total: list.length,
+            page: 1,
+            page_size: list.length || 1,
+          }),
+        })
+        return
+      }
+
+      if (pathname === '/admin/repositories' && request.method() === 'GET') {
+        const repositories = cloneJson(admin.repositories)
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            repositories,
+            total: repositories.length,
+            page: 1,
+            page_size: repositories.length || 1,
+          }),
+        })
+        return
+      }
+
+      const detailMatch = pathname.match(/^\/admin\/projects\/([^/]+)$/)
+      if (detailMatch) {
+        const project = findAdminProject(admin, detailMatch[1])
+        if (!project) {
+          await route.fulfill(createAdminError(404, 'project_not_found', 'Project not found.'))
+          return
+        }
+
+        if (request.method() === 'GET') {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ project: serializeAdminProject(project) }),
+          })
+          return
+        }
+
+        if (request.method() === 'PATCH') {
+          const body = parseJsonBody(request) || {}
+          mergeAdminProjectPatch(project, body)
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ project: serializeAdminProject(project) }),
+          })
+          return
+        }
+      }
+
+      const repositoriesMatch = pathname.match(/^\/admin\/projects\/([^/]+)\/repositories$/)
+      if (repositoriesMatch && request.method() === 'PUT') {
+        const project = findAdminProject(admin, repositoriesMatch[1])
+        if (!project) {
+          await route.fulfill(createAdminError(404, 'project_not_found', 'Project not found.'))
+          return
+        }
+
+        const body = parseJsonBody(request) || {}
+        const bindings = Array.isArray(body.repositories) ? body.repositories : []
+        replaceAdminProjectRepositoriesInState(admin, project, bindings)
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ project: serializeAdminProject(project) }),
+        })
+        return
+      }
+
+      const linksMatch = pathname.match(/^\/admin\/projects\/([^/]+)\/links$/)
+      if (linksMatch && request.method() === 'PUT') {
+        const project = findAdminProject(admin, linksMatch[1])
+        if (!project) {
+          await route.fulfill(createAdminError(404, 'project_not_found', 'Project not found.'))
+          return
+        }
+
+        const body = parseJsonBody(request) || {}
+        replaceAdminProjectLinksInState(admin, project, body.links || {})
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ project: serializeAdminProject(project) }),
+        })
+        return
+      }
     }
 
     if (pathname === '/home-content') {
@@ -761,6 +1127,136 @@ async function testProjectDetailCanonicalStatesWithLegacyHtmlRedirect(browser, b
     await errorContext.close()
   }
 }
+async function readAdminLinksDebugState(page) {
+  return await page.evaluate(() => {
+    const readInputByLabel = (labelText) => {
+      const labels = Array.from(document.querySelectorAll('label'))
+      const label = labels.find((node) => node.textContent?.includes(labelText))
+      const input = label?.querySelector('input')
+      return input instanceof HTMLInputElement ? input.value.trim() : ''
+    }
+
+    const cards = Array.from(document.querySelectorAll('.admin-project-link-semantics')).map((node) => ({
+      title: node.querySelector('.admin-project-link-semantics__title')?.textContent?.trim() || '',
+      badge: node.querySelector('.admin-project-link-semantics__badge')?.textContent?.trim() || '',
+      href: node.querySelector('.admin-project-link-semantics__url a')?.getAttribute('href') || '',
+      message: node.querySelector('.admin-field-note')?.textContent?.trim() || '',
+    }))
+
+    return {
+      pathname: window.location.pathname,
+      primaryInput: readInputByLabel('Primary Link'),
+      repoInput: readInputByLabel('Repo Link'),
+      demoInput: readInputByLabel('Demo Link'),
+      docsInput: readInputByLabel('Docs Link'),
+      notesInput: readInputByLabel('Notes Link'),
+      primaryPreview: cards.find((card) => card.title.includes('Primary')) || null,
+      repoPreview: cards.find((card) => card.title.includes('Repo')) || null,
+      saveFeedback: document.querySelector('.admin-project-modal__footer-feedback')?.textContent?.trim() || '',
+    }
+  })
+}
+
+function findAdminLinksField(page, labelText) {
+  return page.locator('.admin-project-links-editor__field').filter({ hasText: labelText }).first()
+}
+
+async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
+  const state = {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'success',
+    delayMs: 0,
+    admin: createMockAdminState(),
+  }
+  const context = await newContext(browser, state)
+  await context.addInitScript(({ key, value }) => {
+    window.localStorage.setItem(key, value)
+  }, { key: 'll-admin-token-v1', value: state.admin.token })
+
+  try {
+    const page = await context.newPage()
+    await page.goto(`${baseUrl}/admin/projects/`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('.admin-project-list-item', { timeout: 8000 })
+    await page.locator('.admin-project-list-item .admin-secondary-button').first().click()
+    await page.waitForSelector('.admin-project-links-editor', { timeout: 8000 })
+
+    const customPrimary = 'https://example.com/admin/custom-primary'
+    const customRepo = 'https://example.com/admin/custom-repo'
+    const customDemo = 'https://example.com/admin/custom-demo'
+    const customDocs = 'https://example.com/admin/custom-docs'
+    const customNotes = 'https://example.com/admin/custom-notes'
+    const fallbackRepoUrl = state.admin.repositories[0].repo_url
+
+    await findAdminLinksField(page, 'Primary Link').locator('input').fill(customPrimary)
+    await findAdminLinksField(page, 'Repo Link').locator('input').fill(customRepo)
+    await findAdminLinksField(page, 'Demo Link').locator('input').fill(customDemo)
+    await findAdminLinksField(page, 'Docs Link').locator('input').fill(customDocs)
+    await findAdminLinksField(page, 'Notes Link').locator('input').fill(customNotes)
+
+    await page.waitForFunction(({ expectedPrimary, expectedRepo }) => {
+      const cards = Array.from(document.querySelectorAll('.admin-project-link-semantics'))
+      const primaryCard = cards.find((node) => node.textContent?.includes('Primary'))
+      const repoCard = cards.find((node) => node.textContent?.includes('Repo'))
+      const primaryHref = primaryCard?.querySelector('.admin-project-link-semantics__url a')?.getAttribute('href') || ''
+      const repoHref = repoCard?.querySelector('.admin-project-link-semantics__url a')?.getAttribute('href') || ''
+      return primaryHref === expectedPrimary && repoHref === expectedRepo
+    }, { expectedPrimary: customPrimary, expectedRepo: customRepo }, { timeout: 8000 })
+
+    await page.locator('form.admin-project-modal__content button[type="submit"]').click()
+    await page.waitForFunction(() => {
+      const text = document.querySelector('.admin-project-modal__footer-feedback')?.textContent || ''
+      return text.includes('Saved') || text.includes('保存成功') || text.includes('保存成功。')
+    }, null, { timeout: 8000 })
+
+    ensure(state.admin.lastLinksPayload?.primary === customPrimary, `admin links payload primary mismatch: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+    ensure(state.admin.lastLinksPayload?.repo === customRepo, `admin links payload repo mismatch: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+    ensure(state.admin.lastLinksPayload?.demo === customDemo, `admin links payload demo mismatch: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+    ensure(state.admin.lastLinksPayload?.docs === customDocs, `admin links payload docs mismatch: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+    ensure(state.admin.lastLinksPayload?.notes === customNotes, `admin links payload notes mismatch: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+
+    const savedDebug = await readAdminLinksDebugState(page)
+    ensure(savedDebug.primaryPreview?.href === customPrimary, `admin primary preview did not persist explicit value: ${JSON.stringify(savedDebug)}`)
+    ensure(savedDebug.repoPreview?.href === customRepo, `admin repo preview did not persist explicit value: ${JSON.stringify(savedDebug)}`)
+    ensure(savedDebug.demoInput === customDemo, `admin demo input did not persist after save: ${JSON.stringify(savedDebug)}`)
+    ensure(savedDebug.docsInput === customDocs, `admin docs input did not persist after save: ${JSON.stringify(savedDebug)}`)
+    ensure(savedDebug.notesInput === customNotes, `admin notes input did not persist after save: ${JSON.stringify(savedDebug)}`)
+
+    await findAdminLinksField(page, 'Primary Link').getByRole('button').click()
+    await findAdminLinksField(page, 'Repo Link').getByRole('button').click()
+
+    await page.waitForFunction((expectedRepo) => {
+      const cards = Array.from(document.querySelectorAll('.admin-project-link-semantics'))
+      const primaryCard = cards.find((node) => node.textContent?.includes('Primary'))
+      const repoCard = cards.find((node) => node.textContent?.includes('Repo'))
+      const primaryHref = primaryCard?.querySelector('.admin-project-link-semantics__url a')?.getAttribute('href') || ''
+      const repoHref = repoCard?.querySelector('.admin-project-link-semantics__url a')?.getAttribute('href') || ''
+      return primaryHref === expectedRepo && repoHref === expectedRepo
+    }, fallbackRepoUrl, { timeout: 8000 })
+
+    await page.locator('form.admin-project-modal__content button[type="submit"]').click()
+    await page.waitForFunction(() => {
+      const text = document.querySelector('.admin-project-modal__footer-feedback')?.textContent || ''
+      return text.includes('Saved') || text.includes('保存成功') || text.includes('保存成功。')
+    }, null, { timeout: 8000 })
+
+    ensure(state.admin.lastLinksPayload?.primary === null, `admin links payload primary should clear to null: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+    ensure(state.admin.lastLinksPayload?.repo === null, `admin links payload repo should clear to null: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+    ensure(state.admin.lastLinksPayload?.demo === customDemo, `admin links payload demo should remain explicit: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+    ensure(state.admin.lastLinksPayload?.docs === customDocs, `admin links payload docs should remain explicit: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+    ensure(state.admin.lastLinksPayload?.notes === customNotes, `admin links payload notes should remain explicit: ${JSON.stringify(state.admin.lastLinksPayload)}`)
+
+    const fallbackDebug = await readAdminLinksDebugState(page)
+    ensure(fallbackDebug.primaryPreview?.href === fallbackRepoUrl, `admin primary preview did not fall back to primary repository: ${JSON.stringify(fallbackDebug)}`)
+    ensure(fallbackDebug.repoPreview?.href === fallbackRepoUrl, `admin repo preview did not fall back to primary repository: ${JSON.stringify(fallbackDebug)}`)
+    ensure(/Primary-derived|主仓派生/.test(fallbackDebug.primaryPreview?.badge || ''), `admin primary badge did not show primary-derived fallback: ${JSON.stringify(fallbackDebug)}`)
+    ensure(/Primary-derived|主仓派生/.test(fallbackDebug.repoPreview?.badge || ''), `admin repo badge did not show primary-derived fallback: ${JSON.stringify(fallbackDebug)}`)
+  } finally {
+    await context.close()
+  }
+}
+
 async function main() {
   if (!fs.existsSync(outputRoot)) {
     throw new Error('Missing ".output/public". Run `npm run build` first.')
@@ -778,6 +1274,7 @@ async function main() {
     { name: 'projects-list-canonical-states-with-legacy-html-redirect', run: () => testProjectsListCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) },
     { name: 'projects-list-empty-state', run: () => testProjectsListEmptyState(browser, baseUrl) },
     { name: 'projects-list-error-retry', run: () => testProjectsListErrorRetry(browser, baseUrl) },
+    { name: 'admin-projects-links-editor-smoke', run: () => testAdminProjectsLinksEditorSmoke(browser, baseUrl) },
     { name: 'project-detail-canonical-states-with-legacy-html-redirect', run: () => testProjectDetailCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) },
   ]
   const failures = []
