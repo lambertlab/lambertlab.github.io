@@ -1,15 +1,13 @@
 import * as React from 'react'
 import { LifeCardsSection } from '~/components/home/LifeCardsSection'
-import { useHomeLifeCards } from '~/components/home/hooks/useHomeLifeCards'
-import { useFeaturedProjects } from '~/features/projects/hooks/useFeaturedProjects'
-import { FeaturedProjectsSection } from '~/features/projects/ui/FeaturedProjectsSection'
+import { TechnologyCardsSection } from '~/components/home/TechnologyCardsSection'
+import { useHomeSnapshot } from '~/components/home/hooks/useHomeSnapshot'
 import { rootMetadata } from '~/lib/siteCopy'
 import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
 
 export function HomePage() {
   const { locale } = useUiLocale()
-  const featuredProjectsState = useFeaturedProjects(3)
-  const lifeCardsState = useHomeLifeCards()
+  const homeState = useHomeSnapshot()
 
   useDocumentMetadata(rootMetadata.title[locale], rootMetadata.description[locale])
 
@@ -27,7 +25,7 @@ export function HomePage() {
 
       <section className="max-w-7xl mx-auto">
         <div className="split-layout">
-          <section className="panel" data-purpose="tech-panel" data-home-managed-by-projects aria-label="Technology world">
+          <section className="panel" data-purpose="tech-panel" data-home-managed-by="home" aria-label="Technology world">
             <div className="absolute inset-0 bg-grid pointer-events-none"></div>
             <div className="relative z-10 mb-10 flex justify-between items-end">
               <div>
@@ -36,11 +34,11 @@ export function HomePage() {
               </div>
             </div>
 
-            <FeaturedProjectsSection
-              status={featuredProjectsState.status}
-              projects={featuredProjectsState.projects}
-              message={featuredProjectsState.message}
-              onRetry={featuredProjectsState.retry}
+            <TechnologyCardsSection
+              status={homeState.technology.status}
+              cards={homeState.technology.cards}
+              message={homeState.technology.message}
+              onRetry={homeState.retry}
               locale={locale}
               directoryHref="/projects/"
             />
@@ -54,10 +52,10 @@ export function HomePage() {
             </div>
 
             <LifeCardsSection
-              status={lifeCardsState.status}
-              cards={lifeCardsState.cards}
-              message={lifeCardsState.message}
-              onRetry={lifeCardsState.retry}
+              status={homeState.life.status}
+              cards={homeState.life.cards}
+              message={homeState.life.message}
+              onRetry={homeState.retry}
               locale={locale}
             />
           </section>

@@ -1,12 +1,12 @@
-﻿import { fetchFeaturedProjects, fetchProjectsCatalog } from '~/features/projects/api/fetchProjects'
+import { fetchFeaturedProjects, fetchProjectsCatalog } from '~/features/projects/api/fetchProjects'
 import { selectFeaturedProjects } from '~/features/projects/model/projectSelectors'
 import type { ProjectCatalogRecord } from '~/features/projects/model/projectTypes'
-import { fetchHomeContent, type HomeContentCard } from '~/lib/homeContentApi'
+import { fetchHome, type HomeSnapshot } from '~/lib/homeApi'
 import { fetchProjectDetail, type ProjectDetailRecord } from '~/lib/projectsApi'
 import { loadSharedResource, readSharedResourceSnapshot } from './sharedResourceCache'
 
 const FEATURED_PROJECTS_TTL_MS = 60_000
-const HOME_LIFE_CARDS_TTL_MS = 60_000
+const HOME_SNAPSHOT_TTL_MS = 60_000
 const PROJECTS_CATALOG_TTL_MS = 60_000
 const PROJECT_DETAIL_TTL_MS = 60_000
 
@@ -48,22 +48,48 @@ export function loadFeaturedProjectsSnapshot(limit = 3, options: LoadCachedDataO
   )
 }
 
+export function readHomeSnapshot() {
+  return readSharedResourceSnapshot<HomeSnapshot>('home-snapshot')
+}
+
+export function loadHomeSnapshot(options: LoadCachedDataOptions = {}) {
+  return loadSharedResource('home-snapshot', () => fetchHome(), {
+    force: options.force,
+    ttlMs: HOME_SNAPSHOT_TTL_MS,
+  })
+}
+
+function readHomeCardsSnapshot(slot: 'technology' | 'life') {
+  const snapshot = readHomeSnapshot()
+
+  if (snapshot.status !== 'ready') {
+    return snapshot
+  }
+
+  return {
+    ...snapshot,
+    data: snapshot.data?.[slot] ?? [],
+  }
+}
+
+function loadHomeCardsSnapshot(slot: 'technology' | 'life', options: LoadCachedDataOptions = {}) {
+  return loadHomeSnapshot(options).then((snapshot) => snapshot[slot])
+}
+
+export function readHomeTechnologyCardsSnapshot() {
+  return readHomeCardsSnapshot('technology')
+}
+
+export function loadHomeTechnologyCardsSnapshot(options: LoadCachedDataOptions = {}) {
+  return loadHomeCardsSnapshot('technology', options)
+}
+
 export function readHomeLifeCardsSnapshot() {
-  return readSharedResourceSnapshot<HomeContentCard[]>('home-life-cards')
+  return readHomeCardsSnapshot('life')
 }
 
 export function loadHomeLifeCardsSnapshot(options: LoadCachedDataOptions = {}) {
-  return loadSharedResource(
-    'home-life-cards',
-    async () => {
-      const snapshot = await fetchHomeContent()
-      return snapshot.life
-    },
-    {
-      force: options.force,
-      ttlMs: HOME_LIFE_CARDS_TTL_MS,
-    },
-  )
+  return loadHomeCardsSnapshot('life', options)
 }
 
 export function readProjectsCatalogSnapshot() {
@@ -93,7 +119,7 @@ export function preloadHomePageData() {
     return Promise.resolve()
   }
 
-  return settlePreload(Promise.allSettled([loadFeaturedProjectsSnapshot(3), loadHomeLifeCardsSnapshot()]))
+  return settlePreload(loadHomeSnapshot())
 }
 
 export function preloadProjectsCatalogPageData() {

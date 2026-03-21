@@ -104,7 +104,7 @@ function createMockHomeLifeCards() {
     {
       accent: 'Reading',
       title: 'Database Life Card',
-      description: 'Loaded from the live /home-content contract.',
+      description: 'Loaded from the live /home contract.',
       href: '/journal/',
       external: false,
     },
@@ -116,6 +116,18 @@ function createMockHomeLifeCards() {
       external: false,
     },
   ]
+}
+
+function createMockHomeTechnologyCards(projects = createMockProjects()) {
+  return projects
+    .filter((project) => project.is_featured)
+    .map((project) => ({
+      accent: project.language || project.project_type || 'Technology',
+      title: project.name,
+      description: project.summary,
+      href: project.canonical_path,
+      external: false,
+    }))
 }
 
 function createMockProjects() {
@@ -938,17 +950,19 @@ async function installRoutes(context, state) {
       }
     }
 
-    if (pathname === '/home-content') {
-      if (state.homeContentMode === 'error') {
+    if (pathname === '/home') {
+      if (state.homeMode === 'error') {
         await route.fulfill({
           status: 503,
           contentType: 'application/json',
-          body: JSON.stringify({ detail: 'home-content unavailable' }),
+          body: JSON.stringify({ detail: 'home unavailable' }),
         })
         return
       }
 
-      const lifeCards = state.homeContentMode === 'empty' ? [] : createMockHomeLifeCards()
+      const isEmpty = state.homeMode === 'empty'
+      const technologyCards = isEmpty ? [] : createMockHomeTechnologyCards(projects)
+      const lifeCards = isEmpty ? [] : createMockHomeLifeCards()
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -956,7 +970,7 @@ async function installRoutes(context, state) {
           ok: true,
           source: 'database',
           fetched_at: '2026-03-12T00:00:00Z',
-          technology: [],
+          technology: technologyCards,
           life: lifeCards,
         }),
       })
@@ -1106,17 +1120,18 @@ async function testHomeFeaturedCanonicalContracts(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
+    homeMode: 'success',
     delayMs: 500,
   })
 
   try {
     const page = await context.newPage()
     await page.goto(`${baseUrl}${homeRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
-    await page.waitForSelector('[data-home-featured-slot="0"][aria-busy="true"]', { timeout: 5000 })
-    await page.waitForSelector('[data-home-featured-slot="0"][data-featured-state="ready"]', { timeout: 5000 })
+    await page.waitForSelector('[data-home-technology-slot="0"][aria-busy="true"]', { timeout: 5000 })
+    await page.waitForSelector('[data-home-technology-slot="0"][data-technology-state="ready"]', { timeout: 5000 })
 
-    const title = (await page.locator('[data-home-featured-slot="0"] [data-project-name]').textContent())?.trim() || ''
-    ensure(title.length > 0 && !/loading/i.test(title), 'home featured slot did not reach ready state')
+    const title = (await page.locator('[data-home-technology-slot="0"] [data-technology-card-title]').textContent())?.trim() || ''
+    ensure(title.length > 0 && !/loading/i.test(title), 'home technology slot did not reach ready state')
   } finally {
     await context.close()
   }
@@ -1126,7 +1141,7 @@ async function testHomeLifeCardsDatabaseContracts(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'success',
+    homeMode: 'success',
     delayMs: 500,
   })
 
@@ -1149,7 +1164,7 @@ async function testHomeLifeCardsDatabaseContracts(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'empty',
+    homeMode: 'empty',
     delayMs: 0,
   })
 
@@ -1165,7 +1180,7 @@ async function testHomeLifeCardsDatabaseContracts(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'error',
+    homeMode: 'error',
     delayMs: 0,
   }
   const errorContext = await newContext(browser, errorState)
@@ -1175,7 +1190,7 @@ async function testHomeLifeCardsDatabaseContracts(browser, baseUrl) {
     await page.goto(`${baseUrl}${homeRoutes.canonical}`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('[data-home-life-slot="0"][data-life-state="error"]', { timeout: 8000 })
 
-    errorState.homeContentMode = 'success'
+    errorState.homeMode = 'success'
     await page.locator('#retry-home-life').click()
     await page.waitForSelector('[data-home-life-slot="0"][data-life-state="ready"]', { timeout: 8000 })
   } finally {
@@ -1231,7 +1246,7 @@ async function testHomeLegacyHtmlRedirect(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'success',
+    homeMode: 'success',
     delayMs: 0,
   })
 
@@ -1239,7 +1254,7 @@ async function testHomeLegacyHtmlRedirect(browser, baseUrl) {
     const page = await context.newPage()
     await page.goto(`${baseUrl}${homeRoutes.legacyHtml}`, { waitUntil: 'domcontentloaded' })
     await page.waitForFunction((expectedPath) => window.location.pathname === expectedPath, homeRoutes.canonical, { timeout: 8000 })
-    await page.waitForSelector('[data-home-featured-projects]', { timeout: 8000 })
+    await page.waitForSelector('[data-home-technology-cards]', { timeout: 8000 })
   } finally {
     await context.close()
   }
@@ -1482,7 +1497,7 @@ async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'success',
+    homeMode: 'success',
     delayMs: 0,
     admin: createMockAdminState(),
   }
@@ -1597,7 +1612,7 @@ async function testAdminProjectSyncJobEntrySmoke(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'success',
+    homeMode: 'success',
     delayMs: 0,
     admin: createMockAdminState(),
   }
@@ -1662,7 +1677,7 @@ async function testAdminProjectSyncJobFailureSmoke(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'success',
+    homeMode: 'success',
     delayMs: 0,
     admin: createMockAdminState({ projectSyncJobShouldFail: true }),
   }
@@ -1715,7 +1730,7 @@ async function testAdminProjectSyncJobRetrySmoke(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'success',
+    homeMode: 'success',
     delayMs: 0,
     admin: createMockAdminState({ projectSyncJobShouldFail: true }),
   }
@@ -1807,7 +1822,7 @@ async function testAdminProjectSyncJobRetryInvalidStateSmoke(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'success',
+    homeMode: 'success',
     delayMs: 0,
     admin: createMockAdminState({ projectSyncJobShouldFail: true }),
   }
@@ -1892,7 +1907,7 @@ async function testAdminProjectSyncJobRetryErrorSmoke(browser, baseUrl) {
     featuredMode: 'success',
     listMode: 'success',
     detailMode: 'success',
-    homeContentMode: 'success',
+    homeMode: 'success',
     delayMs: 0,
     admin: createMockAdminState({ projectSyncJobShouldFail: true, projectSyncRetryShouldFail: true }),
   }

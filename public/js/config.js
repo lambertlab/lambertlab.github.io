@@ -31,7 +31,7 @@
     STATUS_SUMMARY_PATH: currentConfig.STATUS_SUMMARY_PATH || "/status/summary",
     STATUS_PUBLIC_PATH: currentConfig.STATUS_PUBLIC_PATH || "/status/public",
     HEALTH_PATH: currentConfig.HEALTH_PATH || "/healthz",
-    HOME_CONTENT_PATH: currentConfig.HOME_CONTENT_PATH || "/home-content",
+    HOME_PATH: currentConfig.HOME_PATH || "/home",
     STATUS_CACHE_TTL_MS: currentConfig.STATUS_CACHE_TTL_MS || 300000,
     REQUEST_TIMEOUT_MS: currentConfig.REQUEST_TIMEOUT_MS || 3000,
     RETRY_TIMES: currentConfig.RETRY_TIMES || 1,

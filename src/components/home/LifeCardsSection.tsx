@@ -1,10 +1,10 @@
-import type { HomeContentCard } from '~/lib/homeContentApi'
+import type { HomeCard } from '~/lib/homeApi'
 import type { UiLocale } from '~/lib/uiLocale'
-import type { HomeLifeCardsStatus } from './hooks/useHomeLifeCards'
+import type { HomeCardsStatus } from './hooks/useHomeSnapshot'
 
 interface LifeCardsSectionProps {
-  status: HomeLifeCardsStatus
-  cards: HomeContentCard[]
+  status: HomeCardsStatus
+  cards: HomeCard[]
   message?: string | null
   onRetry?: () => void
   locale: UiLocale
@@ -151,7 +151,7 @@ function buildErrorSlot(copy: LifeCopy, message?: string | null): LifeSlotModel 
   }
 }
 
-function buildReadySlot(card: HomeContentCard, copy: LifeCopy): LifeSlotModel {
+function buildReadySlot(card: HomeCard, copy: LifeCopy): LifeSlotModel {
   return {
     accent: card.accent || copy.emptyAccent,
     title: card.title || copy.untitledCard,

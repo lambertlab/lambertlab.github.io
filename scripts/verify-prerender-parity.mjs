@@ -43,9 +43,9 @@ const forbiddenFragments = [
 const pageSpecificRequiredFragments = {
   'contact/index.html': ['class="wrap"', 'class="grid"', 'href="https://github.com/lambertlab"', 'href="mailto:you@example.com"'],
   'index.html': [
-    'data-home-managed-by-projects',
-    'data-home-featured-projects',
-    'data-home-featured-slot="0"',
+    'data-home-managed-by="home"',
+    'data-home-technology-cards',
+    'data-home-technology-slot="0"',
     'data-home-life-cards',
     'data-home-life-slot="0"',
   ],

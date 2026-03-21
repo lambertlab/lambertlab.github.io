@@ -1,4 +1,4 @@
-export interface HomeContentCard {
+export interface HomeCard {
   accent: string
   title: string
   description: string
@@ -6,14 +6,14 @@ export interface HomeContentCard {
   external: boolean
 }
 
-export interface HomeContentSnapshot {
+export interface HomeSnapshot {
   source: string
   fetchedAt: string | null
-  technology: HomeContentCard[]
-  life: HomeContentCard[]
+  technology: HomeCard[]
+  life: HomeCard[]
 }
 
-interface HomeContentResponse {
+interface HomeResponse {
   ok: true
   source?: unknown
   fetched_at?: unknown
@@ -21,12 +21,12 @@ interface HomeContentResponse {
   life?: unknown
 }
 
-export class HomeContentApiError extends Error {
+export class HomeApiError extends Error {
   status?: number
 
   constructor(message: string, status?: number) {
     super(message)
-    this.name = 'HomeContentApiError'
+    this.name = 'HomeApiError'
     this.status = status
   }
 }
@@ -56,7 +56,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
 
-function getRuntimeConfig(): { API_BASE?: string; REQUEST_TIMEOUT_MS?: number; HOME_CONTENT_PATH?: string } | undefined {
+function getRuntimeConfig(): { API_BASE?: string; REQUEST_TIMEOUT_MS?: number; HOME_PATH?: string } | undefined {
   if (typeof window === 'undefined') {
     return undefined
   }
@@ -78,10 +78,10 @@ function getRuntimeApiBase(): string {
   return configuredBase.endsWith('/') ? configuredBase.slice(0, -1) : configuredBase
 }
 
-function getHomeContentPath(): string {
-  const configuredPath = toText(getRuntimeConfig()?.HOME_CONTENT_PATH)
+function getHomePath(): string {
+  const configuredPath = toText(getRuntimeConfig()?.HOME_PATH)
   if (!configuredPath) {
-    return '/home-content'
+    return '/home'
   }
 
   return configuredPath.startsWith('/') ? configuredPath : `/${configuredPath}`
@@ -123,24 +123,24 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
         detail = ''
       }
 
-      throw new HomeContentApiError(detail || `HTTP_${response.status}`, response.status)
+      throw new HomeApiError(detail || `HTTP_${response.status}`, response.status)
     }
 
     return (await response.json()) as T
   } catch (error) {
-    if (error instanceof HomeContentApiError) {
+    if (error instanceof HomeApiError) {
       throw error
     }
 
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new HomeContentApiError('Home content request timed out.')
+      throw new HomeApiError('Home request timed out.')
     }
 
     if (error instanceof Error) {
-      throw new HomeContentApiError(error.message)
+      throw new HomeApiError(error.message)
     }
 
-    throw new HomeContentApiError('Unknown home content request error.')
+    throw new HomeApiError('Unknown home request error.')
   } finally {
     if (timerId) {
       window.clearTimeout(timerId)
@@ -148,7 +148,7 @@ async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   }
 }
 
-function normalizeHomeContentCard(value: unknown): HomeContentCard {
+function normalizeHomeCard(value: unknown): HomeCard {
   const record = isRecord(value) ? value : {}
   return {
     accent: toText(record.accent),
@@ -159,12 +159,12 @@ function normalizeHomeContentCard(value: unknown): HomeContentCard {
   }
 }
 
-function normalizeHomeContentCardArray(value: unknown): HomeContentCard[] {
+function normalizeHomeCardArray(value: unknown): HomeCard[] {
   if (!Array.isArray(value)) {
     return []
   }
 
-  return value.map((entry) => normalizeHomeContentCard(entry))
+  return value.map((entry) => normalizeHomeCard(entry))
 }
 
 function normalizeFetchedAt(value: unknown): string | null {
@@ -172,17 +172,17 @@ function normalizeFetchedAt(value: unknown): string | null {
   return text || null
 }
 
-export async function fetchHomeContent(signal?: AbortSignal): Promise<HomeContentSnapshot> {
-  const response = await fetchJson<HomeContentResponse>(`${getRuntimeApiBase()}${getHomeContentPath()}`, signal)
+export async function fetchHome(signal?: AbortSignal): Promise<HomeSnapshot> {
+  const response = await fetchJson<HomeResponse>(`${getRuntimeApiBase()}${getHomePath()}`, signal)
   if (!response || response.ok !== true || !isRecord(response)) {
-    throw new HomeContentApiError('Home content payload is invalid.')
+    throw new HomeApiError('Home payload is invalid.')
   }
 
   return {
     source: toText(response.source) || 'database',
     fetchedAt: normalizeFetchedAt(response.fetched_at),
-    technology: normalizeHomeContentCardArray(response.technology),
-    life: normalizeHomeContentCardArray(response.life),
+    technology: normalizeHomeCardArray(response.technology),
+    life: normalizeHomeCardArray(response.life),
   }
 }
 
@@ -192,7 +192,7 @@ declare global {
       API_BASE?: string
       REQUEST_TIMEOUT_MS?: number
       STATUS_PUBLIC_PATH?: string
-      HOME_CONTENT_PATH?: string
+      HOME_PATH?: string
     }
   }
 }
