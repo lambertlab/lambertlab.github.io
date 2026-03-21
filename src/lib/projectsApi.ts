@@ -41,7 +41,6 @@ export interface ProjectDetailRecord {
   repositories: ProjectRepository[]
   source_refs: ProjectSourceRefs
   updated_at: string | null
-  synced_at: string | null
 }
 
 interface ProjectDetailResponse {
@@ -184,7 +183,6 @@ export function normalizeProjectDetail(payload: Partial<ProjectDetailRecord> & R
     repositories,
     source_refs: normalizeProjectSourceRefs(payload.source_refs),
     updated_at: normalizeNullableProjectText(payload.updated_at),
-    synced_at: normalizeNullableProjectText(payload.synced_at),
   }
 }
 

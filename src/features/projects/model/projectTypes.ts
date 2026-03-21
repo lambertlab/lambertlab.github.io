@@ -40,7 +40,6 @@ export interface ProjectCatalogRecord {
   repositories: ProjectRepository[]
   source_refs: ProjectSourceRefs
   updated_at: string | null
-  synced_at: string | null
   description: string
   full_name: string | null
   url: string | null

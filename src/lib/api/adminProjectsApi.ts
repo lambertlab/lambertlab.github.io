@@ -63,7 +63,6 @@ export interface AdminProjectRecord {
   stored_links: AdminProjectLinksRecord
   source_refs: AdminProjectSourceRefsRecord
   repositories: AdminProjectLinkedRepositoryRecord[]
-  synced_at: string | null
   updated_at: string | null
 }
 
@@ -486,7 +485,6 @@ function normalizeProjectRecord(value: unknown): AdminProjectRecord | null {
     repositories: toArray(project.repositories)
       .map((entry) => normalizeProjectLinkedRepositoryRecord(entry))
       .filter((entry): entry is AdminProjectLinkedRepositoryRecord => Boolean(entry)),
-    synced_at: toNullableText(project.synced_at),
     updated_at: toNullableText(project.updated_at),
   }
 }
