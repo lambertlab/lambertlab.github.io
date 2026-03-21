@@ -26,7 +26,14 @@ async function main() {
   }
 
   await prepareOutputDirectory()
-  await runCommand(resolveLocalBin('vite'), ['build'], 'vite build')
+  await runCommand(resolveLocalBin('vite'), ['build'], 'vite build', {
+    retries: 1,
+    shouldRetry: shouldRetryViteBuild,
+    beforeRetry: async (attempt) => {
+      console.warn(`[build] Re-preparing .output before vite build retry ${attempt + 1}.`)
+      await prepareOutputDirectory()
+    },
+  })
   await runCommand(resolveLocalBin('tsc'), ['--noEmit'], 'tsc --noEmit')
 
   const elapsed = Date.now() - startedAt
@@ -164,18 +171,51 @@ async function removeRenamedDirectory(renamedDir) {
   }
 }
 
-async function runCommand(command, commandArgs, label) {
-  console.log(`[build] Running ${label}...`)
+async function runCommand(command, commandArgs, label, options = {}) {
+  const retries = options.retries ?? 0
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const retrySuffix = attempt > 0 ? ` (retry ${attempt}/${retries})` : ''
+    console.log(`[build] Running ${label}${retrySuffix}...`)
+
+    try {
+      await runCommandOnce(command, commandArgs, label)
+      return
+    } catch (error) {
+      const shouldRetry = attempt < retries && options.shouldRetry?.(error)
+      if (!shouldRetry) {
+        throw error
+      }
+
+      console.warn(`[build] Retrying ${label} after transient prerender startup failure.`)
+      if (options.beforeRetry) {
+        await options.beforeRetry(attempt)
+      }
+    }
+  }
+}
+
+async function runCommandOnce(command, commandArgs, label) {
+  let combinedOutput = ''
 
   await new Promise((resolve, reject) => {
     const child = spawn(command, commandArgs, {
       cwd,
-      stdio: 'inherit',
+      stdio: ['inherit', 'pipe', 'pipe'],
       shell: runtime.family === 'windows',
       env: {
         ...process.env,
       },
     })
+
+    const handleChunk = (stream, chunk) => {
+      const text = chunk.toString()
+      combinedOutput += text
+      stream.write(chunk)
+    }
+
+    child.stdout?.on('data', (chunk) => handleChunk(process.stdout, chunk))
+    child.stderr?.on('data', (chunk) => handleChunk(process.stderr, chunk))
 
     child.on('error', (error) => {
       reject(new Error(`Failed to launch ${label}: ${formatError(error)}`))
@@ -188,13 +228,25 @@ async function runCommand(command, commandArgs, label) {
       }
 
       if (signal) {
-        reject(new Error(`${label} exited via signal ${signal}.`))
+        const error = new Error(`${label} exited via signal ${signal}.`)
+        error.output = combinedOutput
+        reject(error)
         return
       }
 
-      reject(new Error(`${label} exited with code ${code ?? 'unknown'}.`))
+      const error = new Error(`${label} exited with code ${code ?? 'unknown'}.`)
+      error.output = combinedOutput
+      reject(error)
     })
   })
+}
+
+function shouldRetryViteBuild(error) {
+  const output = typeof error?.output === 'string' ? error.output : ''
+  return (
+    output.includes('Failed to start the Vite preview server for prerendering')
+    || output.includes('Timeout waiting for port ')
+  )
 }
 
 function resolveLocalBin(binName) {
