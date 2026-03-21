@@ -351,7 +351,7 @@ function createMockAdminProjects(repositories) {
   ]
 }
 
-function createMockAdminState() {
+function createMockAdminState(options = {}) {
   const repositories = createMockAdminRepositories()
   const projects = createMockAdminProjects(repositories)
   return {
@@ -362,12 +362,25 @@ function createMockAdminState() {
     logs: [],
     lastLinksPayload: null,
     lastSyncJobPayload: null,
+    projectSyncJobShouldFail: options.projectSyncJobShouldFail === true,
   }
 }
 
-function createAdminSyncJobRecord({ jobId, mode, projectId = null, githubUsername = null, result, state = 'success' }) {
+function createAdminSyncJobRecord({
+  jobId,
+  mode,
+  projectId = null,
+  githubUsername = null,
+  result,
+  state = 'success',
+  errorCode = null,
+  errorMessage = null,
+  errorDetails = null,
+}) {
   const timestamp = '2026-03-21T00:00:00Z'
   const normalizedResult = cloneJson(result || null)
+  const normalizedErrorDetails = cloneJson(errorDetails || null)
+  const isFailed = state === 'failed'
 
   return {
     job_id: String(jobId),
@@ -381,13 +394,13 @@ function createAdminSyncJobRecord({ jobId, mode, projectId = null, githubUsernam
     started_at: timestamp,
     finished_at: timestamp,
     result: normalizedResult,
-    error_code: null,
-    error_message: null,
-    error_details: null,
+    error_code: errorCode,
+    error_message: errorMessage,
+    error_details: normalizedErrorDetails,
     error: {
-      code: null,
-      message: null,
-      details: null,
+      code: errorCode,
+      message: errorMessage,
+      details: normalizedErrorDetails,
     },
     steps: [
       {
@@ -398,10 +411,10 @@ function createAdminSyncJobRecord({ jobId, mode, projectId = null, githubUsernam
         created_at: timestamp,
       },
       {
-        step: 'run_completed',
+        step: isFailed ? 'run_failed' : 'run_completed',
         status: state,
-        message: 'Sync job completed.',
-        details: null,
+        message: isFailed ? errorMessage || 'Sync failed.' : 'Sync job completed.',
+        details: isFailed ? normalizedErrorDetails : normalizedResult,
         created_at: timestamp,
       },
     ],
@@ -435,17 +448,34 @@ function appendAdminSyncJob(admin, input) {
 
   if (input?.mode === 'project') {
     const projectId = String(input.project_id || '')
-    job = createAdminSyncJobRecord({
-      jobId: nextJobId,
-      mode: 'project',
-      projectId,
-      result: {
-        project_id: projectId,
-        synced: 1,
-        failed: 0,
-        synced_at: '2026-03-21T00:00:00Z',
-      },
-    })
+    const failureSummary = {
+      project_id: projectId,
+      synced: 0,
+      failed: 1,
+      synced_at: '2026-03-21T00:00:00Z',
+    }
+    job = admin.projectSyncJobShouldFail
+      ? createAdminSyncJobRecord({
+          jobId: nextJobId,
+          mode: 'project',
+          projectId,
+          result: null,
+          state: 'failed',
+          errorCode: 'sync_failed',
+          errorMessage: 'Sync completed with failures.',
+          errorDetails: failureSummary,
+        })
+      : createAdminSyncJobRecord({
+          jobId: nextJobId,
+          mode: 'project',
+          projectId,
+          result: {
+            project_id: projectId,
+            synced: 1,
+            failed: 0,
+            synced_at: '2026-03-21T00:00:00Z',
+          },
+        })
   } else {
     job = createAdminSyncJobRecord({
       jobId: nextJobId,
@@ -1463,6 +1493,8 @@ async function readAdminSyncDebugState(page) {
   return await page.evaluate(() => ({
     feedback: document.querySelector('.admin-surface-feedback .admin-feedback')?.textContent?.trim() || '',
     summaries: Array.from(document.querySelectorAll('[data-admin-sync-summary]')).map((node) => node.textContent?.trim() || ''),
+    jobRows: Array.from(document.querySelectorAll('.admin-sync-job-row button')).map((node) => node.textContent?.trim() || ''),
+    detailError: document.querySelector('.admin-sync-detail .admin-state-error')?.textContent?.trim() || '',
   }))
 }
 
@@ -1540,6 +1572,59 @@ async function testAdminProjectSyncJobEntrySmoke(browser, baseUrl) {
   }
 }
 
+async function testAdminProjectSyncJobFailureSmoke(browser, baseUrl) {
+  const state = {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'success',
+    delayMs: 0,
+    admin: createMockAdminState({ projectSyncJobShouldFail: true }),
+  }
+  const context = await newContext(browser, state)
+  await context.addInitScript(({ key, value }) => {
+    window.localStorage.setItem(key, value)
+  }, { key: 'll-admin-token-v1', value: state.admin.token })
+
+  try {
+    const page = await context.newPage()
+    await page.goto(`${baseUrl}/admin/projects/`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('.admin-project-list-item', { timeout: 8000 })
+    await page.locator('[data-admin-project-sync-button]').first().click()
+
+    await page.waitForFunction(() => {
+      const text = document.querySelector('.admin-surface-feedback .admin-feedback')?.textContent || ''
+      return /失败|failed/i.test(text) && /同步=0|Synced=0/.test(text) && /失败=1|Failed=1/.test(text)
+    }, null, { timeout: 8000 })
+
+    const projectDebug = await readAdminSyncDebugState(page)
+    ensure(/失败|failed/i.test(projectDebug.feedback), `project sync failure feedback should include failure reason: ${JSON.stringify(projectDebug)}`)
+    ensure(/同步=0|Synced=0/.test(projectDebug.feedback), `project sync failure feedback should include synced=0 summary: ${JSON.stringify(projectDebug)}`)
+    ensure(/失败=1|Failed=1/.test(projectDebug.feedback), `project sync failure feedback should include failed=1 summary: ${JSON.stringify(projectDebug)}`)
+
+    await page.locator('a[href="/admin/logs"]').first().click()
+    await page.waitForFunction(() => window.location.pathname === '/admin/logs', null, { timeout: 8000 })
+    await page.waitForFunction(() => {
+      const firstRow = document.querySelector('.admin-sync-job-row button')?.textContent || ''
+      const detailError = document.querySelector('.admin-sync-detail .admin-state-error')?.textContent || ''
+      return /Sync completed with failures\./.test(firstRow) && /同步=0|Synced=0/.test(firstRow) && /失败=1|Failed=1/.test(firstRow) && /Sync completed with failures\./.test(detailError)
+    }, null, { timeout: 8000 })
+
+    const logsDebug = await readAdminSyncDebugState(page)
+    ensure(
+      logsDebug.jobRows.some((text) => /Sync completed with failures\./.test(text) && /同步=0|Synced=0/.test(text) && /失败=1|Failed=1/.test(text)),
+      `logs sync list should render failure reason and summary together: ${JSON.stringify(logsDebug)}`,
+    )
+    ensure(/Sync completed with failures\./.test(logsDebug.detailError), `logs sync detail should render failure reason: ${JSON.stringify(logsDebug)}`)
+    ensure(
+      logsDebug.summaries.some((text) => /同步=0|Synced=0/.test(text) && /失败=1|Failed=1/.test(text)),
+      `logs sync detail should keep failure summary visible: ${JSON.stringify(logsDebug)}`,
+    )
+  } finally {
+    await context.close()
+  }
+}
+
 async function main() {
   if (!fs.existsSync(outputRoot)) {
     throw new Error('Missing ".output/public". Run `npm run build` first.')
@@ -1559,6 +1644,7 @@ async function main() {
     { name: 'projects-list-error-retry', run: () => testProjectsListErrorRetry(browser, baseUrl) },
     { name: 'admin-projects-links-editor-smoke', run: () => testAdminProjectsLinksEditorSmoke(browser, baseUrl) },
     { name: 'admin-project-sync-job-entry-smoke', run: () => testAdminProjectSyncJobEntrySmoke(browser, baseUrl) },
+    { name: 'admin-project-sync-job-failure-smoke', run: () => testAdminProjectSyncJobFailureSmoke(browser, baseUrl) },
     { name: 'project-detail-canonical-states-with-legacy-html-redirect', run: () => testProjectDetailCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) },
   ]
   const failures = []
