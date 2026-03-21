@@ -363,6 +363,7 @@ function createMockAdminState(options = {}) {
     lastLinksPayload: null,
     lastSyncJobPayload: null,
     projectSyncJobShouldFail: options.projectSyncJobShouldFail === true,
+    projectSyncRetryShouldFail: options.projectSyncRetryShouldFail === true,
   }
 }
 
@@ -898,6 +899,10 @@ async function installRoutes(context, state) {
         }
         if (existingJob.state !== 'failed') {
           await route.fulfill(createAdminError(409, 'sync_job_state_invalid', 'Only failed sync jobs can be retried.'))
+          return
+        }
+        if (admin.projectSyncRetryShouldFail) {
+          await route.fulfill(createAdminError(503, 'sync_failed', 'Retry failed.'))
           return
         }
 
@@ -1882,6 +1887,74 @@ async function testAdminProjectSyncJobRetryInvalidStateSmoke(browser, baseUrl) {
   }
 }
 
+async function testAdminProjectSyncJobRetryErrorSmoke(browser, baseUrl) {
+  const state = {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'success',
+    delayMs: 0,
+    admin: createMockAdminState({ projectSyncJobShouldFail: true, projectSyncRetryShouldFail: true }),
+  }
+  const context = await newContext(browser, state)
+  await context.addInitScript(({ key, value }) => {
+    window.localStorage.setItem(key, value)
+  }, { key: 'll-admin-token-v1', value: state.admin.token })
+
+  try {
+    const page = await context.newPage()
+    await page.goto(`${baseUrl}/admin/projects/`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('.admin-project-list-item', { timeout: 8000 })
+    await page.locator('[data-admin-project-sync-button]').first().click()
+
+    await page.waitForFunction(() => {
+      const text = document.querySelector('.admin-surface-feedback .admin-feedback')?.textContent || ''
+      return /失败|failed/i.test(text)
+    }, null, { timeout: 8000 })
+
+    const failedJobId = state.admin.syncJobs[0]?.job_id || ''
+    ensure(Boolean(failedJobId), `retry error smoke should start from a failed project sync job: ${JSON.stringify(state.admin.syncJobs)}`)
+
+    await page.locator('a[href="/admin/logs"]').first().click()
+    await page.waitForFunction(() => window.location.pathname === '/admin/logs', null, { timeout: 8000 })
+    await page.waitForSelector('.admin-retry-button', { timeout: 8000 })
+
+    await page.locator('.admin-retry-button').first().click()
+    await page.waitForFunction(() => {
+      const feedback = document.querySelector('.admin-projects-list-panel .admin-feedback')?.textContent || ''
+      const button = document.querySelector('.admin-retry-button')?.textContent || ''
+      return /再次点击|Click retry again/.test(feedback) && /确认重试|Confirm Retry/.test(button)
+    }, null, { timeout: 8000 })
+
+    await page.locator('.admin-retry-button').first().click()
+    await page.waitForFunction(() => {
+      const feedback = document.querySelector('.admin-projects-list-panel .admin-feedback')?.textContent || ''
+      return /同步失败，请稍后重试。/.test(feedback)
+    }, null, { timeout: 8000 })
+
+    const logsDebug = await readAdminSyncDebugState(page)
+    ensure(/同步失败，请稍后重试。/.test(logsDebug.listFeedback), `retry error branch should show mapped failure feedback: ${JSON.stringify(logsDebug)}`)
+    ensure(state.admin.syncJobs.length === 1, `retry error branch should not create a new sync job: ${JSON.stringify(state.admin.syncJobs)}`)
+    ensure(
+      !state.admin.logs.some((entry) => entry.action === 'sync_job_retried'),
+      `retry error branch should not append sync_job_retried activity log: ${JSON.stringify(state.admin.logs)}`,
+    )
+
+    await page.locator('.admin-logs-toolbar__filters .admin-logs-filter--select').first().selectOption('sync_job_retried')
+    await page.waitForFunction(() => {
+      const selectedAction = document.querySelector('.admin-logs-toolbar__filters .admin-logs-filter--select')?.value || ''
+      const emptyText = document.querySelector('.admin-logs-page .admin-state-card p')?.textContent || ''
+      return selectedAction === 'sync_job_retried' && /暂无日志|No logs yet/.test(emptyText)
+    }, null, { timeout: 8000 })
+
+    const activityLogsDebug = await readAdminActivityLogsDebugState(page)
+    ensure(activityLogsDebug.selectedAction === 'sync_job_retried', `logs action filter should keep sync_job_retried selected in retry error branch: ${JSON.stringify(activityLogsDebug)}`)
+    ensure(activityLogsDebug.rows.length === 0, `logs action filter should stay empty when retry fails before append: ${JSON.stringify(activityLogsDebug)}`)
+  } finally {
+    await context.close()
+  }
+}
+
 async function main() {
   if (!fs.existsSync(outputRoot)) {
     throw new Error('Missing ".output/public". Run `npm run build` first.')
@@ -1904,6 +1977,7 @@ async function main() {
     { name: 'admin-project-sync-job-failure-smoke', run: () => testAdminProjectSyncJobFailureSmoke(browser, baseUrl) },
     { name: 'admin-project-sync-job-retry-smoke', run: () => testAdminProjectSyncJobRetrySmoke(browser, baseUrl) },
     { name: 'admin-project-sync-job-retry-invalid-state-smoke', run: () => testAdminProjectSyncJobRetryInvalidStateSmoke(browser, baseUrl) },
+    { name: 'admin-project-sync-job-retry-error-smoke', run: () => testAdminProjectSyncJobRetryErrorSmoke(browser, baseUrl) },
     { name: 'project-detail-canonical-states-with-legacy-html-redirect', run: () => testProjectDetailCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) },
   ]
   const failures = []
