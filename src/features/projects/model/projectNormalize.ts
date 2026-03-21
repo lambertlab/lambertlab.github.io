@@ -98,42 +98,24 @@ export function normalizeProjectHighlightArray(value: unknown): string[] {
 }
 
 export function normalizeProjectRepositories(value: unknown): ProjectRepository[] {
-  const payloadRecord = toProjectRecord(value)
-  const rawItems: unknown[] = []
-
-  if (Array.isArray(value)) {
-    rawItems.push(...value)
-  }
-
-  if (payloadRecord) {
-    if (Array.isArray(payloadRecord.items)) {
-      rawItems.push(...payloadRecord.items)
-    }
-
-    if (Array.isArray(payloadRecord.repositories)) {
-      rawItems.push(...payloadRecord.repositories)
-    }
-
-    if (Array.isArray(payloadRecord.repos)) {
-      rawItems.push(...payloadRecord.repos)
-    }
+  if (!Array.isArray(value)) {
+    return []
   }
 
   const dedupeKeys = new Set<string>()
   const repositories: ProjectRepository[] = []
 
-  rawItems.forEach((entry, index) => {
+  value.forEach((entry, index) => {
     const record = toProjectRecord(entry)
     if (!record) {
       return
     }
 
-    const fullName =
-      normalizeNullableProjectText(record.full_name ?? record.repo_full_name ?? record.repository_full_name) ?? null
-    const explicitName = normalizeNullableProjectText(record.name ?? record.repo_name)
+    const fullName = normalizeNullableProjectText(record.repo_full_name) ?? null
+    const explicitName = normalizeNullableProjectText(record.repo_name)
     const derivedName = fullName ? fullName.split('/').pop() || '' : ''
     const name = explicitName || derivedName
-    const url = normalizeNullableProjectText(record.url ?? record.repo_url ?? record.html_url ?? record.homepage)
+    const url = normalizeNullableProjectText(record.repo_url)
     const visibility = normalizeNullableProjectText(record.visibility)
     const isPrimary = record.is_primary === true
 
