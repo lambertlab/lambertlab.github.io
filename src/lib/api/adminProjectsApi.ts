@@ -1387,21 +1387,6 @@ export async function createAdminProject(
   return normalizeProjectDetail(payload)
 }
 
-export async function syncAdminProjectRepositories(token: string, projectId: string, signal?: AbortSignal): Promise<AdminProjectRecord> {
-  const normalizedProjectId = toIdentifierText(projectId)
-  if (!normalizedProjectId) {
-    throw new AdminProjectsApiError('Project id is required.')
-  }
-
-  const payload = await requestJson<unknown>(`/admin/projects/${encodeURIComponent(normalizedProjectId)}/sync-repositories`, {
-    token: toText(token),
-    method: 'POST',
-    signal,
-  })
-
-  return normalizeProjectDetail(payload)
-}
-
 export async function fetchAdminOverview(token: string, signal?: AbortSignal): Promise<AdminOverviewSummary> {
   const payload = await requestJson<unknown>('/admin/overview', {
     token: toText(token),
