@@ -67,6 +67,7 @@ interface FormState {
   featured_rank: string
   sort_order: string
   repository_full_names: string[]
+  primary_repository_full_name: string
 }
 
 interface CreateFormState {
@@ -288,6 +289,8 @@ function clearToken() {
 }
 
 function toForm(project: AdminProjectRecord): FormState {
+  const repositoryFullNames = project.repositories.map((repository) => repository.repo_full_name)
+
   return {
     name: project.name,
     summary: project.summary,
@@ -299,7 +302,11 @@ function toForm(project: AdminProjectRecord): FormState {
     is_featured: project.is_featured,
     featured_rank: project.featured_rank == null ? '' : String(project.featured_rank),
     sort_order: project.sort_order == null ? '' : String(project.sort_order),
-    repository_full_names: project.repositories.map((repository) => repository.repo_full_name),
+    repository_full_names: repositoryFullNames,
+    primary_repository_full_name: resolvePrimaryRepositoryFullName(
+      repositoryFullNames,
+      project.repositories.find((repository) => repository.is_primary)?.repo_full_name || '',
+    ),
   }
 }
 
@@ -343,6 +350,21 @@ function normalizeRepositoryBindingKey(value: string): string {
   return value.trim().toLowerCase()
 }
 
+function resolvePrimaryRepositoryFullName(
+  repositoryFullNames: readonly string[],
+  primaryRepositoryFullName: string,
+): string {
+  const normalizedPrimary = normalizeRepositoryBindingKey(primaryRepositoryFullName)
+  if (normalizedPrimary) {
+    const matched = repositoryFullNames.find((value) => normalizeRepositoryBindingKey(value) === normalizedPrimary)
+    if (matched) {
+      return matched
+    }
+  }
+
+  return repositoryFullNames[0] || ''
+}
+
 function buildProjectRepositoryBindings(
   form: FormState,
   repositoryOptions: AdminRepositoryRecord[],
@@ -372,10 +394,9 @@ function buildProjectRepositoryBindings(
     })
   })
 
-  const currentPrimaryKey = normalizeRepositoryBindingKey(
-    currentRepositories.find((repository) => repository.is_primary)?.repo_full_name || '',
+  const primaryKey = normalizeRepositoryBindingKey(
+    resolvePrimaryRepositoryFullName(form.repository_full_names, form.primary_repository_full_name),
   )
-  const primaryKey = selectedKeys.includes(currentPrimaryKey) ? currentPrimaryKey : selectedKeys[0] || ''
 
   const bindings: AdminProjectRepositoryBindingInput[] = []
   const missing: string[] = []
@@ -527,6 +548,7 @@ function errorMessage(error: unknown): { code: AdminProjectErrorCode; message: s
     if (error.code === 'invalid_project_type') return { code: error.code, message: 'project_type 不合法，请按协议填写。' }
     if (error.code === 'invalid_visibility') return { code: error.code, message: 'visibility 不合法，请按协议填写。' }
     if (error.code === 'repository_conflict') return { code: error.code, message: '仓库绑定冲突，请检查后重试。' }
+    if (error.code === 'invalid_primary_repository') return { code: error.code, message: '\u8bf7\u9009\u62e9\u4e14\u4ec5\u9009\u62e9 1 \u4e2a\u4e3b\u4ed3\u540e\u518d\u4fdd\u5b58\u3002' }
     if (error.code === 'sync_failed') return { code: error.code, message: '同步失败，请稍后重试。' }
     if (error.code === 'sync_rate_limited') return { code: error.code, message: 'GitHub 配额限流，请稍后再试。' }
     if (error.code === 'invalid_link_type') return { code: error.code, message: '链接类型不合法，请检查后重试。' }
@@ -878,28 +900,65 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     return items
   }, [form, repositoryOptions, t])
 
+  const primaryRepositoryLabel = React.useMemo(() => {
+    if (!form) {
+      return ''
+    }
+
+    return resolvePrimaryRepositoryFullName(form.repository_full_names, form.primary_repository_full_name)
+  }, [form])
+
   const repositoryDialogButtonLabel = React.useMemo(() => {
     if (!form || form.repository_full_names.length === 0) {
       return t('\u9009\u62e9\u4ed3\u5e93', 'Choose repositories')
     }
 
     if (form.repository_full_names.length === 1) {
-      return form.repository_full_names[0]
+      return primaryRepositoryLabel || form.repository_full_names[0]
     }
 
-    return t(`已关联 ${form.repository_full_names.length} 个仓库`, `${form.repository_full_names.length} repositories linked`)
-  }, [form, t])
+    if (primaryRepositoryLabel) {
+      return t(
+        `\u5df2\u5173\u8054 ${form.repository_full_names.length} \u4e2a\u4ed3\u5e93 | \u4e3b\u4ed3 ${primaryRepositoryLabel}`,
+        `${form.repository_full_names.length} repositories linked | primary ${primaryRepositoryLabel}`,
+      )
+    }
+
+    return t(`\u5df2\u5173\u8054 ${form.repository_full_names.length} \u4e2a\u4ed3\u5e93`, `${form.repository_full_names.length} repositories linked`)
+  }, [form, primaryRepositoryLabel, t])
 
   const toggleRepositorySelection = React.useCallback((repoFullName: string) => {
     setForm((prev) => {
       if (!prev) return prev
       const normalizedKey = normalizeRepositoryBindingKey(repoFullName)
       const exists = prev.repository_full_names.some((value) => normalizeRepositoryBindingKey(value) === normalizedKey)
+      const repository_full_names = exists
+        ? prev.repository_full_names.filter((value) => normalizeRepositoryBindingKey(value) !== normalizedKey)
+        : [...prev.repository_full_names, repoFullName]
+      const nextPrimaryCandidate =
+        exists && normalizeRepositoryBindingKey(prev.primary_repository_full_name) === normalizedKey
+          ? ''
+          : prev.primary_repository_full_name || repoFullName
+
       return {
         ...prev,
-        repository_full_names: exists
-          ? prev.repository_full_names.filter((value) => normalizeRepositoryBindingKey(value) !== normalizedKey)
-          : [...prev.repository_full_names, repoFullName],
+        repository_full_names,
+        primary_repository_full_name: resolvePrimaryRepositoryFullName(repository_full_names, nextPrimaryCandidate),
+      }
+    })
+  }, [])
+
+  const setPrimaryRepository = React.useCallback((repoFullName: string) => {
+    setForm((prev) => {
+      if (!prev) return prev
+      const primary_repository_full_name = resolvePrimaryRepositoryFullName(prev.repository_full_names, repoFullName)
+      if (!primary_repository_full_name) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        primary_repository_full_name,
       }
     })
   }, [])
@@ -1040,6 +1099,17 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         message: t('\u90e8\u5206\u4ed3\u5e93\u9009\u9879\u5c1a\u672a\u52a0\u8f7d\u5b8c\u6210\uff0c\u8bf7\u5237\u65b0\u540e\u91cd\u8bd5\u3002', 'Some repository options are not ready yet. Refresh and try again.'),
       })
       return
+    }
+
+    if (repositoryBindings.bindings.length > 0) {
+      const primaryCount = repositoryBindings.bindings.filter((repository) => repository.is_primary).length
+      if (primaryCount !== 1) {
+        setSaveState({
+          status: 'error',
+          message: t('\u8bf7\u9009\u62e9\u4e14\u4ec5\u9009\u62e9 1 \u4e2a\u4e3b\u4ed3\u540e\u518d\u4fdd\u5b58\u3002', 'Select exactly one primary repository before saving.'),
+        })
+        return
+      }
     }
 
     setSaveState({ status: 'running', message: t('\u6b63\u5728\u4fdd\u5b58\u53d8\u66f4...', 'Saving changes...') })
@@ -1527,7 +1597,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
             <div className="admin-project-modal__head admin-project-modal__head--repository">
               <div className="admin-project-modal__titleblock">
                 <h3>{t('\u5173\u8054\u4ed3\u5e93', 'Link Repositories')}</h3>
-                <p className="admin-project-modal__project-name">{t('\u4ece\u5df2\u5bfc\u5165\u7684 GitHub \u4ed3\u5e93\u4e2d\u52fe\u9009\uff0c\u53ef\u591a\u9009\u3002', 'Choose from imported GitHub repositories. Multiple selections are supported.')}</p>
+                <p className="admin-project-modal__project-name">{t('\u4ece\u5df2\u5bfc\u5165\u7684 GitHub \u4ed3\u5e93\u4e2d\u52fe\u9009\uff0c\u53ef\u591a\u9009\uff1b\u5df2\u9009\u4ed3\u5e93\u4e2d\u9700\u6307\u5b9a 1 \u4e2a\u4e3b\u4ed3\u3002', 'Choose from imported GitHub repositories. Multiple selections are supported, and one selected repository must be marked as primary.')}</p>
               </div>
               <button className="admin-modal-close" type="button" onClick={() => setRepositoryDialogOpen(false)} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
             </div>
@@ -1536,26 +1606,48 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                 {repositoryOptions.length > 0 || repositoryDialogOptions.length > 0 ? (
                   <div className="admin-repository-dialog__list">
                     {repositoryDialogOptions.map((repository) => {
+                      const normalizedKey = normalizeRepositoryBindingKey(repository.repo_full_name)
                       const isSelected = form.repository_full_names.some(
-                        (value) => normalizeRepositoryBindingKey(value) === normalizeRepositoryBindingKey(repository.repo_full_name),
+                        (value) => normalizeRepositoryBindingKey(value) === normalizedKey,
                       )
+                      const isPrimary = isSelected && normalizeRepositoryBindingKey(primaryRepositoryLabel) === normalizedKey
 
                       return (
-                        <label
+                        <div
                           className={`admin-repository-dialog__item ${isSelected ? 'is-selected' : ''} ${repository.missing ? 'is-missing' : ''}`.trim()}
                           data-visibility={repository.visibility || 'unknown'}
                           key={repository.repo_full_name}
                         >
-                          <span className="admin-repository-dialog__copy">
-                            <span className="admin-repository-dialog__name">{repository.repo_name}</span>
+                          <button
+                            className="admin-repository-dialog__copy admin-repository-dialog__copy-button"
+                            onClick={() => toggleRepositorySelection(repository.repo_full_name)}
+                            type="button"
+                          >
+                            <span className="admin-repository-dialog__name-row">
+                              <span className="admin-repository-dialog__name">{repository.repo_name}</span>
+                              {isPrimary ? <span className="admin-repository-dialog__primary-badge">{t('\u4e3b\u4ed3', 'Primary')}</span> : null}
+                            </span>
                             <span className="admin-repository-dialog__description">{repository.description}</span>
-                          </span>
-                          <input
-                            checked={isSelected}
-                            onChange={() => toggleRepositorySelection(repository.repo_full_name)}
-                            type="checkbox"
-                          />
-                        </label>
+                          </button>
+                          <div className="admin-repository-dialog__controls">
+                            {isSelected ? (
+                              <button
+                                className="admin-repository-dialog__primary-toggle"
+                                data-active={isPrimary ? 'true' : 'false'}
+                                onClick={() => setPrimaryRepository(repository.repo_full_name)}
+                                type="button"
+                              >
+                                {isPrimary ? t('\u5f53\u524d\u4e3b\u4ed3', 'Current primary') : t('\u8bbe\u4e3a\u4e3b\u4ed3', 'Set primary')}
+                              </button>
+                            ) : null}
+                            <input
+                              aria-label={t(`\u9009\u62e9\u4ed3\u5e93 ${repository.repo_full_name}`, `Select repository ${repository.repo_full_name}`)}
+                              checked={isSelected}
+                              onChange={() => toggleRepositorySelection(repository.repo_full_name)}
+                              type="checkbox"
+                            />
+                          </div>
+                        </div>
                       )
                     })}
                   </div>

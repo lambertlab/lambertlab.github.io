@@ -7,6 +7,7 @@ export type AdminProjectErrorCode =
   | 'invalid_project_type'
   | 'invalid_visibility'
   | 'invalid_link_type'
+  | 'invalid_primary_repository'
   | 'repository_conflict'
   | 'sync_job_not_found'
   | 'sync_job_state_invalid'
@@ -352,6 +353,7 @@ function normalizeErrorCode(value: unknown): AdminProjectErrorCode {
     code === 'invalid_project_type' ||
     code === 'invalid_visibility' ||
     code === 'invalid_link_type' ||
+    code === 'invalid_primary_repository' ||
     code === 'repository_conflict' ||
     code === 'sync_job_not_found' ||
     code === 'sync_job_state_invalid' ||
