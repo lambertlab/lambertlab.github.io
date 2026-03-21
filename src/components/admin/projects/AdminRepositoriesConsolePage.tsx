@@ -310,9 +310,9 @@ export function AdminRepositoriesConsolePage() {
 
   return (
     <AdminConsoleShell
-      mode="repo"
-      title={t('Lambert Lab Admin · GitHub Repo | lambertlab', 'Lambert Lab Admin · GitHub Repo | lambertlab')}
-      description={t('GitHub Repo 页面用于导入并查看同步到系统的仓库。', 'GitHub Repo is used to import and review repositories synced into the system.')}
+      mode="repositories"
+      title={t('Lambert Lab Admin · Repositories | lambertlab', 'Lambert Lab Admin · Repositories | lambertlab')}
+      description={t('Repositories 页面用于导入并查看同步到系统的仓库。', 'Repositories is used to import and review repositories synced into the system.')}
     >
       <RepositoryListContent />
     </AdminConsoleShell>

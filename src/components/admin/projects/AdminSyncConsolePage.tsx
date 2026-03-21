@@ -466,9 +466,9 @@ export function AdminSyncConsolePage({ searchState: _searchState }: { searchStat
 
   return (
     <AdminConsoleShell
-      mode="repo"
-      title={t('Lambert Lab Admin · Sync Center | lambertlab', 'Lambert Lab Admin · Sync Center | lambertlab')}
-      description={t('Sync Center 用于导入 lambertlab 的 GitHub Repo。', 'GitHub Repo imports lambertlab GitHub repositories.')}
+      mode="sync"
+      title={t('Lambert Lab Admin · Sync Jobs | lambertlab', 'Lambert Lab Admin · Sync Jobs | lambertlab')}
+      description={t('Sync Jobs 页面用于触发同步并查看任务状态。', 'Sync Jobs is used to trigger synchronization and inspect job status.')}
     >
       <ImportGithubRepoContent />
     </AdminConsoleShell>

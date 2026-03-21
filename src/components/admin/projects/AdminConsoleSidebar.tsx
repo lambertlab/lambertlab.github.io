@@ -3,7 +3,7 @@ import * as React from 'react'
 import { useUiLocale } from '~/lib/uiLocale'
 import { DEFAULT_ADMIN_PROJECTS_SEARCH_STATE } from './adminProjectsSearch'
 
-export type AdminSidebarMode = 'overview' | 'projects' | 'repo' | 'logs' | 'settings'
+export type AdminSidebarMode = 'overview' | 'projects' | 'repositories' | 'sync' | 'logs' | 'settings'
 
 interface AdminConsoleSidebarProps {
   activeMode: AdminSidebarMode
@@ -33,6 +33,17 @@ function RepoIcon() {
       <path d="M4 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M14 3v5h5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M8 13h8M8 17h5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function SyncIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M4 4v6h6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 20v-6h-6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 9A8 8 0 006.34 5.34L4 10" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 15a8 8 0 0013.66 3.66L20 14" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -81,9 +92,19 @@ export function AdminConsoleSidebar({ activeMode }: AdminConsoleSidebarProps) {
           <ProjectsIcon />
           <span>{t('Projects', 'Projects')}</span>
         </Link>
-        <Link to="/admin/repo" className={activeMode === 'repo' ? 'admin-reference-sidebar__item is-active' : 'admin-reference-sidebar__item'}>
+        <Link
+          to="/admin/repositories"
+          className={activeMode === 'repositories' ? 'admin-reference-sidebar__item is-active' : 'admin-reference-sidebar__item'}
+        >
           <RepoIcon />
-          <span>{t('GitHub Repo', 'GitHub Repo')}</span>
+          <span>{t('Repositories', 'Repositories')}</span>
+        </Link>
+        <Link
+          to="/admin/sync-jobs"
+          className={activeMode === 'sync' ? 'admin-reference-sidebar__item is-active' : 'admin-reference-sidebar__item'}
+        >
+          <SyncIcon />
+          <span>{t('Sync Jobs', 'Sync Jobs')}</span>
         </Link>
         <Link to="/admin/logs" className={activeMode === 'logs' ? 'admin-reference-sidebar__item is-active' : 'admin-reference-sidebar__item'}>
           <LogsIcon />
