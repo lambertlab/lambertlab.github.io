@@ -35,7 +35,7 @@ function buildReadyState(cards: HomeCard[]): HomeCardsState {
 }
 
 function buildErrorState(error: unknown): HomeCardsState {
-  const message = error instanceof Error ? error.message : 'Failed to load home content.'
+  const message = error instanceof Error ? error.message : 'Failed to load homepage data.'
 
   return {
     status: 'error',
