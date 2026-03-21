@@ -6,13 +6,6 @@ export interface ProjectLinks {
   notes: string | null
 }
 
-export interface ProjectLinkItem {
-  key: string
-  label: string
-  href: string
-  type: string | null
-}
-
 export interface ProjectRepository {
   name: string
   full_name: string | null
@@ -44,7 +37,6 @@ export interface ProjectCatalogRecord {
   status_note: string | null
   highlights: string[]
   links: ProjectLinks
-  link_items: ProjectLinkItem[]
   repositories: ProjectRepository[]
   source_refs: ProjectSourceRefs
   updated_at: string | null

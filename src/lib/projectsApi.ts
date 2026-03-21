@@ -13,7 +13,6 @@ import {
 import type {
   FetchProjectsListOptions,
   ProjectCatalogRecord,
-  ProjectLinkItem,
   ProjectLinks,
   ProjectRepository,
   ProjectSourceRefs,
@@ -39,7 +38,6 @@ export interface ProjectDetailRecord {
   status_note: string | null
   highlights: string[]
   links: ProjectLinks
-  link_items: ProjectLinkItem[]
   repositories: ProjectRepository[]
   source_refs: ProjectSourceRefs
   updated_at: string | null
@@ -182,8 +180,7 @@ export function normalizeProjectDetail(payload: Partial<ProjectDetailRecord> & R
     featured_rank: normalizeProjectFeaturedRank(payload.featured_rank),
     status_note: normalizeNullableProjectText(payload.status_note),
     highlights: normalizeProjectHighlightArray(payload.highlights),
-    links: normalizedLinks.links,
-    link_items: normalizedLinks.items,
+    links: normalizedLinks,
     repositories,
     source_refs: normalizeProjectSourceRefs(payload.source_refs),
     updated_at: normalizeNullableProjectText(payload.updated_at),
@@ -215,6 +212,3 @@ declare global {
     }
   }
 }
-
-
-

@@ -9,7 +9,6 @@ import {
   type ProjectCatalogSourceFilter,
   type ProjectCatalogStageFilter,
   type ProjectCatalogTypeFilter,
-  type ProjectLinkItem,
   type ProjectLinks,
   type ProjectRepository,
   type ProjectSourceRefs,
@@ -159,54 +158,15 @@ export function normalizeProjectRepositories(value: unknown): ProjectRepository[
 
   return repositories
 }
-const PROJECT_LINK_KEYS = ['primary', 'repo', 'demo', 'docs', 'notes'] as const
+export function normalizeProjectLinks(value: unknown): ProjectLinks {
+  const linksRecord = toProjectRecord(value) ?? {}
 
-type ProjectLinkKey = (typeof PROJECT_LINK_KEYS)[number]
-
-const PROJECT_LINK_LABELS: Record<ProjectLinkKey, string> = {
-  primary: 'Primary',
-  repo: 'Repository',
-  demo: 'Demo',
-  docs: 'Docs',
-  notes: 'Notes',
-}
-
-function buildProjectLinkItem(type: ProjectLinkKey, href: string): ProjectLinkItem {
   return {
-    key: type,
-    label: PROJECT_LINK_LABELS[type],
-    href,
-    type,
-  }
-}
-
-export function normalizeProjectLinkItems(value: unknown): ProjectLinkItem[] {
-  const linksRecord = toProjectRecord(value) ?? {}
-
-  return PROJECT_LINK_KEYS.reduce<ProjectLinkItem[]>((items, key) => {
-    const href = normalizeNullableProjectText(linksRecord[key])
-    if (!href) {
-      return items
-    }
-
-    items.push(buildProjectLinkItem(key, href))
-    return items
-  }, [])
-}
-
-export function normalizeProjectLinks(value: unknown): { links: ProjectLinks; items: ProjectLinkItem[] } {
-  const linksRecord = toProjectRecord(value) ?? {}
-  const links: ProjectLinks = {
     primary: normalizeNullableProjectText(linksRecord.primary),
     repo: normalizeNullableProjectText(linksRecord.repo),
     demo: normalizeNullableProjectText(linksRecord.demo),
     docs: normalizeNullableProjectText(linksRecord.docs),
     notes: normalizeNullableProjectText(linksRecord.notes),
-  }
-
-  return {
-    links,
-    items: normalizeProjectLinkItems(linksRecord),
   }
 }
 
@@ -315,8 +275,7 @@ export function normalizeProjectCatalogRecord(payload: Record<string, unknown>, 
     featured_rank: normalizeProjectFeaturedRank(payload.featured_rank),
     status_note: normalizeNullableProjectText(payload.status_note),
     highlights,
-    links: normalizedLinks.links,
-    link_items: normalizedLinks.items,
+    links: normalizedLinks,
     repositories,
     source_refs: sourceRefs,
     updated_at: updatedAt,
