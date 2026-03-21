@@ -192,6 +192,8 @@ export interface CreateAdminSyncJobResult {
   state: string
   created_at: string | null
   result: AdminSyncResultSummary | null
+  error_code: string | null
+  error_message: string | null
 }
 
 export interface AdminSyncJobRecord {
@@ -679,6 +681,8 @@ function normalizeSyncJobRecord(value: unknown): AdminSyncJobRecord | null {
     return null
   }
 
+  const errorPayload = toRecord(payload.error)
+
   const jobId = toIdentifierText(payload.job_id) || toIdentifierText(payload.id)
   if (!jobId) {
     return null
@@ -693,9 +697,9 @@ function normalizeSyncJobRecord(value: unknown): AdminSyncJobRecord | null {
     created_at: toNullableText(payload.created_at),
     updated_at: toNullableText(payload.updated_at),
     finished_at: toNullableText(payload.finished_at) || toNullableText(payload.completed_at),
-    error_code: toNullableText(payload.error_code),
-    error_message: toNullableText(payload.error_message),
-    result: normalizeSyncResultSummary(payload.result ?? payload.summary),
+    error_code: toNullableText(payload.error_code) || toNullableText(errorPayload?.code),
+    error_message: toNullableText(payload.error_message) || toNullableText(errorPayload?.message),
+    result: normalizeSyncResultSummary(payload.result ?? payload.summary ?? errorPayload?.details),
   }
 }
 
@@ -786,6 +790,8 @@ function normalizeCreateSyncJobResult(value: unknown): CreateAdminSyncJobResult 
     state: toText(payload?.state) || record?.state || 'queued',
     created_at: toNullableText(payload?.created_at) || record?.created_at || null,
     result: record?.result ?? normalizeSyncResultSummary(payload?.result ?? payload?.summary),
+    error_code: record?.error_code ?? null,
+    error_message: record?.error_message ?? null,
   }
 }
 

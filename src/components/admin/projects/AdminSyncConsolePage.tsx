@@ -41,6 +41,48 @@ function summarizeSyncResult(
   ].join(' | ')
 }
 
+function describeCreatedGithubSyncJobOutcome(
+  job: Pick<AdminSyncJobRecord, 'job_id' | 'state' | 'error_message' | 'result'>,
+  t: (zh: string, en: string) => string,
+): { status: 'success' | 'error'; message: string } {
+  const summaryText = summarizeSyncResult(job.result, t)
+  if (job.state === 'failed') {
+    const reason = job.error_message || t('同步失败。', 'Sync failed.')
+    return {
+      status: 'error',
+      message: summaryText
+        ? t(`任务 #${job.job_id} 失败：${reason}。${summaryText}`, `Job #${job.job_id} failed: ${reason}. ${summaryText}`)
+        : t(`任务 #${job.job_id} 失败：${reason}`, `Job #${job.job_id} failed: ${reason}`),
+    }
+  }
+  return {
+    status: 'success',
+    message: summaryText
+      ? t(`任务 #${job.job_id} 已创建。${summaryText}`, `Job #${job.job_id} created. ${summaryText}`)
+      : t(`任务 #${job.job_id} 已创建。`, `Job #${job.job_id} created.`),
+  }
+}
+
+function describeRecoveredGithubSyncJobOutcome(
+  job: Pick<AdminSyncJobRecord, 'job_id' | 'state' | 'error_message' | 'result'>,
+  t: (zh: string, en: string) => string,
+): { status: 'success' | 'error'; message: string } {
+  const summaryText = summarizeSyncResult(job.result, t)
+  if (job.state === 'failed') {
+    const reason = job.error_message || t('同步失败。', 'Sync failed.')
+    return {
+      status: 'error',
+      message: summaryText
+        ? t(`请求超时，但任务 #${job.job_id} 已失败：${reason}。${summaryText}`, `Request timed out, but job #${job.job_id} failed: ${reason}. ${summaryText}`)
+        : t(`请求超时，但任务 #${job.job_id} 已失败：${reason}`, `Request timed out, but job #${job.job_id} failed: ${reason}`),
+    }
+  }
+  return {
+    status: 'success',
+    message: t(`请求超时，但任务 #${job.job_id} 已受理，请到 Logs 查看详情。`, `Request timed out, but job #${job.job_id} was accepted. Check Logs for details.`),
+  }
+}
+
 function describeSyncJobTarget(
   job: Pick<AdminSyncJobRecord, 'mode' | 'project_id' | 'github_username'>,
   t: (zh: string, en: string) => string,
@@ -88,13 +130,7 @@ function ImportGithubRepoContent() {
         github_username: 'lambertlab',
       })
 
-      const summaryText = summarizeSyncResult(result.result, t)
-      setCreateState({
-        status: 'success',
-        message: summaryText
-          ? t(`任务 #${result.job_id} 已创建。${summaryText}`, `Job #${result.job_id} created. ${summaryText}`)
-          : t(`任务 #${result.job_id} 已创建。`, `Job #${result.job_id} created.`),
-      })
+      setCreateState(describeCreatedGithubSyncJobOutcome(result, t))
     } catch (error) {
       const mapped = mapAdminError(error)
       if (mapped.code === 'unauthorized') {
@@ -144,10 +180,7 @@ function ImportGithubRepoContent() {
         return
       }
 
-      setCreateState({
-        status: 'success',
-        message: t(`请求超时，但任务 #${recovered.job_id} 已受理，请到 Logs 查看详情。`, `Request timed out, but job #${recovered.job_id} was accepted. Check Logs for details.`),
-      })
+      setCreateState(describeRecoveredGithubSyncJobOutcome(recovered, t))
     }
   }, [invalidate, t, token])
 

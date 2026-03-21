@@ -569,6 +569,52 @@ function summarizeSyncResult(result: AdminSyncResultSummary | null, t: (zh: stri
   ].join(' | ')
 }
 
+function describeCreatedProjectSyncJobOutcome(
+  job: Pick<AdminSyncJobRecord, 'job_id' | 'state' | 'error_message' | 'result'>,
+  projectName: string,
+  t: (zh: string, en: string) => string,
+): { status: 'success' | 'error'; message: string } {
+  const summaryText = summarizeSyncResult(job.result, t)
+  if (job.state === 'failed') {
+    const reason = job.error_message || t('同步失败。', 'Sync failed.')
+    return {
+      status: 'error',
+      message: summaryText
+        ? t(`项目“${projectName}”同步任务 #${job.job_id} 失败：${reason}。${summaryText}`, `Project "${projectName}" sync job #${job.job_id} failed: ${reason}. ${summaryText}`)
+        : t(`项目“${projectName}”同步任务 #${job.job_id} 失败：${reason}`, `Project "${projectName}" sync job #${job.job_id} failed: ${reason}`),
+    }
+  }
+  return {
+    status: 'success',
+    message: summaryText
+      ? t(`项目“${projectName}”同步任务 #${job.job_id} 已创建。${summaryText}`, `Project "${projectName}" sync job #${job.job_id} created. ${summaryText}`)
+      : t(`项目“${projectName}”同步任务 #${job.job_id} 已创建，请到 Logs 查看详情。`, `Project "${projectName}" sync job #${job.job_id} created. Check Logs for details.`),
+  }
+}
+
+function describeRecoveredProjectSyncJobOutcome(
+  job: Pick<AdminSyncJobRecord, 'job_id' | 'state' | 'error_message' | 'result'>,
+  projectName: string,
+  t: (zh: string, en: string) => string,
+): { status: 'success' | 'error'; message: string } {
+  const summaryText = summarizeSyncResult(job.result, t)
+  if (job.state === 'failed') {
+    const reason = job.error_message || t('同步失败。', 'Sync failed.')
+    return {
+      status: 'error',
+      message: summaryText
+        ? t(`项目“${projectName}”请求超时，但任务 #${job.job_id} 已失败：${reason}。${summaryText}`, `Project "${projectName}" request timed out, but job #${job.job_id} failed: ${reason}. ${summaryText}`)
+        : t(`项目“${projectName}”请求超时，但任务 #${job.job_id} 已失败：${reason}`, `Project "${projectName}" request timed out, but job #${job.job_id} failed: ${reason}`),
+    }
+  }
+  return {
+    status: 'success',
+    message: summaryText
+      ? t(`项目“${projectName}”请求超时，但任务 #${job.job_id} 已受理。${summaryText}`, `Project "${projectName}" request timed out, but job #${job.job_id} was accepted. ${summaryText}`)
+      : t(`项目“${projectName}”请求超时，但任务 #${job.job_id} 已受理，请到 Logs 查看详情。`, `Project "${projectName}" request timed out, but job #${job.job_id} was accepted. Check Logs for details.`),
+  }
+}
+
 interface CreateRequestDiagnostic {
   requestUrl: string
   method: string
@@ -1503,13 +1549,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         project_id: projectId,
       })
 
-      const summaryText = summarizeSyncResult(result.result, t)
-      setSyncState({
-        status: 'success',
-        message: summaryText
-          ? t(`项目“${projectName}”同步任务 #${result.job_id} 已创建。${summaryText}`, `Project "${projectName}" sync job #${result.job_id} created. ${summaryText}`)
-          : t(`项目“${projectName}”同步任务 #${result.job_id} 已创建，请到 Logs 查看详情。`, `Project "${projectName}" sync job #${result.job_id} created. Check Logs for details.`),
-      })
+      setSyncState(describeCreatedProjectSyncJobOutcome(result, projectName, t))
       return
     } catch (error) {
       const mapped = errorMessage(error)
@@ -1566,13 +1606,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
         return
       }
 
-      const summaryText = summarizeSyncResult(recovered.result, t)
-      setSyncState({
-        status: 'success',
-        message: summaryText
-          ? t(`项目“${projectName}”请求超时，但任务 #${recovered.job_id} 已受理。${summaryText}`, `Project "${projectName}" request timed out, but job #${recovered.job_id} was accepted. ${summaryText}`)
-          : t(`项目“${projectName}”请求超时，但任务 #${recovered.job_id} 已受理，请到 Logs 查看详情。`, `Project "${projectName}" request timed out, but job #${recovered.job_id} was accepted. Check Logs for details.`),
-      })
+      setSyncState(describeRecoveredProjectSyncJobOutcome(recovered, projectName, t))
     } finally {
       setSyncingProjectId('')
     }
