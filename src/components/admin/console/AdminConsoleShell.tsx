@@ -1,5 +1,5 @@
 ﻿import * as React from 'react'
-import { verifyAdminToken } from '~/lib/api/adminProjectsApi'
+import { verifyAdminToken } from '~/lib/api/adminConsoleApi'
 import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
 import type { AdminSidebarMode } from './AdminConsoleSidebar'
 import { AdminConsoleFrame } from './AdminConsoleFrame'

@@ -1,5 +1,5 @@
 ﻿import * as React from 'react'
-import { fetchAdminOverview, type AdminOverviewSummary } from '~/lib/api/adminProjectsApi'
+import { fetchAdminOverview, type AdminOverviewSummary } from '~/lib/api/adminConsoleApi'
 import { useUiLocale } from '~/lib/uiLocale'
 import { AdminConsoleShell, useAdminConsoleAuth } from './AdminConsoleShell'
 import { formatAdminTime, mapAdminError } from './adminConsoleUtils'

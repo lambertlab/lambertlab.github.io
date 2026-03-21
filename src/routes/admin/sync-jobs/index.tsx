@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { AdminSyncConsolePage } from '~/components/admin/projects/AdminSyncConsolePage'
-import { buildAdminProjectsHead } from '~/components/admin/projects/adminProjectsHead'
+import { AdminSyncConsolePage } from '~/components/admin/console/AdminSyncConsolePage'
+import { buildAdminConsoleHead } from '~/components/admin/console/adminConsoleHead'
 
 export const Route = createFileRoute('/admin/sync-jobs/')({
-  head: () => buildAdminProjectsHead(),
+  head: () => buildAdminConsoleHead(),
   component: AdminSyncJobsRoutePage,
 })
 

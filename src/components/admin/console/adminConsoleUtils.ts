@@ -1,11 +1,11 @@
-import { AdminProjectsApiError, type AdminProjectErrorCode } from '~/lib/api/adminProjectsApi'
+import { AdminConsoleApiError, type AdminProjectErrorCode } from '~/lib/api/adminConsoleApi'
 
 function toText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
 export function mapAdminError(error: unknown): { code: AdminProjectErrorCode; message: string } {
-  if (error instanceof AdminProjectsApiError) {
+  if (error instanceof AdminConsoleApiError) {
     if (error.code === 'unauthorized') return { code: 'unauthorized', message: 'Admin Token \u65e0\u6548\u6216\u8fc7\u671f\uff0c\u8bf7\u91cd\u65b0\u9a8c\u8bc1\u3002' }
     if (error.code === 'sync_failed') return { code: error.code, message: '\u540c\u6b65\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002' }
     if (error.code === 'sync_rate_limited') return { code: error.code, message: 'GitHub \u914d\u989d\u9650\u6d41\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u3002' }

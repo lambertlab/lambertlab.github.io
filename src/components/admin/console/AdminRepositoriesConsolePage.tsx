@@ -6,7 +6,7 @@ import {
   type AdminRepositoryRecord,
   type AdminSyncJobRecord,
   type AdminSyncResultSummary,
-} from '~/lib/api/adminProjectsApi'
+} from '~/lib/api/adminConsoleApi'
 import { useUiLocale } from '~/lib/uiLocale'
 import { AdminConsoleShell, useAdminConsoleAuth } from './AdminConsoleShell'
 import { mapAdminError } from './adminConsoleUtils'

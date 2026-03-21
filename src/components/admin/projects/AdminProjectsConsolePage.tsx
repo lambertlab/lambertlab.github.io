@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import {
-  AdminProjectsApiError,
+  AdminConsoleApiError,
   type AdminProjectErrorCode,
   type AdminProjectLinkedRepositoryRecord,
   type AdminProjectLinksRecord,
@@ -23,14 +23,14 @@ import {
   replaceAdminProjectRepositories,
   updateAdminProjectById,
   verifyAdminToken,
-} from '~/lib/api/adminProjectsApi'
+} from '~/lib/api/adminConsoleApi'
 import { useDocumentMetadata, useUiLocale } from '~/lib/uiLocale'
 import {
   DEFAULT_ADMIN_PROJECTS_SEARCH_STATE,
   normalizeAdminProjectsSearchState,
   type AdminProjectsSearchState,
 } from './adminProjectsSearch'
-import { AdminConsoleFrame } from './AdminConsoleFrame'
+import { AdminConsoleFrame } from '../console/AdminConsoleFrame'
 
 const TOKEN_KEY = 'll-admin-token-v1'
 const STAGE_OPTIONS = [
@@ -625,7 +625,7 @@ interface CreateRequestDiagnostic {
 }
 
 function readCreateDiagnostic(error: unknown): CreateRequestDiagnostic | null {
-  if (!(error instanceof AdminProjectsApiError)) {
+  if (!(error instanceof AdminConsoleApiError)) {
     return null
   }
 
@@ -660,7 +660,7 @@ function formatCreateDiagnostic(diagnostic: CreateRequestDiagnostic | null, fall
 }
 
 function errorMessage(error: unknown): { code: AdminProjectErrorCode; message: string } {
-  if (error instanceof AdminProjectsApiError) {
+  if (error instanceof AdminConsoleApiError) {
     if (error.code === 'unauthorized') return { code: 'unauthorized', message: 'Admin Token 无效或过期，请重新验证。' }
     if (error.code === 'project_not_found') return { code: error.code, message: '未找到该项目，请刷新列表后重试。' }
     if (error.code === 'validation_failed') return { code: error.code, message: '\u8bf7\u6c42\u53c2\u6570\u6821\u9a8c\u5931\u8d25\uff0c\u8bf7\u68c0\u67e5\u5fc5\u586b\u9879\u3002' }

@@ -1,6 +1,6 @@
 ﻿import type { UiLocale } from '~/lib/uiLocale'
 
-export function buildAdminProjectsHead(locale: UiLocale = 'zh-CN') {
+export function buildAdminConsoleHead(locale: UiLocale = 'zh-CN') {
   return {
     meta: [
       {
@@ -10,8 +10,8 @@ export function buildAdminProjectsHead(locale: UiLocale = 'zh-CN') {
         name: 'description',
         content:
           locale === 'zh-CN'
-            ? 'Lambert Lab Admin：Overview 与 Projects 管理控制台。'
-            : 'Lambert Lab Admin for overview and projects management.',
+            ? 'Lambert Lab Admin：站点控制面与系统管理控制台。'
+            : 'Lambert Lab Admin for site control plane and system operations.',
       },
     ],
     links: [

@@ -7,10 +7,10 @@ import {
   type AdminSyncJobDetail,
   type AdminSyncJobRecord,
   type AdminSyncResultSummary,
-} from '~/lib/api/adminProjectsApi'
+} from '~/lib/api/adminConsoleApi'
 import { useUiLocale } from '~/lib/uiLocale'
 import { AdminConsoleShell, useAdminConsoleAuth } from './AdminConsoleShell'
-import type { AdminProjectSyncSearchState } from './adminProjectSyncSearch'
+import type { AdminProjectSyncSearchState } from '../projects/adminProjectSyncSearch'
 import { formatAdminTime, mapAdminError } from './adminConsoleUtils'
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'

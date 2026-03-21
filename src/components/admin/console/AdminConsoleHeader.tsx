@@ -1,7 +1,7 @@
 ﻿import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import { useUiLocale } from '~/lib/uiLocale'
-import { DEFAULT_ADMIN_PROJECTS_SEARCH_STATE } from './adminProjectsSearch'
+import { DEFAULT_ADMIN_PROJECTS_SEARCH_STATE } from '../projects/adminProjectsSearch'
 
 type AdminHeaderPrimary = 'overview' | 'projects'
 

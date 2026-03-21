@@ -4,12 +4,12 @@ import {
   normalizeAdminProjectsSearchState,
   type AdminProjectsSearchState,
 } from '~/components/admin/projects/adminProjectsSearch'
-import { buildAdminProjectsHead } from '~/components/admin/projects/adminProjectsHead'
+import { buildAdminConsoleHead } from '~/components/admin/console/adminConsoleHead'
 
 export const Route = createFileRoute('/admin/projects/')({
   validateSearch: (search): AdminProjectsSearchState =>
     normalizeAdminProjectsSearchState(search as Record<string, unknown>),
-  head: () => buildAdminProjectsHead(),
+  head: () => buildAdminConsoleHead(),
   component: AdminProjectsCanonicalRoutePage,
 })
 

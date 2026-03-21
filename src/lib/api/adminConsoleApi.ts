@@ -263,14 +263,14 @@ export interface AdminLogsListResult {
   page_size: number
 }
 
-export class AdminProjectsApiError extends Error {
+export class AdminConsoleApiError extends Error {
   status?: number
   code: AdminProjectErrorCode
   details: unknown
 
   constructor(message: string, options?: { status?: number; code?: AdminProjectErrorCode; details?: unknown }) {
     super(message)
-    this.name = 'AdminProjectsApiError'
+    this.name = 'AdminConsoleApiError'
     this.status = options?.status
     this.code = options?.code ?? 'unknown'
     this.details = options?.details ?? null
@@ -587,7 +587,7 @@ function normalizeProjectDetail(value: unknown): AdminProjectRecord {
     normalizeProjectRecord(payload)
 
   if (!project) {
-    throw new AdminProjectsApiError('Project detail payload is invalid.')
+    throw new AdminConsoleApiError('Project detail payload is invalid.')
   }
 
   return project
@@ -760,7 +760,7 @@ function normalizeSyncJobDetail(value: unknown): AdminSyncJobDetail {
     normalizeSyncJobRecord(payload)
 
   if (!base) {
-    throw new AdminProjectsApiError('Sync job detail payload is invalid.')
+    throw new AdminConsoleApiError('Sync job detail payload is invalid.')
   }
 
   const rawSteps = toArray(payload?.steps ?? payload?.logs ?? payload?.events)
@@ -782,7 +782,7 @@ function normalizeCreateSyncJobResult(value: unknown): CreateAdminSyncJobResult 
   const jobId = toIdentifierText(payload?.job_id) || record?.job_id
 
   if (!jobId) {
-    throw new AdminProjectsApiError('Sync job create payload is invalid.')
+    throw new AdminConsoleApiError('Sync job create payload is invalid.')
   }
 
   return {
@@ -954,9 +954,9 @@ interface AdminRequestFailureDetails {
 }
 
 function withRequestFailureDetails(
-  error: AdminProjectsApiError,
+  error: AdminConsoleApiError,
   details: AdminRequestFailureDetails,
-): AdminProjectsApiError {
+): AdminConsoleApiError {
   const existing = toRecord(error.details)
   const next: Record<string, unknown> = {
     ...(existing ?? {}),
@@ -1007,7 +1007,7 @@ function mergeAbortSignals(primary?: AbortSignal, secondary?: AbortSignal): Abor
   return controller.signal
 }
 
-async function parseErrorFromResponse(response: Response): Promise<AdminProjectsApiError> {
+async function parseErrorFromResponse(response: Response): Promise<AdminConsoleApiError> {
   let message = ''
   let code: AdminProjectErrorCode = 'unknown'
   let details: unknown = null
@@ -1042,7 +1042,7 @@ async function parseErrorFromResponse(response: Response): Promise<AdminProjects
   const normalizedCode = mapUnauthorized(response.status, code)
   const fallbackMessage = normalizedCode === 'unauthorized' ? 'unauthorized' : `HTTP_${response.status}`
 
-  return new AdminProjectsApiError(message || fallbackMessage, {
+  return new AdminConsoleApiError(message || fallbackMessage, {
     status: response.status,
     code: normalizedCode,
     details,
@@ -1100,7 +1100,7 @@ async function requestJson<T>(
     } catch (error) {
       const cause = error instanceof Error ? toText(error.message) : ''
       throw withRequestFailureDetails(
-        new AdminProjectsApiError('Admin response payload is not valid JSON.', {
+        new AdminConsoleApiError('Admin response payload is not valid JSON.', {
           code: 'unknown',
           status: response.status,
         }),
@@ -1114,12 +1114,12 @@ async function requestJson<T>(
       )
     }
   } catch (error) {
-    if (error instanceof AdminProjectsApiError) {
+    if (error instanceof AdminConsoleApiError) {
       throw error
     }
 
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw withRequestFailureDetails(new AdminProjectsApiError('Admin request timed out.', { code: 'request_timeout' }), {
+      throw withRequestFailureDetails(new AdminConsoleApiError('Admin request timed out.', { code: 'request_timeout' }), {
         request_url: requestUrl,
         method,
         status: null,
@@ -1131,7 +1131,7 @@ async function requestJson<T>(
       const normalizedMessage = toText(error.message).toLowerCase()
       const isFailedToFetch = normalizedMessage.includes('failed to fetch') || normalizedMessage.includes('networkerror') || normalizedMessage.includes('load failed')
       if (isFailedToFetch) {
-        throw withRequestFailureDetails(new AdminProjectsApiError('Network request failed.', { code: 'network_failed' }), {
+        throw withRequestFailureDetails(new AdminConsoleApiError('Network request failed.', { code: 'network_failed' }), {
           request_url: requestUrl,
           method,
           status: null,
@@ -1143,7 +1143,7 @@ async function requestJson<T>(
     }
 
     if (error instanceof Error) {
-      throw withRequestFailureDetails(new AdminProjectsApiError(error.message, { code: 'unknown' }), {
+      throw withRequestFailureDetails(new AdminConsoleApiError(error.message, { code: 'unknown' }), {
         request_url: requestUrl,
         method,
         status: null,
@@ -1152,7 +1152,7 @@ async function requestJson<T>(
       })
     }
 
-    throw withRequestFailureDetails(new AdminProjectsApiError('Unknown admin request error.', { code: 'unknown' }), {
+    throw withRequestFailureDetails(new AdminConsoleApiError('Unknown admin request error.', { code: 'unknown' }), {
       request_url: requestUrl,
       method,
       status: null,
@@ -1212,7 +1212,7 @@ function cleanCreatePayload(input: CreateAdminProjectInput): Record<string, unkn
 export async function verifyAdminToken(token: string, signal?: AbortSignal): Promise<void> {
   const normalizedToken = toText(token)
   if (!normalizedToken) {
-    throw new AdminProjectsApiError('Admin token is required.', { code: 'unauthorized' })
+    throw new AdminConsoleApiError('Admin token is required.', { code: 'unauthorized' })
   }
 
   await requestJson('/admin/auth/verify', {
@@ -1255,7 +1255,7 @@ export async function fetchAdminProjectById(
 ): Promise<AdminProjectRecord> {
   const normalizedProjectId = toIdentifierText(projectId)
   if (!normalizedProjectId) {
-    throw new AdminProjectsApiError('Project id is required.')
+    throw new AdminConsoleApiError('Project id is required.')
   }
 
   const payload = await requestJson<unknown>(`/admin/projects/${encodeURIComponent(normalizedProjectId)}`, {
@@ -1275,7 +1275,7 @@ export async function updateAdminProjectById(
 ): Promise<AdminProjectRecord> {
   const normalizedProjectId = toIdentifierText(projectId)
   if (!normalizedProjectId) {
-    throw new AdminProjectsApiError('Project id is required.')
+    throw new AdminConsoleApiError('Project id is required.')
   }
 
   const payload = await requestJson<unknown>(`/admin/projects/${encodeURIComponent(normalizedProjectId)}`, {
@@ -1296,7 +1296,7 @@ export async function replaceAdminProjectLinks(
 ): Promise<AdminProjectRecord> {
   const normalizedProjectId = toIdentifierText(projectId)
   if (!normalizedProjectId) {
-    throw new AdminProjectsApiError('Project id is required.')
+    throw new AdminConsoleApiError('Project id is required.')
   }
 
   const payload = await requestJson<unknown>(`/admin/projects/${encodeURIComponent(normalizedProjectId)}/links`, {
@@ -1325,7 +1325,7 @@ export async function replaceAdminProjectRepositories(
 ): Promise<AdminProjectRecord> {
   const normalizedProjectId = toIdentifierText(projectId)
   if (!normalizedProjectId) {
-    throw new AdminProjectsApiError('Project id is required.')
+    throw new AdminConsoleApiError('Project id is required.')
   }
 
   const payload = await requestJson<unknown>(`/admin/projects/${encodeURIComponent(normalizedProjectId)}/repositories`, {
@@ -1348,7 +1348,7 @@ export async function replaceAdminProjectRepositories(
 export async function deleteAdminProjectById(token: string, projectId: string, signal?: AbortSignal): Promise<void> {
   const normalizedProjectId = toIdentifierText(projectId)
   if (!normalizedProjectId) {
-    throw new AdminProjectsApiError('Project id is required.')
+    throw new AdminConsoleApiError('Project id is required.')
   }
 
   await requestJson(`/admin/projects/${encodeURIComponent(normalizedProjectId)}`, {
@@ -1371,7 +1371,7 @@ export async function createAdminProject(
   const sortOrder = toFiniteNumber(input.sort_order)
 
   if (!name || !stage || !projectType || !visibility || sortOrder === null || sortOrder < 1 || sortOrder > 99) {
-    throw new AdminProjectsApiError('Create project payload is invalid.', { code: 'validation_failed' })
+    throw new AdminConsoleApiError('Create project payload is invalid.', { code: 'validation_failed' })
   }
 
   const payload = await requestJson<unknown>('/admin/projects', {
@@ -1410,7 +1410,7 @@ export async function createAdminSyncJob(
 ): Promise<CreateAdminSyncJobResult> {
   const mode = toText(input.mode).toLowerCase()
   if (mode !== 'project' && mode !== 'github_user') {
-    throw new AdminProjectsApiError('Sync mode is invalid.', { code: 'validation_failed' })
+    throw new AdminConsoleApiError('Sync mode is invalid.', { code: 'validation_failed' })
   }
 
   const body: Record<string, unknown> = { mode }
@@ -1418,13 +1418,13 @@ export async function createAdminSyncJob(
   if (mode === 'project') {
     const projectId = toIdentifierText(input.project_id)
     if (!projectId) {
-      throw new AdminProjectsApiError('Project id is required for project mode.', { code: 'validation_failed' })
+      throw new AdminConsoleApiError('Project id is required for project mode.', { code: 'validation_failed' })
     }
     body.project_id = projectId
   } else {
     const githubUsername = toText(input.github_username)
     if (!githubUsername) {
-      throw new AdminProjectsApiError('github_username is required for github_user mode.', { code: 'validation_failed' })
+      throw new AdminConsoleApiError('github_username is required for github_user mode.', { code: 'validation_failed' })
     }
     body.github_username = githubUsername
   }
@@ -1458,7 +1458,7 @@ export async function fetchAdminSyncJobs(
 export async function fetchAdminSyncJobById(token: string, jobId: string, signal?: AbortSignal): Promise<AdminSyncJobDetail> {
   const normalizedJobId = toIdentifierText(jobId)
   if (!normalizedJobId) {
-    throw new AdminProjectsApiError('Job id is required.', { code: 'validation_failed' })
+    throw new AdminConsoleApiError('Job id is required.', { code: 'validation_failed' })
   }
 
   const payload = await requestJson<unknown>(`/admin/sync/jobs/${encodeURIComponent(normalizedJobId)}`, {
@@ -1473,7 +1473,7 @@ export async function fetchAdminSyncJobById(token: string, jobId: string, signal
 export async function retryAdminSyncJob(token: string, jobId: string, signal?: AbortSignal): Promise<AdminSyncJobDetail> {
   const normalizedJobId = toIdentifierText(jobId)
   if (!normalizedJobId) {
-    throw new AdminProjectsApiError('Job id is required.', { code: 'validation_failed' })
+    throw new AdminConsoleApiError('Job id is required.', { code: 'validation_failed' })
   }
 
   const payload = await requestJson<unknown>(`/admin/sync/jobs/${encodeURIComponent(normalizedJobId)}/retry`, {
