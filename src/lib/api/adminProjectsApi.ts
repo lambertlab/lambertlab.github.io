@@ -32,6 +32,20 @@ export interface AdminProjectLinkedRepositoryRecord {
   forks_count: number
 }
 
+export interface AdminProjectLinksRecord {
+  primary: string | null
+  repo: string | null
+  demo: string | null
+  docs: string | null
+  notes: string | null
+}
+
+export interface AdminProjectSourceRefsRecord {
+  repo_full_name: string | null
+  repo_url: string | null
+  visibility: string | null
+}
+
 export interface AdminProjectRecord {
   id: string
   slug: string
@@ -45,6 +59,9 @@ export interface AdminProjectRecord {
   is_featured: boolean
   featured_rank: number | null
   sort_order: number | null
+  links: AdminProjectLinksRecord
+  stored_links: AdminProjectLinksRecord
+  source_refs: AdminProjectSourceRefsRecord
   repositories: AdminProjectLinkedRepositoryRecord[]
   synced_at: string | null
   updated_at: string | null
@@ -413,6 +430,26 @@ function normalizeProjectLinkedRepositoryRecord(value: unknown): AdminProjectLin
   }
 }
 
+function normalizeProjectLinksRecord(value: unknown): AdminProjectLinksRecord {
+  const payload = toRecord(value)
+  return {
+    primary: toNullableText(payload?.primary),
+    repo: toNullableText(payload?.repo),
+    demo: toNullableText(payload?.demo),
+    docs: toNullableText(payload?.docs),
+    notes: toNullableText(payload?.notes),
+  }
+}
+
+function normalizeProjectSourceRefsRecord(value: unknown): AdminProjectSourceRefsRecord {
+  const payload = toRecord(value)
+  return {
+    repo_full_name: toNullableText(payload?.repo_full_name),
+    repo_url: toNullableText(payload?.repo_url),
+    visibility: toNullableText(payload?.visibility),
+  }
+}
+
 function normalizeProjectRecord(value: unknown): AdminProjectRecord | null {
   const project = toRecord(value)
   if (!project) {
@@ -437,6 +474,9 @@ function normalizeProjectRecord(value: unknown): AdminProjectRecord | null {
     is_featured: toBoolean(project.is_featured),
     featured_rank: toFiniteNumber(project.featured_rank ?? project.featuredRank),
     sort_order: toFiniteNumber(project.sort_order ?? project.sortOrder),
+    links: normalizeProjectLinksRecord(project.links),
+    stored_links: normalizeProjectLinksRecord(project.stored_links),
+    source_refs: normalizeProjectSourceRefsRecord(project.source_refs),
     repositories: toArray(project.repositories)
       .map((entry) => normalizeProjectLinkedRepositoryRecord(entry))
       .filter((entry): entry is AdminProjectLinkedRepositoryRecord => Boolean(entry)),

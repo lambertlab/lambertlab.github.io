@@ -350,6 +350,10 @@ function normalizeRepositoryBindingKey(value: string): string {
   return value.trim().toLowerCase()
 }
 
+function normalizeComparableLink(value: string | null | undefined): string {
+  return (value || '').trim()
+}
+
 function resolvePrimaryRepositoryFullName(
   repositoryFullNames: readonly string[],
   primaryRepositoryFullName: string,
@@ -907,6 +911,80 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
     return resolvePrimaryRepositoryFullName(form.repository_full_names, form.primary_repository_full_name)
   }, [form])
+
+  const repositoryBindingPreview = React.useMemo(() => {
+    if (!form || !detailProject) {
+      return { bindings: [], missing: [] }
+    }
+
+    return buildProjectRepositoryBindings(form, repositoryOptions, detailProject.repositories)
+  }, [detailProject, form, repositoryOptions])
+
+  const repoLinkPreview = React.useMemo(() => {
+    if (!detailProject) {
+      return null
+    }
+
+    const explicitRepoLink = normalizeComparableLink(detailProject.stored_links.repo) || null
+    const currentEffectiveRepoLink = normalizeComparableLink(detailProject.links.repo) || null
+    const pendingPrimaryRepository = repositoryBindingPreview.bindings.find((repository) => repository.is_primary)
+    const pendingPrimaryRepoLink = normalizeComparableLink(pendingPrimaryRepository?.repo_url) || null
+    const pendingEffectiveRepoLink = explicitRepoLink || pendingPrimaryRepoLink || null
+    const sourceKind = explicitRepoLink ? 'explicit' : pendingPrimaryRepoLink ? 'primary_repository' : 'none'
+
+    return {
+      currentEffectiveRepoLink,
+      pendingEffectiveRepoLink,
+      sourceKind,
+      willChange: normalizeComparableLink(currentEffectiveRepoLink) !== normalizeComparableLink(pendingEffectiveRepoLink),
+    } as const
+  }, [detailProject, repositoryBindingPreview])
+
+  const repoLinkPreviewSourceLabel = React.useMemo(() => {
+    if (!repoLinkPreview) {
+      return ''
+    }
+
+    if (repoLinkPreview.sourceKind === 'explicit') {
+      return t('显式 link', 'Explicit link')
+    }
+
+    if (repoLinkPreview.sourceKind === 'primary_repository') {
+      return t('主仓派生', 'Primary-derived')
+    }
+
+    return t('未提供', 'None')
+  }, [repoLinkPreview, t])
+
+  const repoLinkPreviewMessage = React.useMemo(() => {
+    if (!repoLinkPreview) {
+      return ''
+    }
+
+    if (repoLinkPreview.sourceKind === 'explicit') {
+      return t(
+        '当前已配置显式 repo link；修改主仓不会改变公开 Repo 链接。',
+        'An explicit repo link is configured, so changing the primary repository will not change the public Repo link.',
+      )
+    }
+
+    if (repoLinkPreview.sourceKind === 'primary_repository') {
+      return repoLinkPreview.willChange
+        ? t(
+            '当前未单独配置 repo link；保存后公开 Repo 链接会跟随主仓 URL 更新。',
+            'No explicit repo link is configured. After saving, the public Repo link will update to the primary repository URL.',
+          )
+        : t(
+            '当前未单独配置 repo link；公开 Repo 链接会跟随主仓 URL。',
+            'No explicit repo link is configured. The public Repo link follows the primary repository URL.',
+          )
+    }
+
+    return t(
+      '当前既没有显式 repo link，也没有可用主仓 URL；公开页面不会显示 Repo 链接。',
+      'There is no explicit repo link and no usable primary repository URL, so the public view will not show a Repo link.',
+    )
+  }, [repoLinkPreview, t])
 
   const repositoryDialogButtonLabel = React.useMemo(() => {
     if (!form || form.repository_full_names.length === 0) {
@@ -1518,6 +1596,22 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                       >
                         <span className="admin-input-like-button__label">{repositoryDialogButtonLabel}</span>
                       </button>
+                      {repoLinkPreview ? (
+                        <div className="admin-project-link-semantics">
+                          <div className="admin-project-link-semantics__head">
+                            <span className="admin-project-link-semantics__title">{t('\u516c\u5f00 Repo \u94fe\u63a5', 'Public Repo Link')}</span>
+                            <span className="admin-project-link-semantics__badge" data-source={repoLinkPreview.sourceKind}>{repoLinkPreviewSourceLabel}</span>
+                          </div>
+                          <p className="admin-project-link-semantics__url" data-empty={repoLinkPreview.pendingEffectiveRepoLink ? 'false' : 'true'}>
+                            {repoLinkPreview.pendingEffectiveRepoLink ? (
+                              <a href={repoLinkPreview.pendingEffectiveRepoLink} rel="noreferrer" target="_blank">{repoLinkPreview.pendingEffectiveRepoLink}</a>
+                            ) : (
+                              t('\u5f53\u524d\u4e0d\u4f1a\u8f93\u51fa Repo \u94fe\u63a5', 'No public Repo link currently')
+                            )}
+                          </p>
+                          <p className="admin-field-note">{repoLinkPreviewMessage}</p>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   <label className="admin-field">
@@ -1603,6 +1697,22 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
             </div>
             <div className="admin-project-modal__content">
               <div className="admin-project-modal__body admin-project-modal__body--repository">
+                {repoLinkPreview ? (
+                  <div className="admin-project-link-semantics">
+                    <div className="admin-project-link-semantics__head">
+                      <span className="admin-project-link-semantics__title">{t('公开 Repo 链接预览', 'Public Repo Link Preview')}</span>
+                      <span className="admin-project-link-semantics__badge" data-source={repoLinkPreview.sourceKind}>{repoLinkPreviewSourceLabel}</span>
+                    </div>
+                    <p className="admin-project-link-semantics__url" data-empty={repoLinkPreview.pendingEffectiveRepoLink ? 'false' : 'true'}>
+                      {repoLinkPreview.pendingEffectiveRepoLink ? (
+                        <a href={repoLinkPreview.pendingEffectiveRepoLink} rel="noreferrer" target="_blank">{repoLinkPreview.pendingEffectiveRepoLink}</a>
+                      ) : (
+                        t('当前不会输出 Repo 链接', 'No public Repo link currently')
+                      )}
+                    </p>
+                    <p className="admin-field-note">{repoLinkPreviewMessage}</p>
+                  </div>
+                ) : null}
                 {repositoryOptions.length > 0 || repositoryDialogOptions.length > 0 ? (
                   <div className="admin-repository-dialog__list">
                     {repositoryDialogOptions.map((repository) => {
