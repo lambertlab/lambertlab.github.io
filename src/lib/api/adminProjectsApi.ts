@@ -177,10 +177,13 @@ export interface CreateAdminSyncJobInput {
 }
 
 export interface AdminSyncResultSummary {
+  project_id: string | null
   fetched: number
   created: number
   updated: number
   deactivated: number
+  synced: number
+  failed: number
   synced_at: string | null
 }
 
@@ -636,22 +639,36 @@ function normalizeSyncResultSummary(value: unknown): AdminSyncResultSummary | nu
     return null
   }
 
+  const projectId = toIdentifierText(payload.project_id) || null
   const fetched = toNonNegativeInteger(payload.fetched, 0)
   const created = toNonNegativeInteger(payload.created, 0)
   const updated = toNonNegativeInteger(payload.updated, 0)
   const deactivated = toNonNegativeInteger(payload.deactivated, 0)
+  const synced = toNonNegativeInteger(payload.synced, 0)
+  const failed = toNonNegativeInteger(payload.failed, 0)
   const syncedAt = toNullableText(payload.synced_at) || toNullableText(payload.syncedAt)
 
-  const hasAnyValue = fetched > 0 || created > 0 || updated > 0 || deactivated > 0 || Boolean(syncedAt)
+  const hasAnyValue =
+    Boolean(projectId) ||
+    fetched > 0 ||
+    created > 0 ||
+    updated > 0 ||
+    deactivated > 0 ||
+    synced > 0 ||
+    failed > 0 ||
+    Boolean(syncedAt)
   if (!hasAnyValue) {
     return null
   }
 
   return {
+    project_id: projectId,
     fetched,
     created,
     updated,
     deactivated,
+    synced,
+    failed,
     synced_at: syncedAt,
   }
 }

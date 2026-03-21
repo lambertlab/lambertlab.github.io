@@ -9,12 +9,16 @@ import {
   type AdminProjectRecord,
   type AdminProjectRepositoryBindingInput,
   type AdminRepositoryRecord,
+  type AdminSyncJobRecord,
+  type AdminSyncResultSummary,
   type CreateAdminProjectInput,
+  createAdminSyncJob,
   createAdminProject,
   deleteAdminProjectById,
   fetchAdminProjectById,
   fetchAdminProjects,
   fetchAdminRepositories,
+  fetchAdminSyncJobs,
   replaceAdminProjectLinks,
   replaceAdminProjectRepositories,
   updateAdminProjectById,
@@ -537,6 +541,34 @@ function sleep(ms: number): Promise<void> {
   })
 }
 
+function isRecentSyncJob(createdAt: string | null, now: number, windowMs: number): boolean {
+  if (!createdAt) return true
+  const parsed = Date.parse(createdAt)
+  if (Number.isNaN(parsed)) return true
+  return now - parsed <= windowMs
+}
+
+function isProjectModeSyncResult(result: AdminSyncResultSummary): boolean {
+  return Boolean(result.project_id) || result.failed > 0
+}
+
+function summarizeSyncResult(result: AdminSyncResultSummary | null, t: (zh: string, en: string) => string): string {
+  if (!result) {
+    return ''
+  }
+
+  if (isProjectModeSyncResult(result)) {
+    return [t('同步=' + result.synced, 'Synced=' + result.synced), t('失败=' + result.failed, 'Failed=' + result.failed)].join(' | ')
+  }
+
+  return [
+    t('抓取=' + result.fetched, 'Fetched=' + result.fetched),
+    t('新增=' + result.created, 'Created=' + result.created),
+    t('更新=' + result.updated, 'Updated=' + result.updated),
+    t('下线=' + result.deactivated, 'Deactivated=' + result.deactivated),
+  ].join(' | ')
+}
+
 interface CreateRequestDiagnostic {
   requestUrl: string
   method: string
@@ -659,6 +691,8 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
   const [deleteState, setDeleteState] = React.useState<OperationState>({ status: 'idle', message: '' })
   const [createForm, setCreateForm] = React.useState<CreateFormState>(DEFAULT_CREATE_FORM)
   const [createState, setCreateState] = React.useState<OperationState>({ status: 'idle', message: '' })
+  const [syncState, setSyncState] = React.useState<OperationState>({ status: 'idle', message: '' })
+  const [syncingProjectId, setSyncingProjectId] = React.useState('')
   const [deleteTarget, setDeleteTarget] = React.useState<AdminProjectRecord | null>(null)
 
   useDocumentMetadata(
@@ -1451,11 +1485,110 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     }
   }, [invalidate, patchSearch, projects, selectedId, t, token])
 
+  const syncProjectByRecord = React.useCallback(async (project: AdminProjectRecord) => {
+    if (!token) return
+
+    const projectId = project.id
+    const projectName = project.name || t('未命名项目', 'Untitled project')
+
+    setSyncingProjectId(projectId)
+    setSyncState({
+      status: 'running',
+      message: t(`正在为 ${projectName} 创建同步任务...`, `Creating sync job for ${projectName}...`),
+    })
+
+    try {
+      const result = await createAdminSyncJob(token, {
+        mode: 'project',
+        project_id: projectId,
+      })
+
+      const summaryText = summarizeSyncResult(result.result, t)
+      setSyncState({
+        status: 'success',
+        message: summaryText
+          ? t(`项目“${projectName}”同步任务 #${result.job_id} 已创建。${summaryText}`, `Project "${projectName}" sync job #${result.job_id} created. ${summaryText}`)
+          : t(`项目“${projectName}”同步任务 #${result.job_id} 已创建，请到 Logs 查看详情。`, `Project "${projectName}" sync job #${result.job_id} created. Check Logs for details.`),
+      })
+      return
+    } catch (error) {
+      const mapped = errorMessage(error)
+      if (mapped.code === 'unauthorized') {
+        invalidate(mapped.message)
+        return
+      }
+
+      if (mapped.code !== 'request_timeout') {
+        setSyncState({
+          status: 'error',
+          message: t(`项目“${projectName}”同步失败：${mapped.message}`, `Project "${projectName}" sync failed: ${mapped.message}`),
+        })
+        return
+      }
+
+      setSyncState({
+        status: 'running',
+        message: t(`项目“${projectName}”请求超时，正在回查最近同步任务...`, `Project "${projectName}" request timed out. Checking recent sync jobs...`),
+      })
+
+      const now = Date.now()
+      let recovered: AdminSyncJobRecord | null = null
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        try {
+          const jobsResult = await fetchAdminSyncJobs(token, { page: 1, page_size: 20 })
+          recovered =
+            jobsResult.jobs.find((job) => {
+              if (job.mode !== 'project') return false
+              if (job.project_id !== projectId) return false
+              return isRecentSyncJob(job.created_at, now, 20 * 60 * 1000)
+            }) ?? null
+
+          if (recovered) {
+            break
+          }
+        } catch (recoverError) {
+          const recoverMapped = errorMessage(recoverError)
+          if (recoverMapped.code === 'unauthorized') {
+            invalidate(recoverMapped.message)
+            return
+          }
+        }
+
+        await sleep(800 + attempt * 500)
+      }
+
+      if (!recovered) {
+        setSyncState({
+          status: 'error',
+          message: t(`项目“${projectName}”请求超时，暂未发现匹配任务，请稍后到 Logs 查看。`, `Project "${projectName}" request timed out and no matching job was found yet. Check Logs later.`),
+        })
+        return
+      }
+
+      const summaryText = summarizeSyncResult(recovered.result, t)
+      setSyncState({
+        status: 'success',
+        message: summaryText
+          ? t(`项目“${projectName}”请求超时，但任务 #${recovered.job_id} 已受理。${summaryText}`, `Project "${projectName}" request timed out, but job #${recovered.job_id} was accepted. ${summaryText}`)
+          : t(`项目“${projectName}”请求超时，但任务 #${recovered.job_id} 已受理，请到 Logs 查看详情。`, `Project "${projectName}" request timed out, but job #${recovered.job_id} was accepted. Check Logs for details.`),
+      })
+    } finally {
+      setSyncingProjectId('')
+    }
+  }, [invalidate, t, token])
+
   const selectedProjectName = detailProject?.name || ''
   const deleteModalOpen = ready && mode === 'projects' && deleteTarget !== null
   const deleteTargetName = deleteTarget?.name || t('未命名项目', 'Untitled project')
-  const surfaceFeedback = !createModalOpen && !editModalOpen && !deleteModalOpen ? createState.message || deleteState.message : ''
-  const surfaceFeedbackTone = createState.message
+  const surfaceFeedback = !createModalOpen && !editModalOpen && !deleteModalOpen ? syncState.message || createState.message || deleteState.message : ''
+  const surfaceFeedbackTone = syncState.message
+    ? syncState.status === 'error'
+      ? 'error'
+      : syncState.status === 'success'
+        ? 'success'
+        : 'info'
+    : createState.message
     ? createState.status === 'error'
       ? 'error'
       : createState.status === 'success'
@@ -1640,6 +1773,16 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                         </div>
                       </div>
                       <div className="admin-project-list-item__actions">
+                        <button
+                          className="admin-secondary-button"
+                          type="button"
+                          data-admin-project-sync-button={item.id}
+                          onClick={() => void syncProjectByRecord(item)}
+                          disabled={syncingProjectId === item.id}
+                          aria-busy={syncingProjectId === item.id}
+                        >
+                          {syncingProjectId === item.id ? t('同步中...', 'Syncing...') : t('同步仓库', 'Sync Repositories')}
+                        </button>
                         <button className="admin-secondary-button" type="button" onClick={() => openEditPanel(item.id)}>{t('\u7f16\u8f91', 'Edit')}</button>
                         <button className="admin-danger-button" type="button" onClick={() => openDeleteModal(item)}>{t('\u5220\u9664', 'Delete')}</button>
                       </div>

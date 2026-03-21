@@ -17,12 +17,43 @@ type LoadStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
 
 const JOBS_PAGE_SIZE = 20
 
-function summarizeSyncResult(result: AdminSyncResultSummary | null): string {
+function isProjectModeResult(result: AdminSyncResultSummary): boolean {
+  return Boolean(result.project_id) || result.failed > 0
+}
+
+function summarizeSyncResult(
+  result: AdminSyncResultSummary | null,
+  t: (zh: string, en: string) => string,
+): string {
   if (!result) {
     return ''
   }
 
-  return ['新增=' + result.created, '更新=' + result.updated, '下线=' + result.deactivated].join(' | ')
+  if (isProjectModeResult(result)) {
+    return [t('同步=' + result.synced, 'Synced=' + result.synced), t('失败=' + result.failed, 'Failed=' + result.failed)].join(' | ')
+  }
+
+  return [
+    t('抓取=' + result.fetched, 'Fetched=' + result.fetched),
+    t('新增=' + result.created, 'Created=' + result.created),
+    t('更新=' + result.updated, 'Updated=' + result.updated),
+    t('下线=' + result.deactivated, 'Deactivated=' + result.deactivated),
+  ].join(' | ')
+}
+
+function describeSyncJobTarget(
+  job: Pick<AdminSyncJobRecord, 'mode' | 'project_id' | 'github_username'>,
+  t: (zh: string, en: string) => string,
+): string {
+  if (job.mode === 'project') {
+    return job.project_id ? t(`project #${job.project_id}`, `project #${job.project_id}`) : t('project', 'project')
+  }
+
+  if (job.github_username) {
+    return t(`github_user @${job.github_username}`, `github_user @${job.github_username}`)
+  }
+
+  return job.mode || t('unknown', 'unknown')
 }
 
 function sleep(ms: number): Promise<void> {
@@ -57,7 +88,7 @@ function ImportGithubRepoContent() {
         github_username: 'lambertlab',
       })
 
-      const summaryText = summarizeSyncResult(result.result)
+      const summaryText = summarizeSyncResult(result.result, t)
       setCreateState({
         status: 'success',
         message: summaryText
@@ -301,8 +332,8 @@ export function AdminSyncJobLogsPanels() {
                     <button type="button" className={job.job_id === selectedJobId ? 'is-selected' : ''} onClick={() => setSelectedJobId(job.job_id)}>
                       <div>
                         <p className="name">#{job.job_id}</p>
-                        <p className="meta">{job.mode} · {job.state}</p>
-                        {job.result ? <p className="admin-detail-meta">{summarizeSyncResult(job.result)}</p> : null}
+                        <p className="meta">{describeSyncJobTarget(job, t)} · {job.state}</p>
+                        {job.result ? <p className="admin-detail-meta" data-admin-sync-summary>{summarizeSyncResult(job.result, t)}</p> : null}
                       </div>
                       <span className="pill">{formatAdminTime(resolveJobDisplayTime(job))}</span>
                     </button>
@@ -351,7 +382,7 @@ export function AdminSyncJobLogsPanels() {
 
             {detail.result ? (
               <div className="admin-state-card">
-                <p><strong>result:</strong> {summarizeSyncResult(detail.result)}</p>
+                <p data-admin-sync-summary><strong>result:</strong> {summarizeSyncResult(detail.result, t)}</p>
               </div>
             ) : null}
 

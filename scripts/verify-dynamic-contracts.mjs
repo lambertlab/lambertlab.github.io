@@ -358,8 +358,92 @@ function createMockAdminState() {
     token: 'test-admin-token',
     repositories,
     projects,
+    syncJobs: [],
+    logs: [],
     lastLinksPayload: null,
+    lastSyncJobPayload: null,
   }
+}
+
+function createAdminSyncJobRecord({ jobId, mode, projectId = null, githubUsername = null, result, state = 'success' }) {
+  const timestamp = '2026-03-21T00:00:00Z'
+  const normalizedResult = cloneJson(result || null)
+
+  return {
+    job_id: String(jobId),
+    mode,
+    project_id: projectId,
+    github_username: githubUsername,
+    state,
+    retry_of_job_id: null,
+    created_at: timestamp,
+    updated_at: timestamp,
+    started_at: timestamp,
+    finished_at: timestamp,
+    result: normalizedResult,
+    error_code: null,
+    error_message: null,
+    error_details: null,
+    error: {
+      code: null,
+      message: null,
+      details: null,
+    },
+    steps: [
+      {
+        step: 'queued',
+        status: 'pending',
+        message: 'Sync job queued.',
+        details: null,
+        created_at: timestamp,
+      },
+      {
+        step: 'run_completed',
+        status: state,
+        message: 'Sync job completed.',
+        details: null,
+        created_at: timestamp,
+      },
+    ],
+  }
+}
+
+function appendAdminSyncJob(admin, input) {
+  const nextJobId = String(700 + admin.syncJobs.length + 1)
+  let job
+
+  if (input?.mode === 'project') {
+    const projectId = String(input.project_id || '')
+    job = createAdminSyncJobRecord({
+      jobId: nextJobId,
+      mode: 'project',
+      projectId,
+      result: {
+        project_id: projectId,
+        synced: 1,
+        failed: 0,
+        synced_at: '2026-03-21T00:00:00Z',
+      },
+    })
+  } else {
+    job = createAdminSyncJobRecord({
+      jobId: nextJobId,
+      mode: 'github_user',
+      githubUsername: String(input?.github_username || 'lambertlab').trim().toLowerCase() || 'lambertlab',
+      result: {
+        fetched: 1,
+        created: 1,
+        updated: 0,
+        deactivated: 0,
+        synced: 1,
+        synced_at: '2026-03-21T00:00:00Z',
+      },
+    })
+  }
+
+  admin.syncJobs = [job, ...admin.syncJobs]
+  admin.lastSyncJobPayload = cloneJson(input || null)
+  return job
 }
 
 function parseJsonBody(request) {
@@ -617,6 +701,72 @@ async function installRoutes(context, state) {
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({ project: serializeAdminProject(project) }),
+        })
+        return
+      }
+
+      if (pathname === '/admin/logs' && request.method() === 'GET') {
+        const logs = cloneJson(admin.logs)
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            logs,
+            total: logs.length,
+            page: 1,
+            page_size: logs.length || 1,
+          }),
+        })
+        return
+      }
+
+      if (pathname === '/admin/sync/jobs' && request.method() === 'GET') {
+        const jobs = cloneJson(admin.syncJobs)
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            jobs,
+            total: jobs.length,
+            page: 1,
+            page_size: jobs.length || 1,
+          }),
+        })
+        return
+      }
+
+      if (pathname === '/admin/sync/jobs' && request.method() === 'POST') {
+        const body = parseJsonBody(request) || {}
+        const createdJob = appendAdminSyncJob(admin, body)
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            job_id: createdJob.job_id,
+            state: createdJob.state,
+            created_at: createdJob.created_at,
+            job: createdJob,
+          }),
+        })
+        return
+      }
+
+      const syncJobDetailMatch = pathname.match(/^\/admin\/sync\/jobs\/([^/]+)$/)
+      if (syncJobDetailMatch && request.method() === 'GET') {
+        const job = admin.syncJobs.find((entry) => entry.job_id === syncJobDetailMatch[1]) || null
+        if (!job) {
+          await route.fulfill(createAdminError(404, 'sync_job_not_found', 'Sync job not found.'))
+          return
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            job,
+          }),
         })
         return
       }
@@ -1179,7 +1329,7 @@ async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
     const page = await context.newPage()
     await page.goto(`${baseUrl}/admin/projects/`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.admin-project-list-item', { timeout: 8000 })
-    await page.locator('.admin-project-list-item .admin-secondary-button').first().click()
+    await page.locator('.admin-project-list-item__actions .admin-secondary-button').nth(1).click()
     await page.waitForSelector('.admin-project-links-editor', { timeout: 8000 })
 
     const customPrimary = 'https://example.com/admin/custom-primary'
@@ -1257,6 +1407,59 @@ async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
   }
 }
 
+async function readAdminSyncDebugState(page) {
+  return await page.evaluate(() => ({
+    feedback: document.querySelector('.admin-surface-feedback .admin-feedback')?.textContent?.trim() || '',
+    summaries: Array.from(document.querySelectorAll('[data-admin-sync-summary]')).map((node) => node.textContent?.trim() || ''),
+  }))
+}
+
+async function testAdminProjectSyncJobEntrySmoke(browser, baseUrl) {
+  const state = {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'success',
+    delayMs: 0,
+    admin: createMockAdminState(),
+  }
+  const context = await newContext(browser, state)
+  await context.addInitScript(({ key, value }) => {
+    window.localStorage.setItem(key, value)
+  }, { key: 'll-admin-token-v1', value: state.admin.token })
+
+  try {
+    const page = await context.newPage()
+    await page.goto(`${baseUrl}/admin/projects/`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('.admin-project-list-item', { timeout: 8000 })
+    await page.locator('[data-admin-project-sync-button]').first().click()
+
+    await page.waitForFunction(() => {
+      const text = document.querySelector('.admin-surface-feedback .admin-feedback')?.textContent || ''
+      return /任务 #|job #/i.test(text)
+    }, null, { timeout: 8000 })
+
+    ensure(state.admin.lastSyncJobPayload?.mode === 'project', `project sync should use job mode=project: ${JSON.stringify(state.admin.lastSyncJobPayload)}`)
+    ensure(state.admin.lastSyncJobPayload?.project_id === 'project-1', `project sync payload should carry selected project_id: ${JSON.stringify(state.admin.lastSyncJobPayload)}`)
+
+    const projectDebug = await readAdminSyncDebugState(page)
+    ensure(/同步=1|Synced=1/.test(projectDebug.feedback), `project sync feedback should include synced count: ${JSON.stringify(projectDebug)}`)
+    ensure(/失败=0|Failed=0/.test(projectDebug.feedback), `project sync feedback should include failed count: ${JSON.stringify(projectDebug)}`)
+
+    await page.locator('a[href="/admin/logs"]').first().click()
+    await page.waitForFunction(() => window.location.pathname === '/admin/logs', null, { timeout: 8000 })
+    await page.waitForSelector('[data-admin-sync-summary]', { timeout: 8000 })
+
+    const logsDebug = await readAdminSyncDebugState(page)
+    ensure(
+      logsDebug.summaries.some((text) => /同步=1|Synced=1/.test(text) && /失败=0|Failed=0/.test(text)),
+      `logs sync summary should render project-mode result: ${JSON.stringify(logsDebug)}`,
+    )
+  } finally {
+    await context.close()
+  }
+}
+
 async function main() {
   if (!fs.existsSync(outputRoot)) {
     throw new Error('Missing ".output/public". Run `npm run build` first.')
@@ -1275,6 +1478,7 @@ async function main() {
     { name: 'projects-list-empty-state', run: () => testProjectsListEmptyState(browser, baseUrl) },
     { name: 'projects-list-error-retry', run: () => testProjectsListErrorRetry(browser, baseUrl) },
     { name: 'admin-projects-links-editor-smoke', run: () => testAdminProjectsLinksEditorSmoke(browser, baseUrl) },
+    { name: 'admin-project-sync-job-entry-smoke', run: () => testAdminProjectSyncJobEntrySmoke(browser, baseUrl) },
     { name: 'project-detail-canonical-states-with-legacy-html-redirect', run: () => testProjectDetailCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) },
   ]
   const failures = []
@@ -1334,6 +1538,3 @@ main().catch((error) => {
   console.error(error)
   process.exit(1)
 })
-
-
-
