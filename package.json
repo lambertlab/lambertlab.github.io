@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "node scripts/build-friendly.mjs",
     "verify": "npm run build:verify && npm run visual:parity:smoke",
-    "build:verify": "npm run build && node scripts/verify-prerender-parity.mjs && node scripts/verify-dynamic-contracts.mjs && node scripts/verify-editorial-workflow.mjs",
+    "build:verify": "npm run build && node scripts/verify-prerender-parity.mjs && node scripts/verify-dynamic-contracts.mjs && node scripts/verify-editorial-workflow.mjs && node scripts/verify-system-content-facts.mjs",
     "gate:l1": "npm run build && node scripts/verify-prerender-parity.mjs",
     "gate:l2": "npm run visual:parity:smoke",
     "gate:l3": "npm run build && node scripts/verify-dynamic-contracts.mjs",
@@ -20,7 +20,8 @@
     "visual:parity:full": "npm run build && node scripts/visual-parity.mjs --mode=full",
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
-    "build:env": "node scripts/build-friendly.mjs --print-env"
+    "build:env": "node scripts/build-friendly.mjs --print-env",
+    "export:system-content-facts": "node scripts/export-system-content-facts.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.166.6",
