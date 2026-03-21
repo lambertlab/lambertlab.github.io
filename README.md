@@ -27,6 +27,7 @@ npm run dev
   - 构建与 TypeScript 校验
 - `npm run verify`
   - 默认发布前验证，等价于 `npm run build:verify && npm run visual:parity:smoke`
+  - 当两项都需要时，这是首选串行入口；不要手动并行这两条命令
 - `npm run preview`
   - 本地预览构建产物
 
@@ -41,6 +42,7 @@ npm run dev
 ### 默认验证
 - `npm run verify`
 - 适用：大多数前端改动的发布前默认验证
+- 说明：当 `build:verify` 与 `visual:parity:smoke` 都需要执行时，默认通过这个入口串行完成，不要手动并行
 
 ### 结构 / 合同验证
 - `npm run build:verify`
@@ -54,6 +56,11 @@ npm run dev
 - `npm run verify:deep`
 - `npm run visual:parity:full`
 - 适用：需要显式跑完整 gate 分层或做更深视觉排查时
+
+## 验证互斥规则
+- `npm run build:verify` 与 `npm run visual:parity:smoke` 默认视为互斥验证，不并行执行
+- 若两者都要跑，默认顺序是 `build:verify -> visual:parity:smoke`
+- 若并行失败但串行成功，应归类为资源竞争型假失败，而不是业务回归
 
 ## Gate 映射
 - `L1`：`npm run gate:l1`，关注 build 与 prerender parity
