@@ -143,7 +143,7 @@ export function buildProjectsCatalogMetrics(projects: readonly ProjectCatalogRec
       liveItems += 1
     }
 
-    const candidate = project.updated_at ?? project.synced_at ?? project.pushed_at
+    const candidate = project.updated_at ?? project.pushed_at
     if (!candidate) {
       return
     }

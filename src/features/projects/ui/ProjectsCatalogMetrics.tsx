@@ -1,4 +1,4 @@
-﻿import type { UiLocale } from '~/lib/uiLocale'
+import type { UiLocale } from '~/lib/uiLocale'
 import type { ProjectCatalogMetrics, ProjectsLoadStatus } from '../model/projectTypes'
 
 interface ProjectsCatalogMetricsProps {
@@ -61,7 +61,7 @@ export function ProjectsCatalogMetrics({ metrics, status, locale }: ProjectsCata
       </article>
       <article className="metric metric-updated">
         <p className="label">{copy.updated}</p>
-        <p className="value" data-last-sync>{isPending ? pendingValue : formatDateTime(metrics.lastUpdatedAt, locale)}</p>
+        <p className="value" data-last-updated>{isPending ? pendingValue : formatDateTime(metrics.lastUpdatedAt, locale)}</p>
       </article>
     </div>
   )

@@ -38,6 +38,10 @@ function isRecentJob(createdAt: string | null, now: number, windowMs: number): b
   return now - parsed <= windowMs
 }
 
+function resolveJobDisplayTime(job: Pick<AdminSyncJobRecord, 'finished_at' | 'created_at'>): string | null {
+  return job.finished_at ?? job.created_at
+}
+
 function ImportGithubRepoContent() {
   const { token, invalidate } = useAdminConsoleAuth()
   const { locale } = useUiLocale()
@@ -300,7 +304,7 @@ export function AdminSyncJobLogsPanels() {
                         <p className="meta">{job.mode} · {job.state}</p>
                         {job.result ? <p className="admin-detail-meta">{summarizeSyncResult(job.result)}</p> : null}
                       </div>
-                      <span className="pill">{formatAdminTime(job.created_at)}</span>
+                      <span className="pill">{formatAdminTime(resolveJobDisplayTime(job))}</span>
                     </button>
                     {job.state === 'failed' ? (
                       <button className="admin-secondary-button admin-retry-button" type="button" onClick={() => void retryJob(job.job_id)}>
@@ -341,7 +345,8 @@ export function AdminSyncJobLogsPanels() {
               <p><strong>mode:</strong> {detail.mode}</p>
               <p><strong>project_id:</strong> {detail.project_id || '--'}</p>
               <p><strong>github_username:</strong> {detail.github_username || '--'}</p>
-              <p><strong>updated_at:</strong> {formatAdminTime(detail.updated_at)}</p>
+              <p><strong>created_at:</strong> {formatAdminTime(detail.created_at)}</p>
+              <p><strong>finished_at:</strong> {formatAdminTime(detail.finished_at)}</p>
             </div>
 
             {detail.result ? (
