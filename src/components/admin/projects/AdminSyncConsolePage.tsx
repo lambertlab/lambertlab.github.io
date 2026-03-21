@@ -98,6 +98,16 @@ function describeSyncJobTarget(
   return job.mode || t('unknown', 'unknown')
 }
 
+function describeSyncJobFailureReason(
+  job: Pick<AdminSyncJobRecord, 'state' | 'error_message'>,
+  t: (zh: string, en: string) => string,
+): string {
+  if (job.state !== 'failed') {
+    return ''
+  }
+  return job.error_message || t('同步失败。', 'Sync failed.')
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, ms)
@@ -366,6 +376,7 @@ export function AdminSyncJobLogsPanels() {
                       <div>
                         <p className="name">#{job.job_id}</p>
                         <p className="meta">{describeSyncJobTarget(job, t)} · {job.state}</p>
+                        {job.state === 'failed' ? <p className="admin-detail-meta">{describeSyncJobFailureReason(job, t)}</p> : null}
                         {job.result ? <p className="admin-detail-meta" data-admin-sync-summary>{summarizeSyncResult(job.result, t)}</p> : null}
                       </div>
                       <span className="pill">{formatAdminTime(resolveJobDisplayTime(job))}</span>
