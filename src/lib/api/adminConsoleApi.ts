@@ -263,6 +263,51 @@ export interface AdminLogsListResult {
   page_size: number
 }
 
+export interface AdminStatusSummary {
+  backend_health: string
+  db_health: string
+  github_health: string
+  github_rate_remaining: number | null
+}
+
+export interface AdminHomeLifeCardRecord {
+  id: string
+  panel: string
+  sort_order: number
+  accent: string
+  title: string
+  description: string
+  href: string
+  external: boolean
+  is_active: boolean
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface AdminHomeLifePanelResult {
+  panel: string
+  include_inactive: boolean
+  count: number
+  cards: AdminHomeLifeCardRecord[]
+  fetched_at: string | null
+}
+
+export interface AdminHomeLifeCardInput {
+  title: string
+  accent: string
+  description: string
+  href: string
+  external: boolean
+  is_active: boolean
+}
+
+export interface AdminHomeLifeCardMutationResult {
+  panel: string
+  sort_order: number
+  card: AdminHomeLifeCardRecord
+  updated_at: string | null
+}
+
 export class AdminConsoleApiError extends Error {
   status?: number
   code: AdminProjectErrorCode
@@ -852,6 +897,78 @@ function normalizeLogsList(value: unknown): AdminLogsListResult {
     total,
     page,
     page_size: pageSize,
+  }
+}
+
+function normalizeAdminStatusSummary(value: unknown): AdminStatusSummary {
+  const payload = toRecord(value)
+
+  return {
+    backend_health: toText(payload?.backend_health) || 'unknown',
+    db_health: toText(payload?.db_health) || 'unknown',
+    github_health: toText(payload?.github_health) || 'unknown',
+    github_rate_remaining: toFiniteNumber(payload?.github_rate_remaining),
+  }
+}
+
+function normalizeHomeLifeCardRecord(value: unknown): AdminHomeLifeCardRecord | null {
+  const payload = toRecord(value)
+  if (!payload) {
+    return null
+  }
+
+  const id = toIdentifierText(payload.id) || `${toText(payload.panel)}:${toIdentifierText(payload.sort_order)}`
+  const panel = toText(payload.panel)
+  const sortOrder = toFiniteNumber(payload.sort_order)
+
+  if (!id || !panel || sortOrder === null || sortOrder < 1) {
+    return null
+  }
+
+  return {
+    id,
+    panel,
+    sort_order: Math.round(sortOrder),
+    accent: toText(payload.accent),
+    title: toText(payload.title),
+    description: toText(payload.description),
+    href: toText(payload.href),
+    external: toBoolean(payload.external),
+    is_active: toBoolean(payload.is_active),
+    created_at: toNullableText(payload.created_at),
+    updated_at: toNullableText(payload.updated_at),
+  }
+}
+
+function normalizeHomeLifePanelResult(value: unknown): AdminHomeLifePanelResult {
+  const payload = toRecord(value)
+  const rawCards = toArray(payload?.cards)
+  const cards = rawCards
+    .map((entry) => normalizeHomeLifeCardRecord(entry))
+    .filter((entry): entry is AdminHomeLifeCardRecord => Boolean(entry))
+
+  return {
+    panel: toText(payload?.panel) || 'life',
+    include_inactive: toBoolean(payload?.include_inactive),
+    count: toNonNegativeInteger(payload?.count ?? cards.length, cards.length),
+    cards,
+    fetched_at: toNullableText(payload?.fetched_at),
+  }
+}
+
+function normalizeHomeLifeCardMutationResult(value: unknown): AdminHomeLifeCardMutationResult {
+  const payload = toRecord(value)
+  const card = normalizeHomeLifeCardRecord(payload?.card)
+
+  if (!card) {
+    throw new AdminConsoleApiError('Home life card payload is invalid.')
+  }
+
+  return {
+    panel: toText(payload?.panel) || card.panel,
+    sort_order: toPositiveInteger(payload?.sort_order ?? card.sort_order, card.sort_order),
+    card,
+    updated_at: toNullableText(payload?.updated_at),
   }
 }
 
@@ -1494,4 +1611,78 @@ export async function fetchAdminLogs(token: string, query?: AdminLogsQuery, sign
   })
 
   return normalizeLogsList(payload)
+}
+
+export async function fetchAdminStatus(token: string, signal?: AbortSignal): Promise<AdminStatusSummary> {
+  const payload = await requestJson<unknown>('/admin/status', {
+    token: toText(token),
+    method: 'GET',
+    signal,
+  })
+
+  return normalizeAdminStatusSummary(payload)
+}
+
+export async function fetchAdminHomeLifePanel(
+  token: string,
+  options?: { include_inactive?: boolean },
+  signal?: AbortSignal,
+): Promise<AdminHomeLifePanelResult> {
+  const payload = await requestJson<unknown>('/admin/home/panels/life', {
+    token: toText(token),
+    method: 'GET',
+    query: {
+      include_inactive: options?.include_inactive === true,
+    },
+    signal,
+  })
+
+  return normalizeHomeLifePanelResult(payload)
+}
+
+export async function upsertAdminHomeLifeCard(
+  token: string,
+  sortOrder: number,
+  input: AdminHomeLifeCardInput,
+  signal?: AbortSignal,
+): Promise<AdminHomeLifeCardMutationResult> {
+  const normalizedSortOrder = toFiniteNumber(sortOrder)
+  if (normalizedSortOrder === null || normalizedSortOrder < 1) {
+    throw new AdminConsoleApiError('sort_order must be >= 1.', { code: 'validation_failed' })
+  }
+
+  const payload = await requestJson<unknown>(`/admin/home/panels/life/cards/${encodeURIComponent(String(Math.round(normalizedSortOrder)))}`, {
+    token: toText(token),
+    method: 'PUT',
+    body: {
+      title: toText(input.title),
+      accent: toText(input.accent),
+      description: toText(input.description),
+      href: toText(input.href),
+      external: input.external === true,
+      is_active: input.is_active !== false,
+    },
+    signal,
+  })
+
+  return normalizeHomeLifeCardMutationResult(payload)
+}
+
+export async function deactivateAdminHomeLifeCard(
+  token: string,
+  sortOrder: number,
+  signal?: AbortSignal,
+): Promise<AdminHomeLifeCardMutationResult> {
+  const normalizedSortOrder = toFiniteNumber(sortOrder)
+  if (normalizedSortOrder === null || normalizedSortOrder < 1) {
+    throw new AdminConsoleApiError('sort_order must be >= 1.', { code: 'validation_failed' })
+  }
+
+  const payload = await requestJson<unknown>(`/admin/home/panels/life/cards/${encodeURIComponent(String(Math.round(normalizedSortOrder)))}`, {
+    token: toText(token),
+    method: 'DELETE',
+    signal,
+  })
+
+  return normalizeHomeLifeCardMutationResult(payload)
 }

@@ -21,11 +21,13 @@ import { Route as JournalOperationalHabitsThatStickIndexRouteImport } from './ro
 import { Route as JournalModelFirstEngineeringIndexRouteImport } from './routes/journal/model-first-engineering/index'
 import { Route as JournalAiCollaborationChecklistIndexRouteImport } from './routes/journal/ai-collaboration-checklist/index'
 import { Route as AdminSyncJobsIndexRouteImport } from './routes/admin/sync-jobs/index'
+import { Route as AdminStatusIndexRouteImport } from './routes/admin/status/index'
 import { Route as AdminRepositoriesIndexRouteImport } from './routes/admin/repositories/index'
 import { Route as AdminRepoIndexRouteImport } from './routes/admin/repo/index'
 import { Route as AdminProjectsIndexRouteImport } from './routes/admin/projects/index'
 import { Route as AdminOverviewIndexRouteImport } from './routes/admin/overview/index'
 import { Route as AdminLogsIndexRouteImport } from './routes/admin/logs/index'
+import { Route as AdminHomeLifeIndexRouteImport } from './routes/admin/home/life/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -91,6 +93,11 @@ const AdminSyncJobsIndexRoute = AdminSyncJobsIndexRouteImport.update({
   path: '/admin/sync-jobs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminStatusIndexRoute = AdminStatusIndexRouteImport.update({
+  id: '/admin/status/',
+  path: '/admin/status/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRepositoriesIndexRoute = AdminRepositoriesIndexRouteImport.update({
   id: '/admin/repositories/',
   path: '/admin/repositories/',
@@ -116,6 +123,11 @@ const AdminLogsIndexRoute = AdminLogsIndexRouteImport.update({
   path: '/admin/logs/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminHomeLifeIndexRoute = AdminHomeLifeIndexRouteImport.update({
+  id: '/admin/home/life/',
+  path: '/admin/home/life/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -130,11 +142,13 @@ export interface FileRoutesByFullPath {
   '/admin/projects/': typeof AdminProjectsIndexRoute
   '/admin/repo/': typeof AdminRepoIndexRoute
   '/admin/repositories/': typeof AdminRepositoriesIndexRoute
+  '/admin/status/': typeof AdminStatusIndexRoute
   '/admin/sync-jobs/': typeof AdminSyncJobsIndexRoute
   '/journal/ai-collaboration-checklist/': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering/': typeof JournalModelFirstEngineeringIndexRoute
   '/journal/operational-habits-that-stick/': typeof JournalOperationalHabitsThatStickIndexRoute
   '/projects/$projectSlug/': typeof ProjectsProjectSlugIndexRoute
+  '/admin/home/life/': typeof AdminHomeLifeIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -149,11 +163,13 @@ export interface FileRoutesByTo {
   '/admin/projects': typeof AdminProjectsIndexRoute
   '/admin/repo': typeof AdminRepoIndexRoute
   '/admin/repositories': typeof AdminRepositoriesIndexRoute
+  '/admin/status': typeof AdminStatusIndexRoute
   '/admin/sync-jobs': typeof AdminSyncJobsIndexRoute
   '/journal/ai-collaboration-checklist': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering': typeof JournalModelFirstEngineeringIndexRoute
   '/journal/operational-habits-that-stick': typeof JournalOperationalHabitsThatStickIndexRoute
   '/projects/$projectSlug': typeof ProjectsProjectSlugIndexRoute
+  '/admin/home/life': typeof AdminHomeLifeIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -169,11 +185,13 @@ export interface FileRoutesById {
   '/admin/projects/': typeof AdminProjectsIndexRoute
   '/admin/repo/': typeof AdminRepoIndexRoute
   '/admin/repositories/': typeof AdminRepositoriesIndexRoute
+  '/admin/status/': typeof AdminStatusIndexRoute
   '/admin/sync-jobs/': typeof AdminSyncJobsIndexRoute
   '/journal/ai-collaboration-checklist/': typeof JournalAiCollaborationChecklistIndexRoute
   '/journal/model-first-engineering/': typeof JournalModelFirstEngineeringIndexRoute
   '/journal/operational-habits-that-stick/': typeof JournalOperationalHabitsThatStickIndexRoute
   '/projects/$projectSlug/': typeof ProjectsProjectSlugIndexRoute
+  '/admin/home/life/': typeof AdminHomeLifeIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -190,11 +208,13 @@ export interface FileRouteTypes {
     | '/admin/projects/'
     | '/admin/repo/'
     | '/admin/repositories/'
+    | '/admin/status/'
     | '/admin/sync-jobs/'
     | '/journal/ai-collaboration-checklist/'
     | '/journal/model-first-engineering/'
     | '/journal/operational-habits-that-stick/'
     | '/projects/$projectSlug/'
+    | '/admin/home/life/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -209,11 +229,13 @@ export interface FileRouteTypes {
     | '/admin/projects'
     | '/admin/repo'
     | '/admin/repositories'
+    | '/admin/status'
     | '/admin/sync-jobs'
     | '/journal/ai-collaboration-checklist'
     | '/journal/model-first-engineering'
     | '/journal/operational-habits-that-stick'
     | '/projects/$projectSlug'
+    | '/admin/home/life'
   id:
     | '__root__'
     | '/'
@@ -228,11 +250,13 @@ export interface FileRouteTypes {
     | '/admin/projects/'
     | '/admin/repo/'
     | '/admin/repositories/'
+    | '/admin/status/'
     | '/admin/sync-jobs/'
     | '/journal/ai-collaboration-checklist/'
     | '/journal/model-first-engineering/'
     | '/journal/operational-habits-that-stick/'
     | '/projects/$projectSlug/'
+    | '/admin/home/life/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -248,11 +272,13 @@ export interface RootRouteChildren {
   AdminProjectsIndexRoute: typeof AdminProjectsIndexRoute
   AdminRepoIndexRoute: typeof AdminRepoIndexRoute
   AdminRepositoriesIndexRoute: typeof AdminRepositoriesIndexRoute
+  AdminStatusIndexRoute: typeof AdminStatusIndexRoute
   AdminSyncJobsIndexRoute: typeof AdminSyncJobsIndexRoute
   JournalAiCollaborationChecklistIndexRoute: typeof JournalAiCollaborationChecklistIndexRoute
   JournalModelFirstEngineeringIndexRoute: typeof JournalModelFirstEngineeringIndexRoute
   JournalOperationalHabitsThatStickIndexRoute: typeof JournalOperationalHabitsThatStickIndexRoute
   ProjectsProjectSlugIndexRoute: typeof ProjectsProjectSlugIndexRoute
+  AdminHomeLifeIndexRoute: typeof AdminHomeLifeIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -341,6 +367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSyncJobsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/status/': {
+      id: '/admin/status/'
+      path: '/admin/status'
+      fullPath: '/admin/status/'
+      preLoaderRoute: typeof AdminStatusIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/repositories/': {
       id: '/admin/repositories/'
       path: '/admin/repositories'
@@ -376,6 +409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLogsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/home/life/': {
+      id: '/admin/home/life/'
+      path: '/admin/home/life'
+      fullPath: '/admin/home/life/'
+      preLoaderRoute: typeof AdminHomeLifeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -392,6 +432,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminProjectsIndexRoute: AdminProjectsIndexRoute,
   AdminRepoIndexRoute: AdminRepoIndexRoute,
   AdminRepositoriesIndexRoute: AdminRepositoriesIndexRoute,
+  AdminStatusIndexRoute: AdminStatusIndexRoute,
   AdminSyncJobsIndexRoute: AdminSyncJobsIndexRoute,
   JournalAiCollaborationChecklistIndexRoute:
     JournalAiCollaborationChecklistIndexRoute,
@@ -400,6 +441,7 @@ const rootRouteChildren: RootRouteChildren = {
   JournalOperationalHabitsThatStickIndexRoute:
     JournalOperationalHabitsThatStickIndexRoute,
   ProjectsProjectSlugIndexRoute: ProjectsProjectSlugIndexRoute,
+  AdminHomeLifeIndexRoute: AdminHomeLifeIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
