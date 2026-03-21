@@ -366,6 +366,15 @@ function createMockAdminState(options = {}) {
   }
 }
 
+function createProjectSyncSummary(projectId, synced, failed) {
+  return {
+    project_id: projectId,
+    synced,
+    failed,
+    synced_at: '2026-03-21T00:00:00Z',
+  }
+}
+
 function createAdminSyncJobRecord({
   jobId,
   mode,
@@ -376,6 +385,7 @@ function createAdminSyncJobRecord({
   errorCode = null,
   errorMessage = null,
   errorDetails = null,
+  retryOfJobId = null,
 }) {
   const timestamp = '2026-03-21T00:00:00Z'
   const normalizedResult = cloneJson(result || null)
@@ -388,7 +398,7 @@ function createAdminSyncJobRecord({
     project_id: projectId,
     github_username: githubUsername,
     state,
-    retry_of_job_id: null,
+    retry_of_job_id: retryOfJobId,
     created_at: timestamp,
     updated_at: timestamp,
     started_at: timestamp,
@@ -448,12 +458,7 @@ function appendAdminSyncJob(admin, input) {
 
   if (input?.mode === 'project') {
     const projectId = String(input.project_id || '')
-    const failureSummary = {
-      project_id: projectId,
-      synced: 0,
-      failed: 1,
-      synced_at: '2026-03-21T00:00:00Z',
-    }
+    const failureSummary = createProjectSyncSummary(projectId, 0, 1)
     job = admin.projectSyncJobShouldFail
       ? createAdminSyncJobRecord({
           jobId: nextJobId,
@@ -469,12 +474,7 @@ function appendAdminSyncJob(admin, input) {
           jobId: nextJobId,
           mode: 'project',
           projectId,
-          result: {
-            project_id: projectId,
-            synced: 1,
-            failed: 0,
-            synced_at: '2026-03-21T00:00:00Z',
-          },
+          result: createProjectSyncSummary(projectId, 1, 0),
         })
   } else {
     job = createAdminSyncJobRecord({
@@ -516,6 +516,61 @@ function appendAdminSyncJob(admin, input) {
   ]
   admin.lastSyncJobPayload = cloneJson(input || null)
   return job
+}
+
+function appendAdminRetrySyncJob(admin, jobId) {
+  const original = admin.syncJobs.find((entry) => entry.job_id === String(jobId)) || null
+  if (!original) {
+    return null
+  }
+
+  const nextJobId = String(700 + admin.syncJobs.length + 1)
+  const retriedJob =
+    original.mode === 'project'
+      ? createAdminSyncJobRecord({
+          jobId: nextJobId,
+          mode: 'project',
+          projectId: original.project_id,
+          result: createProjectSyncSummary(original.project_id, 1, 0),
+          retryOfJobId: original.job_id,
+        })
+      : createAdminSyncJobRecord({
+          jobId: nextJobId,
+          mode: original.mode,
+          githubUsername: original.github_username,
+          result: {
+            fetched: 1,
+            created: 1,
+            updated: 0,
+            deactivated: 0,
+            synced: 1,
+            synced_at: '2026-03-21T00:00:00Z',
+          },
+          retryOfJobId: original.job_id,
+        })
+
+  admin.syncJobs = [retriedJob, ...admin.syncJobs]
+  const nextLogId = 900 + admin.logs.length + 1
+  admin.logs = [
+    createAdminLogRecord({
+      logId: nextLogId + 1,
+      action: 'sync_job_executed',
+      result: 'success',
+      projectId: retriedJob.project_id,
+      message: 'Sync job completed.',
+      createdAt: '2026-03-21T00:01:05Z',
+    }),
+    createAdminLogRecord({
+      logId: nextLogId,
+      action: 'sync_job_retried',
+      result: 'accepted',
+      projectId: original.project_id,
+      message: `Retry requested from job ${original.job_id}.`,
+      createdAt: '2026-03-21T00:01:00Z',
+    }),
+    ...admin.logs,
+  ]
+  return retriedJob
 }
 
 function parseJsonBody(request) {
@@ -829,6 +884,30 @@ async function installRoutes(context, state) {
             state: createdJob.state,
             created_at: createdJob.created_at,
             job: createdJob,
+          }),
+        })
+        return
+      }
+
+      const syncJobRetryMatch = pathname.match(/^\/admin\/sync\/jobs\/([^/]+)\/retry$/)
+      if (syncJobRetryMatch && request.method() === 'POST') {
+        const existingJob = admin.syncJobs.find((entry) => entry.job_id === syncJobRetryMatch[1]) || null
+        if (!existingJob) {
+          await route.fulfill(createAdminError(404, 'sync_job_not_found', 'Sync job not found.'))
+          return
+        }
+        if (existingJob.state !== 'failed') {
+          await route.fulfill(createAdminError(409, 'sync_job_state_invalid', 'Only failed sync jobs can be retried.'))
+          return
+        }
+
+        const retriedJob = appendAdminRetrySyncJob(admin, existingJob.job_id)
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            ok: true,
+            job: retriedJob,
           }),
         })
         return
@@ -1492,8 +1571,9 @@ async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
 async function readAdminSyncDebugState(page) {
   return await page.evaluate(() => ({
     feedback: document.querySelector('.admin-surface-feedback .admin-feedback')?.textContent?.trim() || '',
+    listFeedback: document.querySelector('.admin-projects-list-panel .admin-feedback')?.textContent?.trim() || '',
     summaries: Array.from(document.querySelectorAll('[data-admin-sync-summary]')).map((node) => node.textContent?.trim() || ''),
-    jobRows: Array.from(document.querySelectorAll('.admin-sync-job-row button')).map((node) => node.textContent?.trim() || ''),
+    jobRows: Array.from(document.querySelectorAll('.admin-sync-job-row button:not(.admin-retry-button)')).map((node) => node.textContent?.trim() || ''),
     detailError: document.querySelector('.admin-sync-detail .admin-state-error')?.textContent?.trim() || '',
   }))
 }
@@ -1625,6 +1705,99 @@ async function testAdminProjectSyncJobFailureSmoke(browser, baseUrl) {
   }
 }
 
+async function testAdminProjectSyncJobRetrySmoke(browser, baseUrl) {
+  const state = {
+    featuredMode: 'success',
+    listMode: 'success',
+    detailMode: 'success',
+    homeContentMode: 'success',
+    delayMs: 0,
+    admin: createMockAdminState({ projectSyncJobShouldFail: true }),
+  }
+  const context = await newContext(browser, state)
+  await context.addInitScript(({ key, value }) => {
+    window.localStorage.setItem(key, value)
+  }, { key: 'll-admin-token-v1', value: state.admin.token })
+
+  try {
+    const page = await context.newPage()
+    await page.goto(`${baseUrl}/admin/projects/`, { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('.admin-project-list-item', { timeout: 8000 })
+    await page.locator('[data-admin-project-sync-button]').first().click()
+
+    await page.waitForFunction(() => {
+      const text = document.querySelector('.admin-surface-feedback .admin-feedback')?.textContent || ''
+      return /失败|failed/i.test(text)
+    }, null, { timeout: 8000 })
+
+    const failedJobId = state.admin.syncJobs[0]?.job_id || ''
+    ensure(Boolean(failedJobId), `retry smoke should create a failed project sync job before retry: ${JSON.stringify(state.admin.syncJobs)}`)
+
+    await page.locator('a[href="/admin/logs"]').first().click()
+    await page.waitForFunction(() => window.location.pathname === '/admin/logs', null, { timeout: 8000 })
+    await page.waitForSelector('.admin-retry-button', { timeout: 8000 })
+
+    await page.locator('.admin-retry-button').first().click()
+    await page.waitForFunction(() => {
+      const feedback = document.querySelector('.admin-projects-list-panel .admin-feedback')?.textContent || ''
+      const button = document.querySelector('.admin-retry-button')?.textContent || ''
+      return /再次点击|Click retry again/.test(feedback) && /确认重试|Confirm Retry/.test(button)
+    }, null, { timeout: 8000 })
+
+    let logsDebug = await readAdminSyncDebugState(page)
+    ensure(/再次点击|Click retry again/.test(logsDebug.listFeedback), `retry confirm hint should surface in sync list panel: ${JSON.stringify(logsDebug)}`)
+
+    await page.locator('.admin-retry-button').first().click()
+    await page.waitForFunction(() => {
+      const feedback = document.querySelector('.admin-projects-list-panel .admin-feedback')?.textContent || ''
+      const rows = Array.from(document.querySelectorAll('.admin-sync-job-row button:not(.admin-retry-button)')).map((node) => node.textContent || '')
+      return /已触发重试：#|Retry triggered: #/.test(feedback) && rows.some((text) => /同步=1|Synced=1/.test(text) && /失败=0|Failed=0/.test(text))
+    }, null, { timeout: 8000 })
+
+    const retriedJob = state.admin.syncJobs.find((job) => job.retry_of_job_id === failedJobId) || null
+    ensure(retriedJob?.state === 'success', `retry should prepend a successful retried job: ${JSON.stringify(state.admin.syncJobs)}`)
+    ensure(
+      state.admin.logs.some((entry) => entry.action === 'sync_job_retried' && entry.message === `Retry requested from job ${failedJobId}.`),
+      `retry should append sync_job_retried activity log: ${JSON.stringify(state.admin.logs)}`,
+    )
+
+    logsDebug = await readAdminSyncDebugState(page)
+    ensure(/已触发重试：#|Retry triggered: #/.test(logsDebug.listFeedback), `retry success feedback should surface in sync list panel: ${JSON.stringify(logsDebug)}`)
+    ensure(logsDebug.jobRows.length === 2, `retry should leave both retried and original failed jobs visible: ${JSON.stringify(logsDebug)}`)
+    ensure(
+      logsDebug.jobRows.some((text) => /同步=1|Synced=1/.test(text) && /失败=0|Failed=0/.test(text)),
+      `retry should add a successful project sync summary to the list: ${JSON.stringify(logsDebug)}`,
+    )
+    ensure(logsDebug.detailError === '', `retry should switch detail panel away from the failed error state: ${JSON.stringify(logsDebug)}`)
+    ensure(
+      logsDebug.summaries.some((text) => /同步=1|Synced=1/.test(text) && /失败=0|Failed=0/.test(text)),
+      `retry should surface successful retried job summary in detail or list: ${JSON.stringify(logsDebug)}`,
+    )
+
+    await page.locator('.admin-logs-toolbar__filters .admin-logs-filter--select').first().selectOption('sync_job_retried')
+    await page.waitForFunction((expectedJobId) => {
+      const selectedAction = document.querySelector('.admin-logs-toolbar__filters .admin-logs-filter--select')?.value || ''
+      const rows = Array.from(document.querySelectorAll('.admin-logs-table tbody tr'))
+      if (selectedAction !== 'sync_job_retried' || rows.length !== 1) {
+        return false
+      }
+      const actionText = rows[0]?.querySelector('td:nth-child(2)')?.textContent || ''
+      const messageText = rows[0]?.querySelector('td:nth-child(6)')?.textContent || ''
+      return /已重试|Retried/.test(actionText) && messageText.includes(`Retry requested from job ${expectedJobId}.`)
+    }, failedJobId, { timeout: 8000 })
+
+    const activityLogsDebug = await readAdminActivityLogsDebugState(page)
+    ensure(activityLogsDebug.selectedAction === 'sync_job_retried', `logs action filter should keep sync_job_retried selected: ${JSON.stringify(activityLogsDebug)}`)
+    ensure(activityLogsDebug.rows.length === 1, `logs action filter should narrow retry activity logs to one row: ${JSON.stringify(activityLogsDebug)}`)
+    ensure(
+      activityLogsDebug.rows.some((cells) => /已重试|Retried/.test(cells[1] || '') && cells[5] === `Retry requested from job ${failedJobId}.`),
+      `logs action filter should render canonical retried label and retry message: ${JSON.stringify(activityLogsDebug)}`,
+    )
+  } finally {
+    await context.close()
+  }
+}
+
 async function main() {
   if (!fs.existsSync(outputRoot)) {
     throw new Error('Missing ".output/public". Run `npm run build` first.')
@@ -1645,6 +1818,7 @@ async function main() {
     { name: 'admin-projects-links-editor-smoke', run: () => testAdminProjectsLinksEditorSmoke(browser, baseUrl) },
     { name: 'admin-project-sync-job-entry-smoke', run: () => testAdminProjectSyncJobEntrySmoke(browser, baseUrl) },
     { name: 'admin-project-sync-job-failure-smoke', run: () => testAdminProjectSyncJobFailureSmoke(browser, baseUrl) },
+    { name: 'admin-project-sync-job-retry-smoke', run: () => testAdminProjectSyncJobRetrySmoke(browser, baseUrl) },
     { name: 'project-detail-canonical-states-with-legacy-html-redirect', run: () => testProjectDetailCanonicalStatesWithLegacyHtmlRedirect(browser, baseUrl) },
   ]
   const failures = []
