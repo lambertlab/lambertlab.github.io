@@ -408,6 +408,27 @@ function createAdminSyncJobRecord({ jobId, mode, projectId = null, githubUsernam
   }
 }
 
+function createAdminLogRecord({
+  logId,
+  action,
+  result,
+  message,
+  projectId = null,
+  source = 'admin-api',
+  createdAt,
+}) {
+  return {
+    id: String(logId),
+    created_at: createdAt,
+    action,
+    project_id: projectId,
+    result,
+    operator_source: source,
+    source,
+    message,
+  }
+}
+
 function appendAdminSyncJob(admin, input) {
   const nextJobId = String(700 + admin.syncJobs.length + 1)
   let job
@@ -442,6 +463,27 @@ function appendAdminSyncJob(admin, input) {
   }
 
   admin.syncJobs = [job, ...admin.syncJobs]
+  const nextLogId = 900 + admin.logs.length + 1
+  const syncTarget = input?.mode === 'project' ? String(input.project_id || '') || null : null
+  admin.logs = [
+    createAdminLogRecord({
+      logId: nextLogId + 1,
+      action: 'sync_job_executed',
+      result: job.state === 'failed' ? 'failed' : 'success',
+      projectId: syncTarget,
+      message: job.state === 'failed' ? 'Sync completed with failures.' : 'Sync job completed.',
+      createdAt: '2026-03-21T00:00:05Z',
+    }),
+    createAdminLogRecord({
+      logId: nextLogId,
+      action: 'sync_job_created',
+      result: 'accepted',
+      projectId: syncTarget,
+      message: 'Sync job created.',
+      createdAt: '2026-03-21T00:00:00Z',
+    }),
+    ...admin.logs,
+  ]
   admin.lastSyncJobPayload = cloneJson(input || null)
   return job
 }
@@ -706,7 +748,17 @@ async function installRoutes(context, state) {
       }
 
       if (pathname === '/admin/logs' && request.method() === 'GET') {
-        const logs = cloneJson(admin.logs)
+        const action = url.searchParams.get('action') || ''
+        const projectId = url.searchParams.get('project_id') || ''
+        const logs = cloneJson(admin.logs).filter((entry) => {
+          if (action && entry.action !== action) {
+            return false
+          }
+          if (projectId && String(entry.project_id || '') !== projectId) {
+            return false
+          }
+          return true
+        })
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -1414,6 +1466,15 @@ async function readAdminSyncDebugState(page) {
   }))
 }
 
+async function readAdminActivityLogsDebugState(page) {
+  return await page.evaluate(() => ({
+    selectedAction: document.querySelector('.admin-logs-toolbar__filters .admin-logs-filter--select')?.value || '',
+    rows: Array.from(document.querySelectorAll('.admin-logs-table tbody tr')).map((row) =>
+      Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent?.trim() || ''),
+    ),
+  }))
+}
+
 async function testAdminProjectSyncJobEntrySmoke(browser, baseUrl) {
   const state = {
     featuredMode: 'success',
@@ -1454,6 +1515,25 @@ async function testAdminProjectSyncJobEntrySmoke(browser, baseUrl) {
     ensure(
       logsDebug.summaries.some((text) => /同步=1|Synced=1/.test(text) && /失败=0|Failed=0/.test(text)),
       `logs sync summary should render project-mode result: ${JSON.stringify(logsDebug)}`,
+    )
+
+    await page.locator('.admin-logs-toolbar__filters .admin-logs-filter--select').first().selectOption('sync_job_executed')
+    await page.waitForFunction(() => {
+      const selectedAction = document.querySelector('.admin-logs-toolbar__filters .admin-logs-filter--select')?.value || ''
+      const rows = Array.from(document.querySelectorAll('.admin-logs-table tbody tr'))
+      if (selectedAction !== 'sync_job_executed' || rows.length !== 1) {
+        return false
+      }
+      const actionText = rows[0]?.querySelector('td:nth-child(2)')?.textContent || ''
+      return /已执行|Executed/.test(actionText)
+    }, null, { timeout: 8000 })
+
+    const activityLogsDebug = await readAdminActivityLogsDebugState(page)
+    ensure(activityLogsDebug.selectedAction === 'sync_job_executed', `logs action filter should keep sync_job_executed selected: ${JSON.stringify(activityLogsDebug)}`)
+    ensure(activityLogsDebug.rows.length === 1, `logs action filter should narrow activity logs to one row: ${JSON.stringify(activityLogsDebug)}`)
+    ensure(
+      activityLogsDebug.rows.some((cells) => /已执行|Executed/.test(cells[1] || '')),
+      `logs action filter should render the canonical executed label: ${JSON.stringify(activityLogsDebug)}`,
     )
   } finally {
     await context.close()
