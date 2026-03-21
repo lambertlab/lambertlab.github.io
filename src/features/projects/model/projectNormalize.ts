@@ -151,7 +151,7 @@ export function normalizeProjectRepositories(value: unknown): ProjectRepository[
     const name = explicitName || derivedName
     const url = normalizeNullableProjectText(record.url ?? record.repo_url ?? record.html_url ?? record.homepage)
     const visibility = normalizeNullableProjectText(record.visibility)
-    const isPrimary = record.is_primary === true || record.primary === true
+    const isPrimary = record.is_primary === true
 
     if (!name && !fullName && !url) {
       return
@@ -172,12 +172,6 @@ export function normalizeProjectRepositories(value: unknown): ProjectRepository[
     })
   })
 
-  if (repositories.length > 0 && !repositories.some((item) => item.is_primary)) {
-    repositories[0] = {
-      ...repositories[0],
-      is_primary: true,
-    }
-  }
 
   return repositories
 }
@@ -278,10 +272,9 @@ function pickLinkByType(items: ProjectLinkItem[], types: string[]): string | nul
   return matched?.href ?? null
 }
 
-export function normalizeProjectLinks(value: unknown, repositories: ProjectRepository[]): { links: ProjectLinks; items: ProjectLinkItem[] } {
+export function normalizeProjectLinks(value: unknown): { links: ProjectLinks; items: ProjectLinkItem[] } {
   const linksRecord = toProjectRecord(value) ?? {}
   const items = normalizeProjectLinkItems(value)
-  const repositoryFromList = repositories.find((item) => item.is_primary)?.url ?? repositories[0]?.url ?? null
 
   let primary = normalizeNullableProjectText(linksRecord.primary)
   let repo = normalizeNullableProjectText(linksRecord.repo)
@@ -309,13 +302,6 @@ export function normalizeProjectLinks(value: unknown, repositories: ProjectRepos
     notes = pickLinkByType(items, ['notes', 'note'])
   }
 
-  if (!repo) {
-    repo = repositoryFromList
-  }
-
-  if (!primary) {
-    primary = items[0]?.href ?? repo ?? null
-  }
 
   return {
     links: { primary, repo, demo, docs, notes },
@@ -325,16 +311,13 @@ export function normalizeProjectLinks(value: unknown, repositories: ProjectRepos
 
 export function normalizeProjectSourceRefs(
   value: unknown,
-  repositories: ProjectRepository[],
-  fallbackRepositoryUrl: string | null,
 ): ProjectSourceRefs {
   const refs = toProjectRecord(value) ?? {}
-  const primaryRepository = repositories.find((item) => item.is_primary) ?? repositories[0]
 
   return {
-    repo_full_name: normalizeNullableProjectText(refs.repo_full_name) ?? primaryRepository?.full_name ?? null,
-    repo_url: normalizeNullableProjectText(refs.repo_url) ?? primaryRepository?.url ?? fallbackRepositoryUrl ?? null,
-    visibility: normalizeNullableProjectText(refs.visibility) ?? primaryRepository?.visibility ?? null,
+    repo_full_name: normalizeNullableProjectText(refs.repo_full_name),
+    repo_url: normalizeNullableProjectText(refs.repo_url),
+    visibility: normalizeNullableProjectText(refs.visibility),
   }
 }
 
@@ -372,46 +355,21 @@ function normalizeEnumValue<TValue extends string>(value: string, accepted: read
 
 function resolveCatalogProjectUrl(
   payload: Record<string, unknown>,
-  repositories: ProjectRepository[],
-  links: ProjectLinks,
-  sourceRefs: ProjectSourceRefs,
 ): string | null {
-  const directUrl = normalizeNullableProjectText(payload.url)
-  if (directUrl) {
-    return directUrl
-  }
-
-  if (links.repo) {
-    return links.repo
-  }
-
-  const primaryRepository = repositories.find((item) => item.is_primary) ?? repositories[0]
-  if (primaryRepository?.url) {
-    return primaryRepository.url
-  }
-
-  if (sourceRefs.repo_url) {
-    return sourceRefs.repo_url
-  }
-
-  if (sourceRefs.repo_full_name) {
-    return `https://github.com/${sourceRefs.repo_full_name}`
-  }
-
-  return null
+  return normalizeNullableProjectText(payload.url)
 }
 
 export function normalizeProjectCatalogRecord(payload: Record<string, unknown>, index = 0): ProjectCatalogRecord {
   const repositories = normalizeProjectRepositories(payload.repositories)
-  const normalizedLinks = normalizeProjectLinks(payload.links, repositories)
-  const sourceRefs = normalizeProjectSourceRefs(payload.source_refs, repositories, normalizedLinks.links.repo)
-  const fullName = normalizeNullableProjectText(payload.full_name) ?? sourceRefs.repo_full_name
+  const normalizedLinks = normalizeProjectLinks(payload.links)
+  const sourceRefs = normalizeProjectSourceRefs(payload.source_refs)
+  const fullName = normalizeNullableProjectText(payload.full_name)
   const fallbackName = fullName ? fullName.split('/').pop() || '' : ''
   const slug = toProjectText(payload.slug)
   const description = toProjectText(payload.description)
-  const summary = toProjectText(payload.summary) || description
+  const summary = toProjectText(payload.summary)
   const stage = toProjectText(payload.stage) || 'unknown'
-  const sourceType = toProjectText(payload.source_type) || toProjectText(payload.source)
+  const sourceType = toProjectText(payload.source_type)
   const projectType = toProjectText(payload.project_type)
   const tags = normalizeProjectTagArray(payload.tags)
   const stack = normalizeProjectStringArray(payload.stack)
@@ -419,8 +377,8 @@ export function normalizeProjectCatalogRecord(payload: Record<string, unknown>, 
   const name = toProjectText(payload.name) || fallbackName || `project-${index + 1}`
   const pushedAt = normalizeNullableProjectText(payload.pushed_at)
   const updatedAt = normalizeNullableProjectText(payload.updated_at)
-  const isActive = payload.is_active === true || stage === 'active'
-  const archived = payload.archived === true || stage === 'archived'
+  const isActive = payload.is_active === true
+  const archived = payload.archived === true
   const searchableRepositories = repositories.map((repository) => [repository.name, repository.full_name ?? ''].join(' ')).join(' ')
   const searchText = [
     name,
@@ -464,7 +422,7 @@ export function normalizeProjectCatalogRecord(payload: Record<string, unknown>, 
     synced_at: normalizeNullableProjectText(payload.synced_at),
     description,
     full_name: fullName,
-    url: resolveCatalogProjectUrl(payload, repositories, normalizedLinks.links, sourceRefs),
+    url: resolveCatalogProjectUrl(payload),
     language: normalizeNullableProjectText(payload.language),
     stars: toProjectInteger(payload.stargazers_count ?? payload.stars),
     forks: toProjectInteger(payload.forks_count ?? payload.forks),
