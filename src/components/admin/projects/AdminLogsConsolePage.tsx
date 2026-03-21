@@ -25,7 +25,23 @@ const DEFAULT_LOGS_FILTERS: LogsFilters = {
   pageSize: 20,
 }
 
-const LOG_ACTIONS = ['edit_project', 'sync_project', 'retry_sync', 'sync_job_create']
+const LOG_ACTIONS = ['sync_job_created', 'sync_job_executed', 'sync_job_retried', 'edit_project'] as const
+
+function describeLogAction(action: string, t: (zh: string, en: string) => string): string {
+  if (action === 'sync_job_created') {
+    return t('同步任务已创建', 'Sync Job Created')
+  }
+  if (action === 'sync_job_executed') {
+    return t('同步任务已执行', 'Sync Job Executed')
+  }
+  if (action === 'sync_job_retried') {
+    return t('同步任务已重试', 'Sync Job Retried')
+  }
+  if (action === 'edit_project') {
+    return t('项目编辑', 'Project Edited')
+  }
+  return action || '--'
+}
 
 function LogsContent() {
   const { token, invalidate } = useAdminConsoleAuth()
@@ -119,7 +135,7 @@ function LogsContent() {
               <option value="">{t('全部操作', 'All actions')}</option>
               {LOG_ACTIONS.map((item) => (
                 <option key={item} value={item}>
-                  {item}
+                  {describeLogAction(item, t)}
                 </option>
               ))}
             </select>
@@ -172,7 +188,7 @@ function LogsContent() {
                   {data.logs.map((log: AdminLogRecord) => (
                     <tr key={log.id}>
                       <td>{formatAdminTime(log.created_at)}</td>
-                      <td>{log.action || '--'}</td>
+                      <td>{describeLogAction(log.action, t)}</td>
                       <td>{log.project_id || '--'}</td>
                       <td>{log.result || '--'}</td>
                       <td>{log.operator_source || '--'}</td>
