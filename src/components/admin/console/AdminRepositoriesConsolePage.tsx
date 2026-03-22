@@ -2,6 +2,7 @@
 import {
   createAdminSyncJob,
   fetchAdminRepositories,
+  fetchAdminSyncJobById,
   fetchAdminSyncJobs,
   type AdminRepositoryRecord,
   type AdminSyncJobRecord,
@@ -15,6 +16,14 @@ type LoadStatus = 'idle' | 'loading' | 'ready' | 'empty' | 'error'
 
 const REPOSITORIES_PAGE_SIZE = 100
 const JOBS_PAGE_SIZE = 20
+const GITHUB_IMPORT_USERNAME = 'lambertlab'
+const JOB_RECOVERY_WINDOW_MS = 20 * 60 * 1000
+const RECOVERY_LIST_ATTEMPTS = 4
+const RECOVERY_DETAIL_ATTEMPTS = 10
+
+function isSyncJobTerminal(state: string | null | undefined): boolean {
+  return state === 'success' || state === 'failed'
+}
 
 function summarizeSyncResult(result: AdminSyncResultSummary | null): string {
   if (!result) {
@@ -149,7 +158,7 @@ function RepositoryListContent() {
     try {
       const result = await createAdminSyncJob(token, {
         mode: 'github_user',
-        github_username: 'lambertlab',
+        github_username: GITHUB_IMPORT_USERNAME,
       })
 
       setCreateState(describeCreatedGithubSyncJobOutcome(result, t))
@@ -171,14 +180,14 @@ function RepositoryListContent() {
       const now = Date.now()
       let recovered: AdminSyncJobRecord | null = null
 
-      for (let attempt = 0; attempt < 4; attempt += 1) {
+      for (let attempt = 0; attempt < RECOVERY_LIST_ATTEMPTS; attempt += 1) {
         try {
           const jobsResult = await fetchAdminSyncJobs(token, { page: 1, page_size: JOBS_PAGE_SIZE })
           recovered =
             jobsResult.jobs.find((job) => {
               if (job.mode !== 'github_user') return false
-              if ((job.github_username || '').trim().toLowerCase() !== 'lambertlab') return false
-              return isRecentJob(job.created_at, now, 20 * 60 * 1000)
+              if ((job.github_username || '').trim().toLowerCase() !== GITHUB_IMPORT_USERNAME) return false
+              return isRecentJob(job.created_at, now, JOB_RECOVERY_WINDOW_MS)
             }) ?? null
 
           if (recovered) {
@@ -203,8 +212,40 @@ function RepositoryListContent() {
         return
       }
 
-      setCreateState(describeRecoveredGithubSyncJobOutcome(recovered, t))
-      setListNonce((prev) => prev + 1)
+      let finalJob: Pick<AdminSyncJobRecord, 'job_id' | 'state' | 'error_message' | 'result'> = recovered
+
+      if (!isSyncJobTerminal(recovered.state)) {
+        setCreateState({
+          status: 'running',
+          message: t(
+            `已发现任务 #${recovered.job_id}，正在等待同步完成...`,
+            `Found job #${recovered.job_id}. Waiting for sync to finish...`,
+          ),
+        })
+
+        for (let attempt = 0; attempt < RECOVERY_DETAIL_ATTEMPTS; attempt += 1) {
+          await sleep(900 + attempt * 350)
+
+          try {
+            const detail = await fetchAdminSyncJobById(token, recovered.job_id)
+            finalJob = detail
+            if (isSyncJobTerminal(detail.state)) {
+              break
+            }
+          } catch (detailError) {
+            const detailMapped = mapAdminError(detailError)
+            if (detailMapped.code === 'unauthorized') {
+              invalidate(detailMapped.message)
+              return
+            }
+          }
+        }
+      }
+
+      setCreateState(describeRecoveredGithubSyncJobOutcome(finalJob, t))
+      if (isSyncJobTerminal(finalJob.state)) {
+        setListNonce((prev) => prev + 1)
+      }
     }
   }, [invalidate, t, token])
 
