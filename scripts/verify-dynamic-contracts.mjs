@@ -1492,6 +1492,11 @@ function findAdminLinksField(page, labelText) {
   return page.locator('.admin-project-links-editor__field').filter({ hasText: labelText }).first()
 }
 
+async function openAdminProjectLinksDrawer(page) {
+  await page.locator('[data-admin-drawer-trigger="links"]').click()
+  await page.waitForSelector('[data-admin-drawer="links"]', { timeout: 8000 })
+}
+
 async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
   const state = {
     featuredMode: 'success',
@@ -1511,7 +1516,8 @@ async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
     await page.goto(`${baseUrl}/admin/projects/`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.admin-project-list-item', { timeout: 8000 })
     await page.locator('.admin-project-list-item__actions .admin-secondary-button').nth(1).click()
-    await page.waitForSelector('.admin-project-links-editor', { timeout: 8000 })
+    await page.waitForSelector('form.admin-project-modal__content', { timeout: 8000 })
+    await openAdminProjectLinksDrawer(page)
 
     const customPrimary = 'https://example.com/admin/custom-primary'
     const customRepo = 'https://example.com/admin/custom-repo'
@@ -1547,6 +1553,7 @@ async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
     ensure(state.admin.lastLinksPayload?.docs === customDocs, `admin links payload docs mismatch: ${JSON.stringify(state.admin.lastLinksPayload)}`)
     ensure(state.admin.lastLinksPayload?.notes === customNotes, `admin links payload notes mismatch: ${JSON.stringify(state.admin.lastLinksPayload)}`)
 
+    await openAdminProjectLinksDrawer(page)
     const savedDebug = await readAdminLinksDebugState(page)
     ensure(savedDebug.primaryPreview?.href === customPrimary, `admin primary preview did not persist explicit value: ${JSON.stringify(savedDebug)}`)
     ensure(savedDebug.repoPreview?.href === customRepo, `admin repo preview did not persist explicit value: ${JSON.stringify(savedDebug)}`)
@@ -1554,16 +1561,17 @@ async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
     ensure(savedDebug.docsInput === customDocs, `admin docs input did not persist after save: ${JSON.stringify(savedDebug)}`)
     ensure(savedDebug.notesInput === customNotes, `admin notes input did not persist after save: ${JSON.stringify(savedDebug)}`)
 
-    await findAdminLinksField(page, 'Primary Link').getByRole('button').click()
-    await findAdminLinksField(page, 'Repo Link').getByRole('button').click()
+    await page.locator('.admin-project-modal').click({ position: { x: 120, y: 120 } })
+    await openAdminProjectLinksDrawer(page)
+    await findAdminLinksField(page, 'Primary Link').locator('input').fill('')
+    await findAdminLinksField(page, 'Repo Link').locator('input').fill('')
 
     await page.waitForFunction((expectedRepo) => {
-      const cards = Array.from(document.querySelectorAll('.admin-project-link-semantics'))
-      const primaryCard = cards.find((node) => node.textContent?.includes('Primary'))
-      const repoCard = cards.find((node) => node.textContent?.includes('Repo'))
+      const primaryInput = Array.from(document.querySelectorAll('.admin-project-links-editor__field')).find((node) => node.textContent?.includes('Primary Link'))?.querySelector('input')?.value || ''
+      const repoInput = Array.from(document.querySelectorAll('.admin-project-links-editor__field')).find((node) => node.textContent?.includes('Repo Link'))?.querySelector('input')?.value || ''
+      const primaryCard = Array.from(document.querySelectorAll('.admin-project-link-semantics')).find((node) => node.textContent?.includes('Primary'))
       const primaryHref = primaryCard?.querySelector('.admin-project-link-semantics__url a')?.getAttribute('href') || ''
-      const repoHref = repoCard?.querySelector('.admin-project-link-semantics__url a')?.getAttribute('href') || ''
-      return primaryHref === expectedRepo && repoHref === expectedRepo
+      return primaryInput === '' && repoInput === '' && primaryHref === expectedRepo
     }, fallbackRepoUrl, { timeout: 8000 })
 
     await page.locator('form.admin-project-modal__content button[type="submit"]').click()
@@ -1578,6 +1586,7 @@ async function testAdminProjectsLinksEditorSmoke(browser, baseUrl) {
     ensure(state.admin.lastLinksPayload?.docs === customDocs, `admin links payload docs should remain explicit: ${JSON.stringify(state.admin.lastLinksPayload)}`)
     ensure(state.admin.lastLinksPayload?.notes === customNotes, `admin links payload notes should remain explicit: ${JSON.stringify(state.admin.lastLinksPayload)}`)
 
+    await openAdminProjectLinksDrawer(page)
     const fallbackDebug = await readAdminLinksDebugState(page)
     ensure(fallbackDebug.primaryPreview?.href === fallbackRepoUrl, `admin primary preview did not fall back to primary repository: ${JSON.stringify(fallbackDebug)}`)
     ensure(fallbackDebug.repoPreview?.href === fallbackRepoUrl, `admin repo preview did not fall back to primary repository: ${JSON.stringify(fallbackDebug)}`)

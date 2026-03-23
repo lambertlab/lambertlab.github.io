@@ -354,7 +354,10 @@ body {
 .admin-projects-controls select,
 .admin-editor-form input,
 .admin-editor-form select,
-.admin-editor-form textarea {
+.admin-editor-form textarea,
+.admin-project-links-editor input,
+.admin-project-links-editor select,
+.admin-project-links-editor textarea {
   width: 100%;
   border: 1px solid rgba(61, 231, 255, 0.16);
   border-radius: 14px;
@@ -371,7 +374,10 @@ body {
 .admin-projects-controls select:focus,
 .admin-editor-form input:focus,
 .admin-editor-form select:focus,
-.admin-editor-form textarea:focus {
+.admin-editor-form textarea:focus,
+.admin-project-links-editor input:focus,
+.admin-project-links-editor select:focus,
+.admin-project-links-editor textarea:focus {
   border-color: rgba(61, 231, 255, 0.5);
   box-shadow: 0 0 0 4px rgba(61, 231, 255, 0.12);
 }
@@ -442,6 +448,19 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  color: var(--admin-text-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.admin-field {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-field-label--with-hint {
+  gap: 8px;
 }
 
 .admin-field-required {
@@ -921,6 +940,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow: visible;
 }
 
 .admin-project-link-semantics__head {
@@ -928,6 +948,13 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.admin-project-link-semantics__label-group {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .admin-project-link-semantics__title {
@@ -1015,9 +1042,22 @@ body {
   background: linear-gradient(180deg, rgba(10, 18, 30, 0.92), rgba(8, 17, 29, 0.88));
 }
 
+.admin-project-links-editor--drawer {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
 .admin-project-links-editor__head {
   display: grid;
   gap: 6px;
+}
+
+.admin-project-links-editor__title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .admin-project-links-editor__head h3 {
@@ -1026,16 +1066,9 @@ body {
   color: var(--admin-text);
 }
 
-.admin-project-links-editor__head p {
-  margin: 0;
-  color: var(--admin-text-muted);
-  font-size: 0.82rem;
-  line-height: 1.6;
-}
-
 .admin-project-links-editor__preview-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 
@@ -1058,9 +1091,41 @@ body {
   margin: 0;
 }
 
-.admin-project-links-editor__field-actions {
-  display: flex;
-  justify-content: flex-start;
+.admin-input-with-action {
+  position: relative;
+}
+
+.admin-input-with-action input {
+  padding-right: 74px;
+}
+
+.admin-input-clear-button {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(61, 231, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  color: var(--admin-text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.admin-input-clear-button:hover,
+.admin-input-clear-button:focus-visible {
+  border-color: rgba(61, 231, 255, 0.42);
+  color: var(--admin-text);
+  outline: none;
+}
+
+.admin-input-clear-button:disabled {
+  opacity: 0.42;
+  cursor: default;
 }
 
 .admin-project-links-editor__field--span {
@@ -1464,6 +1529,9 @@ body {
 .admin-editor-form input,
 .admin-editor-form select,
 .admin-editor-form textarea,
+.admin-project-links-editor input,
+.admin-project-links-editor select,
+.admin-project-links-editor textarea,
 .admin-search-field--projects input {
   border-color: rgba(61, 231, 255, 0.22);
   background: rgba(24, 39, 60, 0.98);
@@ -1474,6 +1542,8 @@ body {
 .admin-projects-controls input::placeholder,
 .admin-editor-form input::placeholder,
 .admin-editor-form textarea::placeholder,
+.admin-project-links-editor input::placeholder,
+.admin-project-links-editor textarea::placeholder,
 .admin-search-field--projects input::placeholder {
   color: rgba(210, 233, 245, 0.56);
 }
@@ -1525,7 +1595,7 @@ body {
   border-radius: 32px;
   background: #0b1422;
   box-shadow: 0 20px 52px -30px rgba(0, 0, 0, 0.72);
-  overflow: hidden;
+  overflow: visible;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   contain: layout paint;
@@ -2579,6 +2649,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
 }
 
 .admin-status-observation-card__action {
@@ -2619,7 +2690,8 @@ body {
   top: calc(100% + 10px);
   right: 0;
   z-index: 3;
-  width: min(260px, 60vw);
+  width: min(260px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
   padding: 10px 12px;
   border: 1px solid rgba(71, 85, 105, 0.92);
   border-radius: 12px;
@@ -2633,6 +2705,17 @@ body {
   transform: translateY(0);
   transition: none;
   pointer-events: none;
+  overflow-wrap: anywhere;
+}
+
+.admin-status-hint-wrap[data-align='start'] .admin-status-hint__tooltip {
+  left: 0;
+  right: auto;
+}
+
+.admin-status-hint-wrap[data-align='end'] .admin-status-hint__tooltip {
+  left: auto;
+  right: 0;
 }
 
 .admin-status-hint-wrap:hover .admin-status-hint__tooltip,
@@ -2640,6 +2723,16 @@ body {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+}
+
+.admin-status-hint__tooltip--floating {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: auto;
+  z-index: 420;
+  opacity: 1;
+  visibility: visible;
 }
 
 .admin-status-observation-card__footer {
@@ -2881,7 +2974,7 @@ body {
 
 .admin-field-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   align-items: end;
 }
@@ -2918,6 +3011,73 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.admin-project-drawer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  justify-content: flex-end;
+  padding: 84px 20px 64px;
+  background: linear-gradient(90deg, rgba(2, 8, 18, 0), rgba(2, 8, 18, 0.18) 38%, rgba(2, 8, 18, 0.6));
+  pointer-events: none;
+}
+
+.admin-project-repository-drawer {
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 188px);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 20px 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(61, 231, 255, 0.16);
+  background: rgba(11, 20, 34, 0.98);
+  box-shadow: 0 26px 60px -34px rgba(0, 0, 0, 0.84);
+  overflow: visible;
+  pointer-events: auto;
+}
+
+.admin-project-repository-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(61, 231, 255, 0.12);
+}
+
+.admin-project-repository-drawer__titleblock {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-project-repository-drawer__titleblock h3 {
+  margin: 0;
+  color: var(--admin-text);
+  font-size: 1rem;
+}
+
+.admin-project-drawer__title-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-project-repository-drawer__body {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  gap: 14px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.admin-project-repository-drawer__empty {
+  margin: 0;
 }
 
 .admin-custom-select {
@@ -3024,37 +3184,13 @@ body {
   transform: rotate(-45deg);
 }
 
-.admin-project-modal-backdrop--nested {
-  z-index: 260;
-  padding: 48px 24px;
-  place-items: center;
-  background: rgba(2, 8, 18, 0.72);
-}
-
-.admin-project-modal--repository {
-  width: min(760px, calc(100vw - 96px));
-  max-height: min(720px, calc(100vh - 120px));
-  padding: 20px 20px 18px;
-  border-radius: 28px;
-}
-
-.admin-project-modal__head--repository {
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-}
-
-.admin-project-modal__head--repository h3 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.admin-project-modal__body--repository {
-  padding-right: 0;
-}
-
 .admin-repository-dialog__list {
   display: grid;
   gap: 10px;
+}
+
+.admin-repository-dialog__list--drawer {
+  padding-right: 2px;
 }
 
 .admin-repository-dialog__item {
@@ -3199,13 +3335,13 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .admin-project-modal-backdrop--nested {
-    padding: 16px;
+  .admin-project-drawer-layer {
+    padding: 76px 12px 16px;
   }
 
-  .admin-project-modal--repository {
-    width: calc(100vw - 32px);
-    max-height: calc(100vh - 64px);
-    padding: 18px 18px 16px;
+  .admin-project-repository-drawer {
+    width: min(100%, 420px);
+    max-height: calc(100vh - 116px);
+    border-radius: 24px;
   }
 }

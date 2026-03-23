@@ -268,6 +268,118 @@ function AdminFormSelect({ label, options, value, onChange, t }: AdminFormSelect
   )
 }
 
+function InlineHelpHint({
+  hint,
+  hintId,
+  align = 'end',
+}: {
+  hint: string
+  hintId: string
+  align?: 'start' | 'end'
+}) {
+  const triggerRef = React.useRef<HTMLSpanElement | null>(null)
+  const tooltipRef = React.useRef<HTMLSpanElement | null>(null)
+  const [open, setOpen] = React.useState(false)
+  const [tooltipPosition, setTooltipPosition] = React.useState<{ left: number; top: number; maxWidth: number } | null>(null)
+
+  const updateTooltipPosition = React.useCallback(() => {
+    if (typeof window === 'undefined') return
+    const trigger = triggerRef.current
+    if (!trigger) return
+
+    const margin = 12
+    const gap = 10
+    const rect = trigger.getBoundingClientRect()
+    const tooltip = tooltipRef.current
+    const maxWidth = Math.max(180, Math.min(260, window.innerWidth - margin * 2))
+    const tooltipHeight = tooltip?.offsetHeight ?? 0
+    const preferredLeft = align === 'start' ? rect.left : rect.right - maxWidth
+    const left = Math.min(Math.max(margin, preferredLeft), Math.max(margin, window.innerWidth - margin - maxWidth))
+    const belowTop = rect.bottom + gap
+    const aboveTop = rect.top - gap - tooltipHeight
+    const top = tooltipHeight > 0 && belowTop + tooltipHeight > window.innerHeight - margin && aboveTop >= margin
+      ? aboveTop
+      : Math.min(belowTop, Math.max(margin, window.innerHeight - margin - Math.max(tooltipHeight, 0)))
+
+    setTooltipPosition({ left, top, maxWidth })
+  }, [align])
+
+  React.useEffect(() => {
+    if (!open) {
+      setTooltipPosition(null)
+      return
+    }
+
+    const refresh = () => updateTooltipPosition()
+    const raf = window.requestAnimationFrame(refresh)
+    window.addEventListener('resize', refresh)
+    window.addEventListener('scroll', refresh, true)
+
+    return () => {
+      window.cancelAnimationFrame(raf)
+      window.removeEventListener('resize', refresh)
+      window.removeEventListener('scroll', refresh, true)
+    }
+  }, [open, updateTooltipPosition])
+
+  React.useEffect(() => {
+    if (!open) return
+    updateTooltipPosition()
+  }, [hint, open, updateTooltipPosition])
+
+  return (
+    <span className="admin-status-hint-wrap" data-align={align}>
+      <span
+        className="admin-status-hint"
+        aria-describedby={hintId}
+        onBlur={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        ref={triggerRef}
+        tabIndex={0}
+      >
+        !
+      </span>
+      {open && typeof document !== 'undefined'
+        ? createPortal(
+            <span
+              className="admin-status-hint__tooltip admin-status-hint__tooltip--floating"
+              id={hintId}
+              ref={tooltipRef}
+              role="tooltip"
+              style={tooltipPosition
+                ? { left: tooltipPosition.left, top: tooltipPosition.top, maxWidth: tooltipPosition.maxWidth }
+                : { left: -9999, top: -9999, visibility: 'hidden' }}
+            >
+              {hint}
+            </span>,
+            document.body,
+          )
+        : null}
+    </span>
+  )
+}
+
+function LabelWithHint({
+  label,
+  hint,
+  hintId,
+  hintAlign = 'start',
+}: {
+  label: React.ReactNode
+  hint: string
+  hintId: string
+  hintAlign?: 'start' | 'end'
+}) {
+  return (
+    <span className="admin-field-label admin-field-label--with-hint">
+      <span>{label}</span>
+      <InlineHelpHint hint={hint} hintId={hintId} align={hintAlign} />
+    </span>
+  )
+}
+
 function toText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
@@ -731,7 +843,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
   repositoryOptionsRef.current = repositoryOptions
   const [repositoryOptionsStatus, setRepositoryOptionsStatus] = React.useState<LoadStatus>('idle')
   const [repositoryOptionsMessage, setRepositoryOptionsMessage] = React.useState('')
-  const [repositoryDialogOpen, setRepositoryDialogOpen] = React.useState(false)
+  const [editDrawer, setEditDrawer] = React.useState<'repository' | 'links' | null>(null)
 
   const [saveState, setSaveState] = React.useState<OperationState>({ status: 'idle', message: '' })
   const [deleteState, setDeleteState] = React.useState<OperationState>({ status: 'idle', message: '' })
@@ -1209,19 +1321,31 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       return t('\u9009\u62e9\u4ed3\u5e93', 'Choose repositories')
     }
 
-    if (form.repository_full_names.length === 1) {
-      return primaryRepositoryLabel || form.repository_full_names[0]
-    }
-
-    if (primaryRepositoryLabel) {
-      return t(
-        `\u5df2\u5173\u8054 ${form.repository_full_names.length} \u4e2a\u4ed3\u5e93 | \u4e3b\u4ed3 ${primaryRepositoryLabel}`,
-        `${form.repository_full_names.length} repositories linked | primary ${primaryRepositoryLabel}`,
-      )
-    }
-
     return t(`\u5df2\u5173\u8054 ${form.repository_full_names.length} \u4e2a\u4ed3\u5e93`, `${form.repository_full_names.length} repositories linked`)
-  }, [form, primaryRepositoryLabel, t])
+  }, [form, t])
+
+  const linksDialogButtonLabel = React.useMemo(() => {
+    if (!form) {
+      return t('\u7f16\u8f91 Links', 'Edit Links')
+    }
+
+    const explicitCount = [
+      form.explicit_primary_link,
+      form.explicit_repo_link,
+      form.explicit_demo_link,
+      form.explicit_docs_link,
+      form.explicit_notes_link,
+    ].filter((value) => value.trim().length > 0).length
+
+    if (explicitCount === 0) {
+      return t('\u672a\u8bbe\u7f6e\u663e\u5f0f\u503c', 'No explicit links')
+    }
+
+    return t(`\u5df2\u8bbe\u7f6e ${explicitCount} \u9879`, `${explicitCount} explicit links`)
+  }, [form, t])
+
+  const repositoryPanelOpen = editModalOpen && editDrawer === 'repository'
+  const linksPanelOpen = editModalOpen && editDrawer === 'links'
 
   const toggleRepositorySelection = React.useCallback((repoFullName: string) => {
     setForm((prev) => {
@@ -1261,7 +1385,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
   React.useEffect(() => {
     if (!editModalOpen) {
-      setRepositoryDialogOpen(false)
+      setEditDrawer(null)
     }
   }, [editModalOpen])
 
@@ -1649,7 +1773,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     patchSearch({ panel: 'closed' })
   }
   const closeEditPanel = () => {
-    setRepositoryDialogOpen(false)
+    setEditDrawer(null)
     patchSearch({ panel: 'closed' })
   }
 
@@ -1668,7 +1792,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
   const openEditPanel = (projectId: string) => {
     setSaveState({ status: 'idle', message: '' })
-    setRepositoryDialogOpen(false)
+    setEditDrawer(null)
     patchSearch({ projectId, panel: 'edit' })
   }
 
@@ -1683,8 +1807,8 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       event.preventDefault()
-      if (repositoryDialogOpen) {
-        setRepositoryDialogOpen(false)
+      if (editDrawer) {
+        setEditDrawer(null)
         return
       }
       closeEditPanel()
@@ -1692,7 +1816,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [closeEditPanel, editModalOpen, repositoryDialogOpen])
+  }, [closeEditPanel, editDrawer, editModalOpen])
 
 
   return (
@@ -1888,7 +2012,20 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
       ) : null}
       {editModalOpen ? (
         <div className="admin-project-modal-backdrop">
-          <section className="admin-projects-detail-panel admin-project-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+          <section
+            className="admin-projects-detail-panel admin-project-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(event) => {
+              event.stopPropagation()
+              if (editDrawer) {
+                const target = event.target
+                if (target instanceof HTMLElement && !target.closest('.admin-input-like-button')) {
+                  setEditDrawer(null)
+                }
+              }
+            }}
+          >
             <div className="admin-project-modal__head">
               <div className="admin-project-modal__titleblock">
                 <h2>{t('\u7f16\u8f91\u9879\u76ee', 'Edit Project')}</h2>
@@ -1930,17 +2067,30 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                       <input type="text" value={form.name} onChange={(event) => setForm((prev) => (prev ? { ...prev, name: event.target.value } : prev))} required />
                     </label>
                     <div className="admin-field admin-field-row__aside">
-                      <span className="admin-field-label">{'\u5173\u8054\u4ed3\u5e93'}</span>
+                      <span className="admin-field-label">{t('\u5173\u8054\u4ed3\u5e93', 'Link Repositories')}</span>
                       <button
-                        aria-expanded={repositoryDialogOpen}
+                        aria-expanded={repositoryPanelOpen}
                         aria-haspopup="dialog"
                         className="admin-input-like-button"
-                        onClick={() => setRepositoryDialogOpen(true)}
+                        data-admin-drawer-trigger="repositories"
+                        onClick={() => setEditDrawer((prev) => (prev === 'repository' ? null : 'repository'))}
                         type="button"
                       >
                         <span className="admin-input-like-button__label">{repositoryDialogButtonLabel}</span>
                       </button>
-                      <p className="admin-field-note">{t('公开 links 预览与显式值编辑在下方 Links 区域完成。', 'Review public link previews and edit explicit values in the Links section below.')}</p>
+                    </div>
+                    <div className="admin-field admin-field-row__aside">
+                      <span className="admin-field-label">{t('Links', 'Links')}</span>
+                      <button
+                        aria-expanded={linksPanelOpen}
+                        aria-haspopup="dialog"
+                        className="admin-input-like-button"
+                        data-admin-drawer-trigger="links"
+                        onClick={() => setEditDrawer((prev) => (prev === 'links' ? null : 'links'))}
+                        type="button"
+                      >
+                        <span className="admin-input-like-button__label">{linksDialogButtonLabel}</span>
+                      </button>
                     </div>
                   </div>
                   <label className="admin-field">
@@ -1955,155 +2105,6 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                     <span className="admin-field-label">{'\u72b6\u6001\u5907\u6ce8'}</span>
                     <textarea value={form.status_note} onChange={(event) => setForm((prev) => (prev ? { ...prev, status_note: event.target.value } : prev))} placeholder={t('\u4f8b\u5982\uff1a\u6682\u505c\u66f4\u65b0\u3001\u4ec5\u5185\u90e8\u8bd5\u9a8c\uff08\u53ef\u9009\uff09', 'For example: paused, internal-only experiment (optional)')} />
                   </label>
-                  <div className="admin-project-links-editor">
-                    <div className="admin-project-links-editor__head">
-                      <h3>{t('Links', 'Links')}</h3>
-                      <p>{t('这里写入 stored_links.*。公开 primary / repo 仍会按既有 fallback 规则投影；Demo / Docs / Notes 直接使用这里的显式值。', 'This section writes stored_links.*. Public primary / repo still follow the existing fallback projection rules, while Demo / Docs / Notes use these explicit values directly.')}</p>
-                    </div>
-                    <div className="admin-project-links-editor__preview-grid">
-                      {primaryLinkPreview ? (
-                        <div className="admin-project-link-semantics">
-                          <div className="admin-project-link-semantics__head">
-                            <span className="admin-project-link-semantics__title">{t('公开 Primary 链接预览', 'Public Primary Link Preview')}</span>
-                            <span className="admin-project-link-semantics__badge" data-source={primaryLinkPreview.sourceKind}>{primaryLinkPreviewSourceLabel}</span>
-                          </div>
-                          <p className="admin-project-link-semantics__url" data-empty={primaryLinkPreview.pendingEffectivePrimaryLink ? 'false' : 'true'}>
-                            {primaryLinkPreview.pendingEffectivePrimaryLink ? (
-                              <a href={primaryLinkPreview.pendingEffectivePrimaryLink} rel="noreferrer" target="_blank">{primaryLinkPreview.pendingEffectivePrimaryLink}</a>
-                            ) : (
-                              t('当前不会输出 Primary 链接', 'No public Primary link currently')
-                            )}
-                          </p>
-                          <p className="admin-field-note">{primaryLinkPreviewMessage}</p>
-                        </div>
-                      ) : null}
-                      {repoLinkPreview ? (
-                        <div className="admin-project-link-semantics">
-                          <div className="admin-project-link-semantics__head">
-                            <span className="admin-project-link-semantics__title">{t('公开 Repo 链接预览', 'Public Repo Link Preview')}</span>
-                            <span className="admin-project-link-semantics__badge" data-source={repoLinkPreview.sourceKind}>{repoLinkPreviewSourceLabel}</span>
-                          </div>
-                          <p className="admin-project-link-semantics__url" data-empty={repoLinkPreview.pendingEffectiveRepoLink ? 'false' : 'true'}>
-                            {repoLinkPreview.pendingEffectiveRepoLink ? (
-                              <a href={repoLinkPreview.pendingEffectiveRepoLink} rel="noreferrer" target="_blank">{repoLinkPreview.pendingEffectiveRepoLink}</a>
-                            ) : (
-                              t('当前不会输出 Repo 链接', 'No public Repo link currently')
-                            )}
-                          </p>
-                          <p className="admin-field-note">{repoLinkPreviewMessage}</p>
-                        </div>
-                      ) : null}
-                    </div>
-                    <div className="admin-editor-grid two-col admin-project-links-editor__grid">
-                      <div className="admin-project-links-editor__field">
-                        <label className="admin-field">
-                          <span className="admin-field-label">{t('显式 Primary Link（可选）', 'Explicit Primary Link (optional)')}</span>
-                          <input
-                            type="url"
-                            value={form.explicit_primary_link}
-                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_primary_link: event.target.value } : prev))}
-                            placeholder={t('留空则回退到主仓 URL 或项目详情页', 'Leave empty to fall back to the primary repository URL or project detail page')}
-                          />
-                        </label>
-                        <p className="admin-field-note">{t('这里只写入 stored_links.primary。留空后，公开 Primary 链接会优先跟随主仓，没有主仓时回退到项目详情页。', 'This only writes stored_links.primary. When empty, the public Primary link prefers the primary repository and falls back to the project detail page when no primary repository is available.')}</p>
-                        <div className="admin-project-links-editor__field-actions">
-                          <button
-                            className="admin-secondary-button inline"
-                            type="button"
-                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_primary_link: '' } : prev))}
-                            disabled={!form.explicit_primary_link.trim()}
-                          >
-                            {t('清空显式值', 'Clear explicit value')}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="admin-project-links-editor__field">
-                        <label className="admin-field">
-                          <span className="admin-field-label">{t('显式 Repo Link（可选）', 'Explicit Repo Link (optional)')}</span>
-                          <input
-                            type="url"
-                            value={form.explicit_repo_link}
-                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_repo_link: event.target.value } : prev))}
-                            placeholder={t('留空则跟随主仓 URL', 'Leave empty to follow the primary repository URL')}
-                          />
-                        </label>
-                        <p className="admin-field-note">{t('这里只写入 stored_links.repo。留空后，公开 Repo 链接会跟随主仓 URL。', 'This only writes stored_links.repo. When empty, the public Repo link follows the primary repository URL.')}</p>
-                        <div className="admin-project-links-editor__field-actions">
-                          <button
-                            className="admin-secondary-button inline"
-                            type="button"
-                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_repo_link: '' } : prev))}
-                            disabled={!form.explicit_repo_link.trim()}
-                          >
-                            {t('清空显式值', 'Clear explicit value')}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="admin-project-links-editor__field">
-                        <label className="admin-field">
-                          <span className="admin-field-label">{t('Demo Link（可选）', 'Demo Link (optional)')}</span>
-                          <input
-                            type="url"
-                            value={form.explicit_demo_link}
-                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_demo_link: event.target.value } : prev))}
-                            placeholder="https://example.com/demo"
-                          />
-                        </label>
-                        <div className="admin-project-links-editor__field-actions">
-                          <button
-                            className="admin-secondary-button inline"
-                            type="button"
-                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_demo_link: '' } : prev))}
-                            disabled={!form.explicit_demo_link.trim()}
-                          >
-                            {t('清空显式值', 'Clear explicit value')}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="admin-project-links-editor__field">
-                        <label className="admin-field">
-                          <span className="admin-field-label">{t('Docs Link（可选）', 'Docs Link (optional)')}</span>
-                          <input
-                            type="url"
-                            value={form.explicit_docs_link}
-                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_docs_link: event.target.value } : prev))}
-                            placeholder="https://example.com/docs"
-                          />
-                        </label>
-                        <div className="admin-project-links-editor__field-actions">
-                          <button
-                            className="admin-secondary-button inline"
-                            type="button"
-                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_docs_link: '' } : prev))}
-                            disabled={!form.explicit_docs_link.trim()}
-                          >
-                            {t('清空显式值', 'Clear explicit value')}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="admin-project-links-editor__field admin-project-links-editor__field--span">
-                        <label className="admin-field">
-                          <span className="admin-field-label">{t('Notes Link（可选）', 'Notes Link (optional)')}</span>
-                          <input
-                            type="url"
-                            value={form.explicit_notes_link}
-                            onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_notes_link: event.target.value } : prev))}
-                            placeholder="https://example.com/notes"
-                          />
-                        </label>
-                        <div className="admin-project-links-editor__field-actions">
-                          <button
-                            className="admin-secondary-button inline"
-                            type="button"
-                            onClick={() => setForm((prev) => (prev ? { ...prev, explicit_notes_link: '' } : prev))}
-                            disabled={!form.explicit_notes_link.trim()}
-                          >
-                            {t('清空显式值', 'Clear explicit value')}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
                   <div className="admin-editor-grid three-col">
                     <AdminFormSelect
@@ -2163,99 +2164,293 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
           </section>
         </div>
       ) : null}
-      {editModalOpen && detailStatus === 'ready' && form && detailProject && repositoryDialogOpen ? (
-        <div className="admin-project-modal-backdrop admin-project-modal-backdrop--nested">
-          <section className="admin-projects-detail-panel admin-project-modal admin-project-modal--repository" role="dialog" aria-modal="true" aria-label={t('\u5173\u8054\u4ed3\u5e93', 'Link Repositories')} onClick={(event) => event.stopPropagation()}>
-            <div className="admin-project-modal__head admin-project-modal__head--repository">
-              <div className="admin-project-modal__titleblock">
-                <h3>{t('\u5173\u8054\u4ed3\u5e93', 'Link Repositories')}</h3>
-                <p className="admin-project-modal__project-name">{t('\u4ece\u5df2\u5bfc\u5165\u7684 GitHub \u4ed3\u5e93\u4e2d\u52fe\u9009\uff0c\u53ef\u591a\u9009\uff1b\u5df2\u9009\u4ed3\u5e93\u4e2d\u9700\u6307\u5b9a 1 \u4e2a\u4e3b\u4ed3\u3002', 'Choose from imported GitHub repositories. Multiple selections are supported, and one selected repository must be marked as primary.')}</p>
+      {editModalOpen && detailStatus === 'ready' && form && detailProject && repositoryPanelOpen ? (
+        <div className="admin-project-drawer-layer" onClick={() => setEditDrawer(null)}>
+          <aside className="admin-project-repository-drawer" data-admin-drawer="repositories" role="dialog" aria-modal="true" aria-label={t('\u5173\u8054\u4ed3\u5e93', 'Link Repositories')} onClick={(event) => event.stopPropagation()}>
+            <div className="admin-project-repository-drawer__head">
+              <div className="admin-project-repository-drawer__titleblock">
+                <div className="admin-project-drawer__title-row">
+                  <h3>{t('\u5173\u8054\u4ed3\u5e93', 'Link Repositories')}</h3>
+                  <InlineHelpHint
+                    hint={t('\u4ece\u5df2\u5bfc\u5165\u7684 GitHub \u4ed3\u5e93\u4e2d\u52fe\u9009\uff0c\u53ef\u591a\u9009\uff1b\u5df2\u9009\u4ed3\u5e93\u4e2d\u9700\u6307\u5b9a 1 \u4e2a\u4e3b\u4ed3\u3002', 'Choose from imported GitHub repositories. Multiple selections are supported, and one selected repository must be marked as primary.')}
+                    hintId="admin-project-repository-drawer-title-hint"
+                    align="start"
+                  />
+                </div>
               </div>
-              <button className="admin-modal-close" type="button" onClick={() => setRepositoryDialogOpen(false)} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+              <button className="admin-modal-close" type="button" onClick={() => setEditDrawer(null)} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
             </div>
-            <div className="admin-project-modal__content">
-              <div className="admin-project-modal__body admin-project-modal__body--repository">
-                {repoLinkPreview ? (
-                  <div className="admin-project-link-semantics">
-                    <div className="admin-project-link-semantics__head">
+            <div className="admin-project-repository-drawer__body">
+              {repoLinkPreview ? (
+                <div className="admin-project-link-semantics">
+                  <div className="admin-project-link-semantics__head">
+                    <div className="admin-project-link-semantics__label-group">
                       <span className="admin-project-link-semantics__title">{t('公开 Repo 链接预览', 'Public Repo Link Preview')}</span>
-                      <span className="admin-project-link-semantics__badge" data-source={repoLinkPreview.sourceKind}>{repoLinkPreviewSourceLabel}</span>
+                      <InlineHelpHint hint={repoLinkPreviewMessage} hintId="admin-project-repo-preview-hint" align="end" />
                     </div>
-                    <p className="admin-project-link-semantics__url" data-empty={repoLinkPreview.pendingEffectiveRepoLink ? 'false' : 'true'}>
-                      {repoLinkPreview.pendingEffectiveRepoLink ? (
-                        <a href={repoLinkPreview.pendingEffectiveRepoLink} rel="noreferrer" target="_blank">{repoLinkPreview.pendingEffectiveRepoLink}</a>
-                      ) : (
-                        t('当前不会输出 Repo 链接', 'No public Repo link currently')
-                      )}
-                    </p>
-                    <p className="admin-field-note">{repoLinkPreviewMessage}</p>
+                    <span className="admin-project-link-semantics__badge" data-source={repoLinkPreview.sourceKind}>{repoLinkPreviewSourceLabel}</span>
                   </div>
-                ) : null}
-                {repositoryOptions.length > 0 || repositoryDialogOptions.length > 0 ? (
-                  <div className="admin-repository-dialog__list">
-                    {repositoryDialogOptions.map((repository) => {
-                      const normalizedKey = normalizeRepositoryBindingKey(repository.repo_full_name)
-                      const isSelected = form.repository_full_names.some(
-                        (value) => normalizeRepositoryBindingKey(value) === normalizedKey,
-                      )
-                      const isPrimary = isSelected && normalizeRepositoryBindingKey(primaryRepositoryLabel) === normalizedKey
+                  <p className="admin-project-link-semantics__url" data-empty={repoLinkPreview.pendingEffectiveRepoLink ? 'false' : 'true'}>
+                    {repoLinkPreview.pendingEffectiveRepoLink ? (
+                      <a href={repoLinkPreview.pendingEffectiveRepoLink} rel="noreferrer" target="_blank">{repoLinkPreview.pendingEffectiveRepoLink}</a>
+                    ) : (
+                      t('当前不会输出 Repo 链接', 'No public Repo link currently')
+                    )}
+                  </p>
+                </div>
+              ) : null}
+              {repositoryOptions.length > 0 || repositoryDialogOptions.length > 0 ? (
+                <div className="admin-repository-dialog__list admin-repository-dialog__list--drawer">
+                  {repositoryDialogOptions.map((repository) => {
+                    const normalizedKey = normalizeRepositoryBindingKey(repository.repo_full_name)
+                    const isSelected = form.repository_full_names.some(
+                      (value) => normalizeRepositoryBindingKey(value) === normalizedKey,
+                    )
+                    const isPrimary = isSelected && normalizeRepositoryBindingKey(primaryRepositoryLabel) === normalizedKey
 
-                      return (
-                        <div
-                          className={`admin-repository-dialog__item ${isSelected ? 'is-selected' : ''} ${repository.missing ? 'is-missing' : ''}`.trim()}
-                          data-visibility={repository.visibility || 'unknown'}
-                          key={repository.repo_full_name}
+                    return (
+                      <div
+                        className={`admin-repository-dialog__item ${isSelected ? 'is-selected' : ''} ${repository.missing ? 'is-missing' : ''}`.trim()}
+                        data-visibility={repository.visibility || 'unknown'}
+                        key={repository.repo_full_name}
+                      >
+                        <button
+                          className="admin-repository-dialog__copy admin-repository-dialog__copy-button"
+                          onClick={() => toggleRepositorySelection(repository.repo_full_name)}
+                          type="button"
                         >
-                          <button
-                            className="admin-repository-dialog__copy admin-repository-dialog__copy-button"
-                            onClick={() => toggleRepositorySelection(repository.repo_full_name)}
-                            type="button"
-                          >
-                            <span className="admin-repository-dialog__name-row">
-                              <span className="admin-repository-dialog__name">{repository.repo_name}</span>
-                              {isPrimary ? <span className="admin-repository-dialog__primary-badge">{t('\u4e3b\u4ed3', 'Primary')}</span> : null}
-                            </span>
-                            <span className="admin-repository-dialog__description">{repository.description}</span>
-                          </button>
-                          <div className="admin-repository-dialog__controls">
-                            {isSelected ? (
-                              <button
-                                className="admin-repository-dialog__primary-toggle"
-                                data-active={isPrimary ? 'true' : 'false'}
-                                onClick={() => setPrimaryRepository(repository.repo_full_name)}
-                                type="button"
-                              >
-                                {isPrimary ? t('\u5f53\u524d\u4e3b\u4ed3', 'Current primary') : t('\u8bbe\u4e3a\u4e3b\u4ed3', 'Set primary')}
-                              </button>
-                            ) : null}
-                            <input
-                              aria-label={t(`\u9009\u62e9\u4ed3\u5e93 ${repository.repo_full_name}`, `Select repository ${repository.repo_full_name}`)}
-                              checked={isSelected}
-                              onChange={() => toggleRepositorySelection(repository.repo_full_name)}
-                              type="checkbox"
-                            />
-                          </div>
+                          <span className="admin-repository-dialog__name-row">
+                            <span className="admin-repository-dialog__name">{repository.repo_name}</span>
+                            {isPrimary ? <span className="admin-repository-dialog__primary-badge">{t('\u4e3b\u4ed3', 'Primary')}</span> : null}
+                          </span>
+                          <span className="admin-repository-dialog__description">{repository.description}</span>
+                        </button>
+                        <div className="admin-repository-dialog__controls">
+                          {isSelected ? (
+                            <button
+                              className="admin-repository-dialog__primary-toggle"
+                              data-active={isPrimary ? 'true' : 'false'}
+                              onClick={() => setPrimaryRepository(repository.repo_full_name)}
+                              type="button"
+                            >
+                              {isPrimary ? t('\u5f53\u524d\u4e3b\u4ed3', 'Current primary') : t('\u8bbe\u4e3a\u4e3b\u4ed3', 'Set primary')}
+                            </button>
+                          ) : null}
+                          <input
+                            aria-label={t(`\u9009\u62e9\u4ed3\u5e93 ${repository.repo_full_name}`, `Select repository ${repository.repo_full_name}`)}
+                            checked={isSelected}
+                            onChange={() => toggleRepositorySelection(repository.repo_full_name)}
+                            type="checkbox"
+                          />
                         </div>
-                      )
-                    })}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="admin-state-card admin-project-repository-drawer__empty">
+                  <p>
+                    {repositoryOptionsStatus === 'loading'
+                      ? t('\u6b63\u5728\u52a0\u8f7d\u4ed3\u5e93...', 'Loading repositories...')
+                      : repositoryOptionsStatus === 'error'
+                        ? repositoryOptionsMessage || t('\u4ed3\u5e93\u5217\u8868\u52a0\u8f7d\u5931\u8d25\u3002', 'Failed to load repositories.')
+                        : t('\u5f53\u524d\u6ca1\u6709\u53ef\u5173\u8054\u7684\u5df2\u5bfc\u5165\u4ed3\u5e93\u3002', 'No imported repositories are available.')}
+                  </p>
+                  {repositoryOptionsStatus === 'error' ? (
+                    <button className="admin-secondary-button inline" type="button" onClick={() => void loadRepositoryOptions()}>{t('\u91cd\u8bd5\u52a0\u8f7d', 'Retry')}</button>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      ) : null}
+      {editModalOpen && detailStatus === 'ready' && form && detailProject && linksPanelOpen ? (
+        <div className="admin-project-drawer-layer" onClick={() => setEditDrawer(null)}>
+          <aside className="admin-project-repository-drawer admin-project-links-drawer" data-admin-drawer="links" role="dialog" aria-modal="true" aria-label={t('Links', 'Links')} onClick={(event) => event.stopPropagation()}>
+            <div className="admin-project-repository-drawer__head">
+              <div className="admin-project-repository-drawer__titleblock">
+                <div className="admin-project-drawer__title-row">
+                  <h3>{t('Links', 'Links')}</h3>
+                  <InlineHelpHint
+                    hint={t('这里写入 stored_links.*。公开 primary / repo 仍会按既有 fallback 规则投影；Demo / Docs / Notes 直接使用这里的显式值。', 'This section writes stored_links.*. Public primary / repo still follow the existing fallback projection rules, while Demo / Docs / Notes use these explicit values directly.')}
+                    hintId="admin-project-links-drawer-title-hint"
+                    align="start"
+                  />
+                </div>
+              </div>
+              <button className="admin-modal-close" type="button" onClick={() => setEditDrawer(null)} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+            </div>
+            <div className="admin-project-repository-drawer__body">
+              <div className="admin-project-links-editor admin-project-links-editor--drawer">
+                <div className="admin-project-links-editor__preview-grid">
+                  {primaryLinkPreview ? (
+                    <div className="admin-project-link-semantics">
+                      <div className="admin-project-link-semantics__head">
+                        <div className="admin-project-link-semantics__label-group">
+                          <span className="admin-project-link-semantics__title">{t('公开 Primary 链接预览', 'Public Primary Link Preview')}</span>
+                          <InlineHelpHint hint={primaryLinkPreviewMessage} hintId="admin-project-primary-preview-hint" align="end" />
+                        </div>
+                        <span className="admin-project-link-semantics__badge" data-source={primaryLinkPreview.sourceKind}>{primaryLinkPreviewSourceLabel}</span>
+                      </div>
+                      <p className="admin-project-link-semantics__url" data-empty={primaryLinkPreview.pendingEffectivePrimaryLink ? 'false' : 'true'}>
+                        {primaryLinkPreview.pendingEffectivePrimaryLink ? (
+                          <a href={primaryLinkPreview.pendingEffectivePrimaryLink} rel="noreferrer" target="_blank">{primaryLinkPreview.pendingEffectivePrimaryLink}</a>
+                        ) : (
+                          t('当前不会输出 Primary 链接', 'No public Primary link currently')
+                        )}
+                      </p>
+                    </div>
+                  ) : null}
+                  {repoLinkPreview ? (
+                    <div className="admin-project-link-semantics">
+                      <div className="admin-project-link-semantics__head">
+                        <div className="admin-project-link-semantics__label-group">
+                          <span className="admin-project-link-semantics__title">{t('公开 Repo 链接预览', 'Public Repo Link Preview')}</span>
+                          <InlineHelpHint hint={repoLinkPreviewMessage} hintId="admin-project-links-drawer-repo-preview-hint" align="end" />
+                        </div>
+                        <span className="admin-project-link-semantics__badge" data-source={repoLinkPreview.sourceKind}>{repoLinkPreviewSourceLabel}</span>
+                      </div>
+                      <p className="admin-project-link-semantics__url" data-empty={repoLinkPreview.pendingEffectiveRepoLink ? 'false' : 'true'}>
+                        {repoLinkPreview.pendingEffectiveRepoLink ? (
+                          <a href={repoLinkPreview.pendingEffectiveRepoLink} rel="noreferrer" target="_blank">{repoLinkPreview.pendingEffectiveRepoLink}</a>
+                        ) : (
+                          t('当前不会输出 Repo 链接', 'No public Repo link currently')
+                        )}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+                <div className="admin-editor-grid two-col admin-project-links-editor__grid">
+                  <div className="admin-project-links-editor__field admin-project-links-editor__field--span">
+                    <label className="admin-field">
+                      <LabelWithHint
+                        hint={t('这里只写入 stored_links.primary。留空后，公开 Primary 链接会优先跟随主仓，没有主仓时回退到项目详情页。', 'This only writes stored_links.primary. When empty, the public Primary link prefers the primary repository and falls back to the project detail page when no primary repository is available.')}
+                        hintId="admin-project-primary-link-hint"
+                        hintAlign="end"
+                        label={t('显式 Primary Link（可选）', 'Explicit Primary Link (optional)')}
+                      />
+                      <div className="admin-input-with-action">
+                        <input
+                          type="url"
+                          value={form.explicit_primary_link}
+                          onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_primary_link: event.target.value } : prev))}
+                        />
+                        <button
+                          className="admin-input-clear-button"
+                          type="button"
+                          onClick={() => setForm((prev) => (prev ? { ...prev, explicit_primary_link: '' } : prev))}
+                          disabled={!form.explicit_primary_link.trim()}
+                        >
+                          {t('清空', 'Clear')}
+                        </button>
+                      </div>
+                    </label>
                   </div>
-                ) : (
-                  <div className="admin-state-card">
-                    <p>
-                      {repositoryOptionsStatus === 'loading'
-                        ? t('\u6b63\u5728\u52a0\u8f7d\u4ed3\u5e93...', 'Loading repositories...')
-                        : repositoryOptionsStatus === 'error'
-                          ? repositoryOptionsMessage || t('\u4ed3\u5e93\u5217\u8868\u52a0\u8f7d\u5931\u8d25\u3002', 'Failed to load repositories.')
-                          : t('\u5f53\u524d\u6ca1\u6709\u53ef\u5173\u8054\u7684\u5df2\u5bfc\u5165\u4ed3\u5e93\u3002', 'No imported repositories are available.')}
-                    </p>
-                    {repositoryOptionsStatus === 'error' ? (
-                      <button className="admin-secondary-button inline" type="button" onClick={() => void loadRepositoryOptions()}>{t('\u91cd\u8bd5\u52a0\u8f7d', 'Retry')}</button>
-                    ) : null}
+                  <div className="admin-project-links-editor__field admin-project-links-editor__field--span">
+                    <label className="admin-field">
+                      <LabelWithHint
+                        hint={t('这里只写入 stored_links.repo。留空后，公开 Repo 链接会跟随主仓 URL。', 'This only writes stored_links.repo. When empty, the public Repo link follows the primary repository URL.')}
+                        hintId="admin-project-repo-link-hint"
+                        hintAlign="end"
+                        label={t('显式 Repo Link（可选）', 'Explicit Repo Link (optional)')}
+                      />
+                      <div className="admin-input-with-action">
+                        <input
+                          type="url"
+                          value={form.explicit_repo_link}
+                          onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_repo_link: event.target.value } : prev))}
+                        />
+                        <button
+                          className="admin-input-clear-button"
+                          type="button"
+                          onClick={() => setForm((prev) => (prev ? { ...prev, explicit_repo_link: '' } : prev))}
+                          disabled={!form.explicit_repo_link.trim()}
+                        >
+                          {t('清空', 'Clear')}
+                        </button>
+                      </div>
+                    </label>
                   </div>
-                )}
+                  <div className="admin-project-links-editor__field admin-project-links-editor__field--span">
+                    <label className="admin-field">
+                      <LabelWithHint
+                        hint={t('这里只写入 stored_links.demo。公开 Demo 链接直接使用这里的显式值；留空则不输出。', 'This only writes stored_links.demo. The public Demo link uses this explicit value directly and is omitted when empty.')}
+                        hintId="admin-project-demo-link-hint"
+                        hintAlign="end"
+                        label={t('Demo Link（可选）', 'Demo Link (optional)')}
+                      />
+                      <div className="admin-input-with-action">
+                        <input
+                          type="url"
+                          value={form.explicit_demo_link}
+                          onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_demo_link: event.target.value } : prev))}
+                        />
+                        <button
+                          className="admin-input-clear-button"
+                          type="button"
+                          onClick={() => setForm((prev) => (prev ? { ...prev, explicit_demo_link: '' } : prev))}
+                          disabled={!form.explicit_demo_link.trim()}
+                        >
+                          {t('清空', 'Clear')}
+                        </button>
+                      </div>
+                    </label>
+                  </div>
+                  <div className="admin-project-links-editor__field admin-project-links-editor__field--span">
+                    <label className="admin-field">
+                      <LabelWithHint
+                        hint={t('这里只写入 stored_links.docs。公开 Docs 链接直接使用这里的显式值；留空则不输出。', 'This only writes stored_links.docs. The public Docs link uses this explicit value directly and is omitted when empty.')}
+                        hintId="admin-project-docs-link-hint"
+                        hintAlign="end"
+                        label={t('Docs Link（可选）', 'Docs Link (optional)')}
+                      />
+                      <div className="admin-input-with-action">
+                        <input
+                          type="url"
+                          value={form.explicit_docs_link}
+                          onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_docs_link: event.target.value } : prev))}
+                        />
+                        <button
+                          className="admin-input-clear-button"
+                          type="button"
+                          onClick={() => setForm((prev) => (prev ? { ...prev, explicit_docs_link: '' } : prev))}
+                          disabled={!form.explicit_docs_link.trim()}
+                        >
+                          {t('清空', 'Clear')}
+                        </button>
+                      </div>
+                    </label>
+                  </div>
+                  <div className="admin-project-links-editor__field admin-project-links-editor__field--span">
+                    <label className="admin-field">
+                      <LabelWithHint
+                        hint={t('这里只写入 stored_links.notes。公开 Notes 链接直接使用这里的显式值；留空则不输出。', 'This only writes stored_links.notes. The public Notes link uses this explicit value directly and is omitted when empty.')}
+                        hintId="admin-project-notes-link-hint"
+                        hintAlign="end"
+                        label={t('Notes Link（可选）', 'Notes Link (optional)')}
+                      />
+                      <div className="admin-input-with-action">
+                        <input
+                          type="url"
+                          value={form.explicit_notes_link}
+                          onChange={(event) => setForm((prev) => (prev ? { ...prev, explicit_notes_link: event.target.value } : prev))}
+                        />
+                        <button
+                          className="admin-input-clear-button"
+                          type="button"
+                          onClick={() => setForm((prev) => (prev ? { ...prev, explicit_notes_link: '' } : prev))}
+                          disabled={!form.explicit_notes_link.trim()}
+                        >
+                          {t('清空', 'Clear')}
+                        </button>
+                      </div>
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
-          </section>
+          </aside>
         </div>
       ) : null}
       {deleteModalOpen ? (
