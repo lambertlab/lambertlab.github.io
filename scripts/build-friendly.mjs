@@ -29,6 +29,7 @@ async function main() {
   await runCommand(resolveLocalBin('vite'), ['build'], 'vite build', {
     retries: 1,
     shouldRetry: shouldRetryViteBuild,
+    env: buildViteBuildEnv(),
     beforeRetry: async (attempt) => {
       console.warn(`[build] Re-preparing .output before vite build retry ${attempt + 1}.`)
       await prepareOutputDirectory()
@@ -179,7 +180,7 @@ async function runCommand(command, commandArgs, label, options = {}) {
     console.log(`[build] Running ${label}${retrySuffix}...`)
 
     try {
-      await runCommandOnce(command, commandArgs, label)
+      await runCommandOnce(command, commandArgs, label, options)
       return
     } catch (error) {
       const shouldRetry = attempt < retries && options.shouldRetry?.(error)
@@ -195,7 +196,7 @@ async function runCommand(command, commandArgs, label, options = {}) {
   }
 }
 
-async function runCommandOnce(command, commandArgs, label) {
+async function runCommandOnce(command, commandArgs, label, options = {}) {
   let combinedOutput = ''
 
   await new Promise((resolve, reject) => {
@@ -203,9 +204,7 @@ async function runCommandOnce(command, commandArgs, label) {
       cwd,
       stdio: ['inherit', 'pipe', 'pipe'],
       shell: runtime.family === 'windows',
-      env: {
-        ...process.env,
-      },
+      env: options.env ?? { ...process.env },
     })
 
     const handleChunk = (stream, chunk) => {
@@ -252,6 +251,29 @@ function shouldRetryViteBuild(error) {
 function resolveLocalBin(binName) {
   const executable = runtime.family === 'windows' ? `${binName}.cmd` : binName
   return path.resolve(cwd, 'node_modules', '.bin', executable)
+}
+
+function buildViteBuildEnv() {
+  const nextEnv = {
+    ...process.env,
+  }
+  const inheritedPort = nextEnv.PORT
+  const inheritedNitroPort = nextEnv.NITRO_PORT
+
+  delete nextEnv.PORT
+  delete nextEnv.NITRO_PORT
+
+  if (inheritedPort || inheritedNitroPort) {
+    const details = [
+      inheritedPort ? `PORT=${inheritedPort}` : null,
+      inheritedNitroPort ? `NITRO_PORT=${inheritedNitroPort}` : null,
+    ]
+      .filter(Boolean)
+      .join(', ')
+    console.log(`[build] Ignoring inherited preview port env for vite build: ${details}.`)
+  }
+
+  return nextEnv
 }
 
 async function pathExists(targetPath) {

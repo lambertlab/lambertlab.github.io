@@ -8,10 +8,11 @@ import {
 } from '~/lib/api/adminConsoleApi'
 import { useUiLocale } from '~/lib/uiLocale'
 import { AdminConsoleShell, useAdminConsoleAuth } from './AdminConsoleShell'
-import { formatAdminTime, healthTone, mapAdminError } from './adminConsoleUtils'
+import { mapAdminError } from './adminConsoleUtils'
 
 type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 type ProbeLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
+type ObservationTone = 'neutral' | 'up' | 'timeout' | 'down'
 
 type StatusSnapshot = Pick<
   AdminStatusProbeResult,
@@ -20,7 +21,7 @@ type StatusSnapshot = Pick<
 
 type ProbeState = {
   status: ProbeLoadStatus
-  message: string
+  failureCode: string | null
 }
 
 const STATUS_TARGETS: AdminStatusProbeTarget[] = ['backend', 'db', 'github']
@@ -33,39 +34,65 @@ const INITIAL_STATUS_SNAPSHOT: StatusSnapshot = {
 }
 
 const INITIAL_PROBE_STATES: Record<AdminStatusProbeTarget, ProbeState> = {
-  backend: { status: 'idle', message: '' },
-  db: { status: 'idle', message: '' },
-  github: { status: 'idle', message: '' },
+  backend: { status: 'idle', failureCode: null },
+  db: { status: 'idle', failureCode: null },
+  github: { status: 'idle', failureCode: null },
 }
 
-function formatFailureSummary(summary: AdminOverviewSummary['latest_failures'][number]['summary']): string {
-  if (!summary) {
-    return ''
+function resolveObservationResult({
+  health,
+  probeState,
+}: {
+  health?: string | null
+  probeState: ProbeState
+}): { label: string; tone: ObservationTone } | null {
+  if (probeState.status === 'error') {
+    if (probeState.failureCode === 'request_timeout') {
+      return { label: 'timeout', tone: 'timeout' }
+    }
+    return { label: 'down', tone: 'down' }
   }
-  if (summary.project_id || summary.failed > 0) {
-    return ['同步=' + summary.synced, '失败=' + summary.failed].join(' | ')
+
+  if (typeof health === 'string' && health.trim()) {
+    return health === 'up' ? { label: 'up', tone: 'up' } : { label: 'down', tone: 'down' }
   }
-  return ['抓取=' + summary.fetched, '新增=' + summary.created, '更新=' + summary.updated, '下线=' + summary.deactivated].join(' | ')
+  return null
 }
 
-function formatStatusProbeErrorMessage(
-  error: unknown,
-  t: (zh: string, en: string) => string,
-): { code: string; message: string } {
-  const mapped = mapAdminError(error)
-  if (mapped.code === 'request_timeout') {
+function resolveQuotaObservationResult({
+  rateRemaining,
+  githubHealth,
+  probeState,
+  locale,
+}: {
+  rateRemaining?: number | null
+  githubHealth?: string | null
+  probeState: ProbeState
+  locale: string
+}): { label: string; tone: ObservationTone } | null {
+  if (probeState.status === 'error') {
+    if (probeState.failureCode === 'request_timeout') {
+      return { label: 'timeout', tone: 'timeout' }
+    }
+    return { label: 'down', tone: 'down' }
+  }
+
+  if (typeof rateRemaining === 'number') {
     return {
-      code: mapped.code,
-      message: t('检测超时，请单独重试这一项。', 'Probe timed out. Retry this card.'),
+      label: new Intl.NumberFormat(locale === 'zh-CN' ? 'zh-CN' : 'en-US').format(rateRemaining),
+      tone: rateRemaining > 0 ? 'up' : 'down',
     }
   }
-  if (mapped.code === 'network_failed') {
-    return {
-      code: mapped.code,
-      message: t('网络请求失败，请检查当前链路。', 'Network request failed. Check this dependency path.'),
-    }
+
+  if (typeof githubHealth === 'string' && githubHealth.trim() === 'down') {
+    return { label: 'down', tone: 'down' }
   }
-  return mapped
+
+  return null
+}
+
+function formatCheckingLabel(status: ProbeLoadStatus, t: (zh: string, en: string) => string): string {
+  return status === 'loading' ? t('检测中...', 'Checking...') : t('检测', 'Check')
 }
 
 function mergeStatusSnapshot(current: StatusSnapshot, next: AdminStatusProbeResult): StatusSnapshot {
@@ -80,38 +107,52 @@ function mergeStatusSnapshot(current: StatusSnapshot, next: AdminStatusProbeResu
 
 function OverviewStatusCard({
   label,
-  value,
   hint,
-  status,
-  message,
-  checkingLabel,
+  hintId,
+  resultLabel,
+  resultTone,
+  isPending,
   actionLabel,
   onCheck,
-  valueTone,
+  status,
 }: {
   label: string
-  value: string
   hint: string
-  status: ProbeLoadStatus
-  message: string
-  checkingLabel: string
+  hintId: string
+  resultLabel: string
+  resultTone: ObservationTone
+  isPending: boolean
   actionLabel: string
   onCheck: () => void
-  valueTone?: 'ok' | 'warn' | 'error'
+  status: ProbeLoadStatus
 }) {
   return (
-    <article className="admin-stat-card admin-status-observation-card">
+    <article className={`admin-stat-card admin-status-observation-card is-${resultTone}`}>
       <div className="admin-status-observation-card__head">
-        <div className="admin-status-observation-card__title">
-          <p className="admin-projects-kicker">{label}</p>
-          <span
-            className="admin-status-hint"
-            aria-label={hint}
-            title={hint}
-          >
+        <p className="admin-projects-kicker">{label}</p>
+        <div className="admin-status-hint-wrap">
+          <span className="admin-status-hint" aria-describedby={hintId} tabIndex={0}>
             !
           </span>
+          <span className="admin-status-hint__tooltip" id={hintId} role="tooltip">
+            {hint}
+          </span>
         </div>
+      </div>
+      <div className="admin-status-observation-card__body">
+        {isPending ? (
+          <div className="admin-status-pending" aria-live="polite">
+            <span className="admin-status-pending__dot"></span>
+            <span className="admin-status-pending__dot"></span>
+            <span className="admin-status-pending__dot"></span>
+          </div>
+        ) : (
+          <span className={`admin-status-result is-${resultTone}`} aria-live="polite">
+            {resultLabel}
+          </span>
+        )}
+      </div>
+      <div className="admin-status-observation-card__footer">
         <button
           className="admin-secondary-button admin-status-observation-card__action"
           type="button"
@@ -119,13 +160,9 @@ function OverviewStatusCard({
           aria-busy={status === 'loading'}
           onClick={onCheck}
         >
-          {status === 'loading' ? checkingLabel : actionLabel}
+          {actionLabel}
         </button>
       </div>
-      <h3 data-tone={valueTone}>{value}</h3>
-      <p className="admin-detail-meta">
-        {status === 'loading' ? checkingLabel : message || '\u00a0'}
-      </p>
     </article>
   )
 }
@@ -159,7 +196,7 @@ function OverviewStatusPanel() {
       ...prev,
       [target]: {
         status: 'loading',
-        message: '',
+        failureCode: null,
       },
     }))
 
@@ -174,7 +211,7 @@ function OverviewStatusPanel() {
         ...prev,
         [target]: {
           status: 'ready',
-          message: t('检测完成。', 'Check completed.'),
+          failureCode: null,
         },
       }))
     } catch (error) {
@@ -182,7 +219,7 @@ function OverviewStatusPanel() {
         return
       }
 
-      const mapped = formatStatusProbeErrorMessage(error, t)
+      const mapped = mapAdminError(error)
       if (mapped.code === 'unauthorized') {
         invalidate(mapped.message)
         return
@@ -192,11 +229,11 @@ function OverviewStatusPanel() {
         ...prev,
         [target]: {
           status: 'error',
-          message: mapped.message,
+          failureCode: mapped.code,
         },
       }))
     }
-  }, [invalidate, t, token])
+  }, [invalidate, token])
 
   const runAllChecks = React.useCallback(async () => {
     setAllChecksRunning(true)
@@ -211,24 +248,29 @@ function OverviewStatusPanel() {
     void runAllChecks()
   }, [runAllChecks])
 
-  const backendValue = snapshot.backend_health || '--'
-  const dbValue = snapshot.db_health || '--'
-  const githubValue = snapshot.github_health || '--'
-  const githubRateValue =
-    snapshot.github_rate_remaining === null ? '--' : String(snapshot.github_rate_remaining)
+  const backendObservation = resolveObservationResult({
+    health: snapshot.backend_health,
+    probeState: probeStates.backend,
+  })
+  const dbObservation = resolveObservationResult({
+    health: snapshot.db_health,
+    probeState: probeStates.db,
+  })
+  const githubObservation = resolveObservationResult({
+    health: snapshot.github_health,
+    probeState: probeStates.github,
+  })
+  const githubQuotaObservation = resolveQuotaObservationResult({
+    rateRemaining: snapshot.github_rate_remaining,
+    githubHealth: snapshot.github_health,
+    probeState: probeStates.github,
+    locale,
+  })
 
   return (
     <article className="admin-overview-failures admin-overview-status-panel">
       <div className="admin-overview-head">
-        <div>
-          <h2>{t('运行状态', 'Runtime Status')}</h2>
-          <p className="admin-detail-meta">
-            {t(
-              '将关键依赖观测并入概览；可全体检测，也可单独定位某一项。',
-              'Key dependency checks are embedded into the overview. Probe all or isolate a single dependency.',
-            )}
-          </p>
-        </div>
+        <h2>{t('运行状态', 'Runtime Status')}</h2>
         <button
           className="admin-secondary-button"
           type="button"
@@ -243,45 +285,46 @@ function OverviewStatusPanel() {
       <div className="admin-overview-status-grid">
         <OverviewStatusCard
           label={t('Backend', 'Backend')}
-          value={backendValue}
-          hint={t('表示 admin API 自身当前是否可响应。', 'Indicates whether the admin API itself is responding.')}
+          hint={t('表示核心公开与管理接口链路是否仍可生成关键读模型。', 'Indicates whether representative public and admin backend surfaces can still produce key read models.')}
+          hintId="admin-status-hint-backend"
+          resultLabel={backendObservation?.label ?? 'down'}
+          resultTone={backendObservation?.tone ?? 'down'}
+          isPending={backendObservation === null}
           status={probeStates.backend.status}
-          message={probeStates.backend.message}
-          checkingLabel={t('检测中...', 'Checking...')}
-          actionLabel={t('检测', 'Check')}
+          actionLabel={formatCheckingLabel(probeStates.backend.status, t)}
           onCheck={() => void runProbe('backend')}
-          valueTone={healthTone(backendValue)}
         />
         <OverviewStatusCard
           label={t('Site DB', 'Site DB')}
-          value={dbValue}
           hint={t('表示控制面读取与写入站点数据库是否正常。', 'Indicates whether the control plane can read and write the site database.')}
+          hintId="admin-status-hint-db"
+          resultLabel={dbObservation?.label ?? 'down'}
+          resultTone={dbObservation?.tone ?? 'down'}
+          isPending={dbObservation === null}
           status={probeStates.db.status}
-          message={probeStates.db.message}
-          checkingLabel={t('检测中...', 'Checking...')}
-          actionLabel={t('检测', 'Check')}
+          actionLabel={formatCheckingLabel(probeStates.db.status, t)}
           onCheck={() => void runProbe('db')}
-          valueTone={healthTone(dbValue)}
         />
         <OverviewStatusCard
           label={t('GitHub', 'GitHub')}
-          value={githubValue}
-          hint={t('表示同步依赖的上游 GitHub API 当前是否健康。', 'Indicates whether the upstream GitHub API used by sync is healthy.')}
+          hint={t('表示后台同步链路访问 GitHub API 是否仍然可用。', 'Indicates whether the backend sync path can still reach the GitHub API.')}
+          hintId="admin-status-hint-github"
+          resultLabel={githubObservation?.label ?? 'down'}
+          resultTone={githubObservation?.tone ?? 'down'}
+          isPending={githubObservation === null}
           status={probeStates.github.status}
-          message={probeStates.github.message}
-          checkingLabel={t('检测中...', 'Checking...')}
-          actionLabel={t('检测', 'Check')}
+          actionLabel={formatCheckingLabel(probeStates.github.status, t)}
           onCheck={() => void runProbe('github')}
-          valueTone={healthTone(githubValue)}
         />
         <OverviewStatusCard
-          label={t('GitHub Core Remaining', 'GitHub Core Remaining')}
-          value={githubRateValue}
-          hint={t('表示当前可用的 GitHub Core API 配额。', 'Indicates the currently remaining GitHub Core API quota.')}
+          label={t('GitHub Quota', 'GitHub Quota')}
+          hint={t('表示当前 GitHub Core API 配额是否仍有可用余量。', 'Indicates whether the current GitHub Core API quota still has remaining headroom.')}
+          hintId="admin-status-hint-github-quota"
+          resultLabel={githubQuotaObservation?.label ?? 'down'}
+          resultTone={githubQuotaObservation?.tone ?? 'down'}
+          isPending={githubQuotaObservation === null}
           status={probeStates.github.status}
-          message={probeStates.github.message}
-          checkingLabel={t('检测中...', 'Checking...')}
-          actionLabel={t('检测', 'Check')}
+          actionLabel={formatCheckingLabel(probeStates.github.status, t)}
           onCheck={() => void runProbe('github')}
         />
       </div>
@@ -355,30 +398,6 @@ function OverviewContent() {
       </div>
 
       <OverviewStatusPanel />
-
-      <article className="admin-overview-failures">
-        <div className="admin-overview-head">
-          <h2>{t('最近失败任务', 'Recent Failed Jobs')}</h2>
-          <button className="admin-secondary-button" type="button" onClick={() => setNonce((prev) => prev + 1)}>
-            {t('刷新', 'Refresh')}
-          </button>
-        </div>
-
-        {data.latest_failures.length === 0 ? (
-          <div className="admin-state-card">{t('暂无失败任务。', 'No failed jobs yet.')}</div>
-        ) : (
-          <ul className="admin-failure-list">
-            {data.latest_failures.map((item) => (
-              <li key={`${item.job_id}-${item.failed_at || ''}`}>
-                <p><strong>#{item.job_id}</strong>{item.project_name ? ` · ${item.project_name}` : ''}</p>
-                <p>{item.reason || t('无错误详情', 'No error details.')}</p>
-                {item.summary ? <p className="admin-detail-meta">{formatFailureSummary(item.summary)}</p> : null}
-                <p className="admin-detail-meta">{formatAdminTime(item.failed_at)}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </article>
     </section>
   )
 }
@@ -391,7 +410,7 @@ export function AdminOverviewConsolePage() {
     <AdminConsoleShell
       mode="overview"
       title={t('Control Center · 概览 | lambertlab', 'Control Center · Overview | lambertlab')}
-      description={t('管理概览：项目规模、运行状态与近期失败任务。', 'Admin overview: project scale, runtime checks, and recent failed jobs.')}
+      description={t('管理概览：项目规模与运行状态。', 'Admin overview: project scale and runtime status.')}
     >
       <OverviewContent />
     </AdminConsoleShell>

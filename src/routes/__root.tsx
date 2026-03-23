@@ -292,6 +292,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
                     <a className="ll-site-footer-link" href="/status/">
                       {shellCopy.footer.status[locale]}
                     </a>
+                    <a className="ll-site-footer-link" href="/admin/">
+                      {shellCopy.footer.admin[locale]}
+                    </a>
                   </>
                 ) : (
                   <>
@@ -300,6 +303,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
                     </a>
                     <a className="ll-site-footer-link" href="/status/">
                       {shellCopy.footer.status[locale]}
+                    </a>
+                    <a className="ll-site-footer-link" href="/admin/">
+                      {shellCopy.footer.admin[locale]}
                     </a>
                   </>
                 )}

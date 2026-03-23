@@ -1643,6 +1643,7 @@ export async function fetchAdminStatus(token: string, signal?: AbortSignal): Pro
     token: toText(token),
     method: 'GET',
     signal,
+    timeoutMs: 7000,
   })
 
   return normalizeAdminStatusSummary(payload)
@@ -1660,6 +1661,7 @@ export async function fetchAdminStatusProbe(
       target,
     },
     signal,
+    timeoutMs: target === 'github' ? 9000 : 7000,
   })
 
   return normalizeAdminStatusProbeResult(payload, target)

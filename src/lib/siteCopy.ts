@@ -115,6 +115,10 @@ export const shellCopy = {
       'zh-CN': '状态',
       en: 'Status',
     },
+    admin: {
+      'zh-CN': 'ADMIN',
+      en: 'ADMIN',
+    },
   },
 } as const satisfies Record<string, Record<string, LocalizedText> | LocalizedText>
 

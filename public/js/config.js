@@ -8,8 +8,41 @@
   var host = (window.location && window.location.hostname) || "";
   var protocol = (window.location && window.location.protocol) || "https:";
   var origin = (window.location && window.location.origin) || "";
-  var isLocalHost = host === "localhost" || host === "127.0.0.1";
-  var localApiBase = "http://127.0.0.1:8000";
+  function isPrivateIpv4Host(value) {
+    if (!value) {
+      return false;
+    }
+
+    if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(value)) {
+      return true;
+    }
+
+    if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(value)) {
+      return true;
+    }
+
+    return /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(value);
+  }
+
+  function isLocalDevHost(value) {
+    if (!value) {
+      return false;
+    }
+
+    if (value === "localhost" || value === "127.0.0.1" || value === "0.0.0.0") {
+      return true;
+    }
+
+    if (isPrivateIpv4Host(value)) {
+      return true;
+    }
+
+    return /^[a-z0-9-]+(?:\.local)?$/i.test(value);
+  }
+
+  var isLocalHost = isLocalDevHost(host);
+  var localApiHost = host && host !== "0.0.0.0" ? host : "127.0.0.1";
+  var localApiBase = "http://" + localApiHost + ":9193";
   var configuredApiBase =
     typeof currentConfig.API_BASE === "string" ? currentConfig.API_BASE.trim() : "";
   var globalApiBase =
@@ -21,7 +54,7 @@
   }
 
   // In HTTPS pages default to same-origin API to avoid mixed-content blocking.
-  var defaultRemoteApiBase = protocol === "https:" ? origin : "http://18.140.127.154:8000";
+  var defaultRemoteApiBase = protocol === "https:" ? origin : "http://18.140.127.154:9193";
   var resolvedApiBase = isLocalHost
     ? localApiBase
     : metaApiBase || globalApiBase || configuredApiBase || defaultRemoteApiBase;
