@@ -17,6 +17,10 @@ export function buildAdminConsoleHead(locale: UiLocale = 'zh-CN') {
     links: [
       {
         rel: 'stylesheet' as const,
+        href: '/css/admin-icons.css',
+      },
+      {
+        rel: 'stylesheet' as const,
         href: '/css/page-admin-projects.css',
       },
       {

@@ -1,0 +1,37 @@
+@font-face {
+  font-family: 'LambertLabAdminIcons';
+  src:
+    url('/fonts/admin-icons/iconfont.woff2') format('woff2'),
+    url('/fonts/admin-icons/iconfont.woff') format('woff'),
+    url('/fonts/admin-icons/iconfont.ttf') format('truetype');
+  font-display: block;
+}
+
+.admin-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'LambertLabAdminIcons', sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  speak: never;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.admin-icon--sm {
+  font-size: 0.875rem;
+}
+
+.admin-icon--md {
+  font-size: 1rem;
+}
+
+.admin-icon--lg {
+  font-size: 1.25rem;
+}
+
+.admin-icon--xl {
+  font-size: 1.5rem;
+}

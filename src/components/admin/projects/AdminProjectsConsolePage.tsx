@@ -31,6 +31,7 @@ import {
   type AdminProjectsSearchState,
 } from './adminProjectsSearch'
 import { AdminConsoleFrame } from '../console/AdminConsoleFrame'
+import { AdminIcon } from '../ui/AdminIcon'
 
 const TOKEN_KEY = 'll-admin-token-v1'
 const STAGE_OPTIONS = [
@@ -339,7 +340,7 @@ function InlineHelpHint({
         ref={triggerRef}
         tabIndex={0}
       >
-        !
+        <AdminIcon name="info" size="md" />
       </span>
       {open && typeof document !== 'undefined'
         ? createPortal(
@@ -1961,7 +1962,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                 <h2>{t('\u521b\u5efa\u9879\u76ee', 'Create Project')}</h2>
                 <p className="admin-project-modal__project-name">{t('\u65b0\u9879\u76ee', 'New project')}</p>
               </div>
-              <button className="admin-modal-close" type="button" onClick={closePanel} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+              <button className="admin-modal-close" type="button" onClick={closePanel} aria-label={t('\u5173\u95ed', 'Close')}><AdminIcon name="close" size="xl" /></button>
             </div>
 
             <form className="admin-project-modal__content" onSubmit={(event) => { event.preventDefault(); void createProject() }}>
@@ -2031,7 +2032,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                 <h2>{t('\u7f16\u8f91\u9879\u76ee', 'Edit Project')}</h2>
                 <p className="admin-project-modal__project-name">{selectedProjectName || t('项目详情', 'Project detail')}</p>
               </div>
-              <button className="admin-modal-close" type="button" onClick={closeEditPanel} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+              <button className="admin-modal-close" type="button" onClick={closeEditPanel} aria-label={t('\u5173\u95ed', 'Close')}><AdminIcon name="close" size="xl" /></button>
             </div>
 
             {!selectedId ? (
@@ -2178,7 +2179,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                   />
                 </div>
               </div>
-              <button className="admin-modal-close" type="button" onClick={() => setEditDrawer(null)} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+              <button className="admin-modal-close" type="button" onClick={() => setEditDrawer(null)} aria-label={t('\u5173\u95ed', 'Close')}><AdminIcon name="close" size="xl" /></button>
             </div>
             <div className="admin-project-repository-drawer__body">
               {repoLinkPreview ? (
@@ -2279,7 +2280,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                   />
                 </div>
               </div>
-              <button className="admin-modal-close" type="button" onClick={() => setEditDrawer(null)} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+              <button className="admin-modal-close" type="button" onClick={() => setEditDrawer(null)} aria-label={t('\u5173\u95ed', 'Close')}><AdminIcon name="close" size="xl" /></button>
             </div>
             <div className="admin-project-repository-drawer__body">
               <div className="admin-project-links-editor admin-project-links-editor--drawer">
@@ -2461,7 +2462,7 @@ export function AdminProjectsConsolePage({ mode, searchState, onSearchStateChang
                 <h2>{t('Delete Project', 'Delete Project')}</h2>
                 <p>{t(`\u786e\u8ba4\u5220\u9664\u9879\u76ee\u300c${deleteTargetName || '--'}\u300d\uff1f`, `Delete project "${deleteTargetName || '--'}"?`)}</p>
               </div>
-              <button className="admin-modal-close" type="button" onClick={closeDeleteModal} disabled={deleteState.status === 'running'} aria-label={t('\u5173\u95ed', 'Close')}>{'\u00d7'}</button>
+              <button className="admin-modal-close" type="button" onClick={closeDeleteModal} disabled={deleteState.status === 'running'} aria-label={t('\u5173\u95ed', 'Close')}><AdminIcon name="close" size="xl" /></button>
             </div>
 
             <div className="admin-confirm-copy">

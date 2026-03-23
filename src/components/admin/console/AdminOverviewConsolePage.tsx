@@ -7,6 +7,7 @@ import {
   type AdminStatusProbeTarget,
 } from '~/lib/api/adminConsoleApi'
 import { useUiLocale } from '~/lib/uiLocale'
+import { AdminIcon } from '../ui/AdminIcon'
 import { AdminConsoleShell, useAdminConsoleAuth } from './AdminConsoleShell'
 import { mapAdminError } from './adminConsoleUtils'
 
@@ -132,7 +133,7 @@ function OverviewStatusCard({
         <p className="admin-projects-kicker">{label}</p>
         <div className="admin-status-hint-wrap">
           <span className="admin-status-hint" aria-describedby={hintId} tabIndex={0}>
-            !
+            <AdminIcon name="info" size="md" />
           </span>
           <span className="admin-status-hint__tooltip" id={hintId} role="tooltip">
             {hint}
