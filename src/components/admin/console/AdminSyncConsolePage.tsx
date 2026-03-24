@@ -199,8 +199,8 @@ export function AdminSyncJobLogsPanels() {
   }, [invalidate, retryConfirmJobId, retryState.status, t, token])
 
   return (
-    <section className="admin-projects-workspace admin-projects-workspace--sync">
-      <section className="admin-projects-list-panel">
+    <section className="admin-projects-workspace admin-projects-workspace--sync admin-logs-layout__section admin-logs-layout__section--sync">
+      <section className="admin-projects-list-panel admin-sync-jobs-panel">
         <div className="admin-section-head admin-section-head--projects">
           <div>
             <h2>{t('同步任务', 'Sync Jobs')}</h2>
@@ -217,8 +217,8 @@ export function AdminSyncJobLogsPanels() {
         {jobsStatus === 'empty' ? <div className="admin-state-card"><p>{t('暂无同步任务。', 'No sync jobs yet.')}</p></div> : null}
 
         {jobsStatus === 'ready' ? (
-          <>
-            <ul className="admin-projects-list">
+          <div className="admin-sync-jobs-panel__body">
+            <ul className="admin-projects-list admin-sync-jobs-list">
               {jobs.map((job) => (
                 <li key={job.job_id}>
                   <div className="admin-sync-job-row">
@@ -246,13 +246,12 @@ export function AdminSyncJobLogsPanels() {
               <button className="admin-secondary-button" type="button" disabled={page >= pages} onClick={() => setPage((prev) => Math.min(pages, prev + 1))}>{t('下一页', 'Next')}</button>
             </div>
             <p className="admin-list-summary">{t(`共 ${jobsTotal} 个任务。`, `${jobsTotal} jobs total.`)}</p>
-          </>
+            <div className="admin-sync-jobs-feedback-slot">{retryState.message ? <p className="admin-feedback" data-tone={retryState.status === 'error' ? 'error' : retryState.status === 'success' ? 'success' : 'warn'}>{retryState.message}</p> : null}</div>
+          </div>
         ) : null}
-
-        {retryState.message ? <p className="admin-feedback" data-tone={retryState.status === 'error' ? 'error' : retryState.status === 'success' ? 'success' : 'warn'}>{retryState.message}</p> : null}
       </section>
 
-      <section className="admin-projects-detail-panel">
+      <section className="admin-projects-detail-panel admin-sync-job-detail-panel">
         <div className="admin-section-head admin-section-head--projects">
           <div>
             <h2>{t('任务详情', 'Job Details')}</h2>
@@ -263,7 +262,7 @@ export function AdminSyncJobLogsPanels() {
         {selectedJobId && detailStatus === 'error' ? <div className="admin-state-card admin-state-error"><p>{detailMessage}</p><button className="admin-primary-button" type="button" onClick={() => setJobsNonce((prev) => prev + 1)}>{t('重试', 'Retry')}</button></div> : null}
 
         {selectedJobId && detailStatus === 'ready' && detail ? (
-          <div className="admin-sync-detail">
+          <div className="admin-sync-detail admin-sync-detail--panel">
             <div className="admin-sync-detail-grid">
               <p><strong>job_id:</strong> #{detail.job_id}</p>
               <p><strong>state:</strong> {detail.state}</p>

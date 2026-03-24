@@ -1,4 +1,4 @@
-﻿import * as React from 'react'
+import * as React from 'react'
 import { fetchAdminLogs, type AdminLogRecord, type AdminLogsListResult } from '~/lib/api/adminConsoleApi'
 import { useUiLocale } from '~/lib/uiLocale'
 import { AdminConsoleShell, useAdminConsoleAuth } from './AdminConsoleShell'
@@ -100,7 +100,7 @@ function LogsContent() {
   const pages = Math.max(1, Math.ceil(data.total / filters.pageSize))
 
   return (
-    <section className="admin-projects-workspace admin-projects-workspace--catalog">
+    <section className="admin-projects-workspace admin-projects-workspace--catalog admin-logs-layout__section admin-logs-layout__section--operations">
       <section className="admin-projects-list-panel admin-logs-page">
         <div className="admin-section-head admin-section-head--projects">
           <div>
@@ -171,8 +171,8 @@ function LogsContent() {
         {status === 'empty' ? <div className="admin-state-card"><p>{t('暂无日志。', 'No logs yet.')}</p></div> : null}
 
         {status === 'ready' ? (
-          <>
-            <div className="admin-logs-table-wrap">
+          <div className="admin-logs-page__body">
+            <div className="admin-logs-table-wrap admin-logs-table-wrap--panel">
               <table className="admin-logs-table">
                 <thead>
                   <tr>
@@ -209,7 +209,7 @@ function LogsContent() {
               </button>
             </div>
             <p className="admin-list-summary">{t(`共 ${data.total} 条日志。`, `${data.total} logs total.`)}</p>
-          </>
+          </div>
         ) : null}
       </section>
     </section>
@@ -226,7 +226,7 @@ export function AdminLogsConsolePage() {
       title={t('Control Center · 操作日志 | lambertlab', 'Control Center · Logs | lambertlab')}
       description={t('查看同步任务历史、步骤日志与后台操作日志。', 'Review sync history, step logs, and admin activity logs.')}
     >
-      <div className="admin-console-stack">
+      <div className="admin-console-stack admin-console-stack--logs">
         <AdminSyncJobLogsPanels />
         <LogsContent />
       </div>

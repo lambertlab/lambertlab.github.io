@@ -566,6 +566,12 @@ body {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
+.admin-logs-layout__section {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
 .admin-projects-list-panel,
 .admin-projects-detail-panel {
   display: grid;
@@ -1152,6 +1158,59 @@ body {
   overflow-x: auto;
 }
 
+.admin-sync-jobs-panel,
+.admin-sync-job-detail-panel,
+.admin-logs-page {
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.admin-sync-jobs-panel__body,
+.admin-logs-page__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 4px;
+}
+
+.admin-sync-jobs-list {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+  align-content: start;
+  padding-top: 2px;
+}
+
+.admin-sync-job-row,
+.admin-retry-button {
+  scroll-margin-block: 18px;
+}
+
+.admin-sync-jobs-feedback-slot {
+  min-height: 24px;
+  flex: 0 0 auto;
+}
+
+.admin-sync-detail--panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.admin-logs-table-wrap--panel {
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
 .admin-logs-table {
   width: 100%;
   border-collapse: collapse;
@@ -1206,6 +1265,34 @@ body {
   .admin-projects-workspace,
   .admin-projects-workspace--sync {
     grid-template-columns: 1fr;
+  }
+
+  .admin-console-stack--logs {
+    grid-template-rows: auto auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .admin-reference-body--logs {
+    overflow-y: auto;
+  }
+
+  .admin-logs-layout__section,
+  .admin-sync-jobs-panel,
+  .admin-sync-job-detail-panel,
+  .admin-logs-page {
+    min-height: auto;
+    height: auto;
+    overflow: visible;
+  }
+
+  .admin-sync-jobs-panel__body,
+  .admin-logs-page__body,
+  .admin-sync-jobs-list,
+  .admin-sync-detail--panel,
+  .admin-logs-table-wrap--panel {
+    overflow: visible;
+    padding-right: 0;
   }
 
   .admin-overview-stats {
@@ -2001,6 +2088,14 @@ body {
   gap: 18px;
 }
 
+.admin-console-stack--logs {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  grid-template-rows: minmax(0, 9fr) minmax(0, 11fr);
+  overflow: hidden;
+}
+
 .admin-sync-job-row {
   display: grid;
   gap: 10px;
@@ -2288,17 +2383,21 @@ body {
 }
 
 .admin-reference-main--projects,
-.admin-reference-body--projects {
+.admin-reference-body--projects,
+.admin-reference-main--logs,
+.admin-reference-body--logs {
   min-height: 0;
 }
 
-.admin-reference-body--projects {
+.admin-reference-body--projects,
+.admin-reference-body--logs {
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.admin-reference-body--projects > * {
+.admin-reference-body--projects > *,
+.admin-reference-body--logs > * {
   min-height: 0;
 }
 
