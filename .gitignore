@@ -14,3 +14,4 @@ package-lock.json
 /playwright/.cache/
 qa/
 .tanstack
+config.toml
